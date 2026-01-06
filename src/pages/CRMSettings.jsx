@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from './utils';
+import { createPageUrl } from '../utils';
 
 export default function CRMSettings() {
   const navigate = useNavigate();

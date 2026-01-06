@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useSiteSettings } from '../components/SiteSettingsContext';
 import { Settings, Save, Loader2, Palette, Type, Image as ImageIcon, FileText, Tag, Zap, Plus, Trash2, GripVertical } from 'lucide-react';
 
 export default function CRMSettings() {
-  const { siteSettings, reloadSettings } = useSiteSettings();
   const [activeTab, setActiveTab] = useState('crm-general');
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -16,45 +14,6 @@ export default function CRMSettings() {
   const [generalSettings, setGeneralSettings] = useState(null);
   const [designSettings, setDesignSettings] = useState(null);
   const [newStatus, setNewStatus] = useState({ name: '', color: '#6D436D', order_index: 0 });
-  
-  const [formData, setFormData] = useState({
-    site_title_he: '',
-    site_title_en: '',
-    tagline_he: '',
-    tagline_en: '',
-    logo_url_he: '',
-    logo_url_en: '',
-    footer_logo_url_he: '',
-    footer_logo_url_en: '',
-    primary_color: '#005e6c',
-    secondary_color: '#006f79',
-    accent_color: '#f4f1ee',
-    text_color: '#2e2e2e',
-    background_color: '#f4f1ee',
-    footer_background_color: '#2e2e2e',
-    footer_text_color: '#e5e7eb',
-    footer_title_color: '#ffffff',
-    page_names: {
-      dashboard_he: 'לוח בקרה',
-      dashboard_en: 'Dashboard',
-      organizations_he: 'ארגונים',
-      organizations_en: 'Organizations',
-      contacts_he: 'אנשי קשר',
-      contacts_en: 'Contacts',
-      interactions_he: 'אינטראקציות',
-      interactions_en: 'Interactions',
-      opportunities_he: 'הזדמנויות',
-      opportunities_en: 'Opportunities',
-      tasks_he: 'משימות',
-      tasks_en: 'Tasks',
-      newsletter_he: 'ניוזלטר',
-      newsletter_en: 'Newsletter',
-      import_leads_he: 'ייבוא לידים',
-      import_leads_en: 'Import Leads',
-      settings_he: 'הגדרות',
-      settings_en: 'Settings'
-    }
-  });
 
   useEffect(() => {
     loadSystemTexts();
@@ -244,98 +203,7 @@ export default function CRMSettings() {
     }
   };
 
-  useEffect(() => {
-    if (siteSettings) {
-      setFormData({
-        site_title_he: siteSettings.site_title_he || '',
-        site_title_en: siteSettings.site_title_en || '',
-        tagline_he: siteSettings.tagline_he || '',
-        tagline_en: siteSettings.tagline_en || '',
-        logo_url_he: siteSettings.logo_url_he || '',
-        logo_url_en: siteSettings.logo_url_en || '',
-        footer_logo_url_he: siteSettings.footer_logo_url_he || '',
-        footer_logo_url_en: siteSettings.footer_logo_url_en || '',
-        primary_color: siteSettings.primary_color || '#005e6c',
-        secondary_color: siteSettings.secondary_color || '#006f79',
-        accent_color: siteSettings.accent_color || '#f4f1ee',
-        text_color: siteSettings.text_color || '#2e2e2e',
-        background_color: siteSettings.background_color || '#f4f1ee',
-        footer_background_color: siteSettings.footer_background_color || '#2e2e2e',
-        footer_text_color: siteSettings.footer_text_color || '#e5e7eb',
-        footer_title_color: siteSettings.footer_title_color || '#ffffff',
-        page_names: siteSettings.page_names || {
-          dashboard_he: 'לוח בקרה',
-          dashboard_en: 'Dashboard',
-          organizations_he: 'ארגונים',
-          organizations_en: 'Organizations',
-          contacts_he: 'אנשי קשר',
-          contacts_en: 'Contacts',
-          interactions_he: 'אינטראקציות',
-          interactions_en: 'Interactions',
-          opportunities_he: 'הזדמנויות',
-          opportunities_en: 'Opportunities',
-          tasks_he: 'משימות',
-          tasks_en: 'Tasks',
-          newsletter_he: 'ניוזלטר',
-          newsletter_en: 'Newsletter',
-          import_leads_he: 'ייבוא לידים',
-          import_leads_en: 'Import Leads',
-          settings_he: 'הגדרות',
-          settings_en: 'Settings'
-        }
-      });
-    }
-  }, [siteSettings]);
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      if (siteSettings && siteSettings.id) {
-        await base44.entities.SiteSettings.update(siteSettings.id, formData);
-      } else {
-        await base44.entities.SiteSettings.create(formData);
-      }
-      await reloadSettings();
-      alert('ההגדרות נשמרו בהצלחה!');
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      alert('שגיאה בשמירת ההגדרות');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleLogoUpload = async (e, field) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('אנא בחרי קובץ תמונה');
-      return;
-    }
-
-    setUploadingLogo(true);
-    try {
-      const uploadedFile = await base44.integrations.Core.UploadFile({ file });
-      setFormData({...formData, [field]: uploadedFile.file_url});
-      alert('הלוגו הועלה בהצלחה!');
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      alert('שגיאה בהעלאת הלוגו');
-    } finally {
-      setUploadingLogo(false);
-    }
-  };
-
-  const updatePageName = (key, value) => {
-    setFormData({
-      ...formData,
-      page_names: {
-        ...formData.page_names,
-        [key]: value
-      }
-    });
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">

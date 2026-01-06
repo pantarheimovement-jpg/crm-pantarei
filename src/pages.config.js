@@ -1,11 +1,11 @@
-import CRMSettings from './pages/CRMSettings';
 import Contacts from './pages/Contacts';
+import CRMSettings from './pages/CRMSettings';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "CRMSettings": CRMSettings,
     "Contacts": Contacts,
+    "CRMSettings": CRMSettings,
 }
 
 export const pagesConfig = {

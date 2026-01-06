@@ -181,14 +181,14 @@ function AppContent({ children, currentPageName }) {
 
     if (siteLoading || systemLoading) {
         return (
-            <div style={{ backgroundColor: '#FDF8F0', color: '#5E4B35' }} className="min-h-screen flex items-center justify-center">
+            <div style={{ backgroundColor: '#FDF8F0', color: '#5E4B35' }} className="min-h-screen flex items-center justify-center" dir="rtl">
                 <Loader2 className="w-12 h-12 animate-spin text-[#6D436D]" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-[var(--background-color)]">
+        <div className="min-h-screen flex flex-col bg-[var(--background-color)]" dir="rtl">
             <Header />
             <main className="flex-1">
                 {children}

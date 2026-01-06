@@ -19,8 +19,12 @@ export const LanguageProvider = ({ children }) => {
     document.documentElement.dir = newLang === 'he' ? 'rtl' : 'ltr';
   };
 
+  const t = (heText, enText) => {
+    return language === 'he' ? heText : enText;
+  };
+
   return (
-    <LanguageContext.Provider value={{ language, switchLanguage }}>
+    <LanguageContext.Provider value={{ language, switchLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );

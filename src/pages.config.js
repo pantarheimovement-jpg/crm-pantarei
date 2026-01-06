@@ -1,11 +1,11 @@
-import Contacts from './pages/Contacts';
 import CRMSettings from './pages/CRMSettings';
+import PipelineDashboard from './pages/PipelineDashboard';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Contacts": Contacts,
     "CRMSettings": CRMSettings,
+    "PipelineDashboard": PipelineDashboard,
 }
 
 export const pagesConfig = {

@@ -4,8 +4,7 @@ import {
   Users, Plus, Search, Edit2, Trash2, Eye, Mail, Phone,
   X, Loader2, CheckCircle, Building2, Download, Upload
 } from 'lucide-react';
-import ImportModal from '../components/shared/ImportModal';
-import ContactDetailsModal from '../components/crm/ContactDetailsModal';
+
 
 export default function Contacts() {
   const [contacts, setContacts] = useState([]);
@@ -27,7 +26,6 @@ export default function Contacts() {
     notes: ''
   });
   const [saving, setSaving] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   useEffect(() => {
@@ -220,13 +218,6 @@ export default function Contacts() {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setShowImportModal(true)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                ייבוא
-              </button>
-              <button
                 onClick={exportToCSV}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
               >
@@ -357,20 +348,7 @@ export default function Contacts() {
         )}
       </div>
 
-      <ImportModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onImport={handleImport}
-        entityName="אנשי קשר"
-        columns={[
-          { key: 'full_name', label: 'שם מלא', required: true, example: 'ישראל ישראלי' },
-          { key: 'job_title', label: 'תפקיד', required: false, example: 'מנכ"ל' },
-          { key: 'email', label: 'מייל', required: false, example: 'israel@example.com' },
-          { key: 'phone', label: 'טלפון', required: false, example: '050-1234567' },
-          { key: 'organization_name', label: 'שם הארגון', required: false, example: 'חברת דוגמה בע"מ' },
-          { key: 'preferred_channel', label: 'ערוץ מועדף', required: false, example: 'Email' }
-        ]}
-      />
+
 
       {/* Add/Edit Modal */}
       {(showAddModal || showEditModal) && (
@@ -515,14 +493,72 @@ export default function Contacts() {
 
       {/* Details Modal */}
       {showDetailsModal && selectedContact && (
-        <ContactDetailsModal
-          contact={selectedContact}
-          onClose={() => {
-            setShowDetailsModal(false);
-            setSelectedContact(null);
-          }}
-          onEdit={openEditModal}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900">פרטי איש קשר</h3>
+              <button
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  setSelectedContact(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <h4 className="text-lg font-semibold">{selectedContact.full_name}</h4>
+                {selectedContact.job_title && <p className="text-gray-600">{selectedContact.job_title}</p>}
+              </div>
+              {selectedContact.email && (
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-gray-400" />
+                  <span>{selectedContact.email}</span>
+                </div>
+              )}
+              {selectedContact.phone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-gray-400" />
+                  <span>{selectedContact.phone}</span>
+                </div>
+              )}
+              {selectedContact.organization_name && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-gray-400" />
+                  <span>{selectedContact.organization_name}</span>
+                </div>
+              )}
+              {selectedContact.notes && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-1">הערות:</p>
+                  <p className="text-gray-600">{selectedContact.notes}</p>
+                </div>
+              )}
+              <div className="pt-4 flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    openEditModal(selectedContact);
+                  }}
+                  className="flex-1 bg-[#005e6c] text-white py-2 rounded-lg hover:bg-[#004a54]"
+                >
+                  ערוך
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setSelectedContact(null);
+                  }}
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  סגור
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

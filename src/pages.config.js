@@ -1,17 +1,19 @@
 import CRMSettings from './pages/CRMSettings';
-import PipelineDashboard from './pages/PipelineDashboard';
-import Students from './pages/Students';
 import Courses from './pages/Courses';
 import Interactions from './pages/Interactions';
+import PipelineDashboard from './pages/PipelineDashboard';
+import Students from './pages/Students';
+import Tasks from './pages/Tasks';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "CRMSettings": CRMSettings,
-    "PipelineDashboard": PipelineDashboard,
-    "Students": Students,
     "Courses": Courses,
     "Interactions": Interactions,
+    "PipelineDashboard": PipelineDashboard,
+    "Students": Students,
+    "Tasks": Tasks,
 }
 
 export const pagesConfig = {

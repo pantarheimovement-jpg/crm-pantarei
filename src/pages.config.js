@@ -4,7 +4,6 @@ import Interactions from './pages/Interactions';
 import PipelineDashboard from './pages/PipelineDashboard';
 import Students from './pages/Students';
 import Tasks from './pages/Tasks';
-import NewsletterManager from './pages/NewsletterManager';
 import __Layout from './Layout.jsx';
 
 
@@ -15,7 +14,6 @@ export const PAGES = {
     "PipelineDashboard": PipelineDashboard,
     "Students": Students,
     "Tasks": Tasks,
-    "NewsletterManager": NewsletterManager,
 }
 
 export const pagesConfig = {

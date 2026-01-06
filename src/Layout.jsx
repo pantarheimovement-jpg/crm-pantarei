@@ -5,8 +5,6 @@ import { SystemSettingsProvider, useSystemSettings } from './components/SystemSe
 import Header from './components/navigation/Header';
 import Footer from './components/navigation/Footer';
 import { Loader2 } from 'lucide-react';
-import LogoCarousel from './components/home/LogoCarousel';
-import CookieConsent from './components/shared/CookieConsent';
 
 function StyleInjector() {
   const { siteSettings } = useSiteSettings();
@@ -195,9 +193,7 @@ function AppContent({ children, currentPageName }) {
             <main className="flex-1">
                 {children}
             </main>
-            {currentPageName !== 'Home' && <LogoCarousel />}
             <Footer />
-            <CookieConsent />
         </div>
     );
 }

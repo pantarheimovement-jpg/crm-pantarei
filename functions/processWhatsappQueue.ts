@@ -1,13 +1,17 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
+    // 1. אתחול לקוח Base44
     const base44 = createClientFromRequest(req);
     
+    // 2. בדיקת הרשאות
     const user = await base44.auth.me();
     if (!user || user.role !== 'admin') { 
         return Response.json({error: 'Forbidden'}, {status: 403}); 
     }
     
+    // 3. שליפת הודעה אחת (בלבד) שנמצאת בסטטוס 'pending'
+    // המיון הוא לפי תאריך יצירה (הישן ביותר קודם) כדי לשמור על סדר FIFO
     const pendingMessages = await base44.asServiceRole.entities.WhatsappQueue.filter({ 
         status: 'pending' 
     }, 'created_date', 1); 
@@ -19,6 +23,7 @@ Deno.serve(async (req) => {
     const message = pendingMessages[0];
     console.log(`Processing message ID: ${message.id} for subscriber: ${message.subscriber_name}`);
     
+    // 4. קבלת פרטי התחברות ל-Green API משתני הסביבה
     const GREEN_ID = Deno.env.get("GREEN_ID");
     const GREEN_TOKEN = Deno.env.get("GREEN_TOKEN");
     
@@ -27,8 +32,9 @@ Deno.serve(async (req) => {
     }
     
     try {
+        // 5. שליחה בפועל דרך Green-API
         const response = await fetch(
-            `https://${GREEN_ID}.api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`,
+            `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -41,6 +47,7 @@ Deno.serve(async (req) => {
         
         const result = await response.json();
         
+        // 6. עדכון סטטוס ב-Queue בהתאם לתוצאה
         if (response.ok) {
             await base44.asServiceRole.entities.WhatsappQueue.update(message.id, { 
                 status: 'sent',

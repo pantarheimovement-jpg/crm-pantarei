@@ -61,6 +61,7 @@ export default function WhatsAppTest() {
             בדקי את החיבור ל-Green API ושלחי הודעת נסיון
           </p>
 
+          {/* Form */}
           <div className="space-y-6 mb-8">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -123,6 +124,7 @@ export default function WhatsAppTest() {
             </button>
           </div>
 
+          {/* Result */}
           {result && (
             <div className={`rounded-lg p-4 mb-6 ${
               result.type === 'success' 
@@ -151,12 +153,14 @@ export default function WhatsAppTest() {
             </div>
           )}
 
+          {/* Logs */}
           {logs && (
             <div className="bg-gray-900 text-green-400 rounded-lg p-4 font-mono text-sm overflow-auto max-h-96">
               <pre className="whitespace-pre-wrap">{logs}</pre>
             </div>
           )}
 
+          {/* Instructions */}
           <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
             <h3 className="font-bold text-blue-900 mb-3">📝 הוראות בדיקה:</h3>
             <ol className="space-y-2 text-sm text-blue-800">
@@ -183,6 +187,7 @@ export default function WhatsAppTest() {
             </ol>
           </div>
 
+          {/* Links */}
           <div className="mt-6 flex gap-4">
             <a
               href="https://console.green-api.com/"

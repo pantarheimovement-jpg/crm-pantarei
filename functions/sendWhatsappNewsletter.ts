@@ -68,8 +68,8 @@ Deno.serve(async (req) => {
     let failedCount = 0;
     const failedDetails = [];
 
-    // Build Green API URL (new format with instance ID in subdomain)
-    const greenApiUrl = `https://${GREEN_ID}.api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
+    // Build Green API URL
+    const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
     console.log('🌐 Green API URL:', greenApiUrl.replace(GREEN_TOKEN, 'TOKEN_HIDDEN'));
 
     // Send messages to each recipient

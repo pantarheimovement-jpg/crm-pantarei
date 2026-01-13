@@ -23,14 +23,41 @@ Deno.serve(async (req) => {
     
     console.log('📦 Payload received:', JSON.stringify(payload, null, 2));
     
-    const { 
-      first_name, 
-      last_name, 
-      email, 
-      phone, 
-      course_name,
-      message 
-    } = payload;
+    // חילוץ הפרטים מהטופס - תמיכה בעברית ואנגלית
+    // אלמנטור שולח לפעמים את השדות בעברית
+    let first_name = payload.first_name || payload.name || payload['שם פרטי'] || payload['שם'] || '';
+    let last_name = payload.last_name || payload['שם משפחה'] || '';
+    let email = (payload.email || payload['דוא"ל'] || payload["דוא\\'ל"] || '')?.toLowerCase().trim();
+    
+    // חיפוש מספר טלפון - יכול להיות בשם השדה או בערך
+    let phone = payload.phone || payload['טלפון'] || '';
+    if (!phone) {
+      // אם אין, חפש מפתח שהערך שלו הוא "טלפון" והמפתח נראה כמו מספר
+      for (const [key, value] of Object.entries(payload)) {
+        if ((value === 'טלפון' || value === 'phone') && /^\d+$/.test(key)) {
+          phone = key;
+          break;
+        }
+      }
+    }
+    
+    // חיפוש קורס - יכול להיות שם או URL
+    let course_name = payload.course_name || payload.course || payload['קורס'] || '';
+    if (!course_name) {
+      // חפש URL שמכיל "courses" - זה כנראה קישור לקורס
+      for (const [key, value] of Object.entries(payload)) {
+        if (typeof value === 'string' && value.includes('/courses/')) {
+          // חלץ את שם הקורס מה-URL
+          const urlParts = value.split('/courses/')[1];
+          if (urlParts) {
+            course_name = urlParts.split('/')[0].replace(/-/g, ' ');
+          }
+          break;
+        }
+      }
+    }
+    
+    const message = payload.message || payload['הודעה'] || '';
     
     // וולידציה בסיסית
     if (!email) {

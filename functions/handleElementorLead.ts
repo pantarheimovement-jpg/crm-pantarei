@@ -48,6 +48,8 @@ Deno.serve(async (req) => {
     const phone = extractField(rawPayload, ['phone', 'טלפון', 'telephone']) || '';
     const message = extractField(rawPayload, ['message', 'הודעה', 'תוכן']) || '';
     
+    console.log('🔎 After extractField:', { first_name, last_name, phone: phone || 'MISSING' });
+    
     // חילוץ מייל - יכול להיות גם לפי תבנית
     let email = extractField(rawPayload, ['email', 'אימייל', 'דוא"ל', "דוא\\'ל", 'מייל']);
     if (!email) {
@@ -61,8 +63,12 @@ Deno.serve(async (req) => {
     }
     email = email?.toLowerCase().trim() || '';
     
+    console.log('📧 Email extracted:', email || 'MISSING');
+    
     // חילוץ קורס
     let course_name = extractField(rawPayload, ['course_name', 'course', 'קורס', 'במה מתעניין', 'תחום עניין']) || '';
+    
+    console.log('📚 Course extracted:', course_name || 'MISSING');
     
     // אם אין, חפש URL שמכיל "courses"
     if (!course_name) {
@@ -100,8 +106,10 @@ Deno.serve(async (req) => {
     const isEmailValid = emailRegex.test(email);
     
     const phoneRegex = /^(\+972|972|0)?[5][0-9]{8}$/;
-    const cleanPhone = phone.replace(/[\s\-\(\)\.]/g, '');
+    const cleanPhone = phone ? phone.replace(/[\s\-\(\)\.]/g, '') : '';
     const isPhoneValid = phone ? phoneRegex.test(cleanPhone) : true;
+    
+    console.log('✅ Validation:', { isEmailValid, isPhoneValid, cleanPhone });
     
     let validationNotes = [];
     if (!isEmailValid) {

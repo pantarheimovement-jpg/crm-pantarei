@@ -6,8 +6,21 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // קבלת הנתונים מהטופס
-    const payload = await req.json();
+    // קבלת הנתונים מהטופס (Elementor שולח form data, לא JSON)
+    const contentType = req.headers.get('content-type') || '';
+    let payload;
+    
+    if (contentType.includes('application/json')) {
+      payload = await req.json();
+    } else {
+      // Form data מ-Elementor
+      const formData = await req.formData();
+      payload = {};
+      for (const [key, value] of formData.entries()) {
+        payload[key] = value;
+      }
+    }
+    
     console.log('📦 Payload received:', JSON.stringify(payload, null, 2));
     
     const { 

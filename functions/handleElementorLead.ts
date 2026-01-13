@@ -124,19 +124,10 @@ Deno.serve(async (req) => {
     const courses = course_name 
       ? await base44.asServiceRole.entities.Course.filter({ name: course_name })
       : [];
-    let course = courses && courses.length > 0 ? courses[0] : null;
-
-    // ✨ אם הקורס לא נמצא - צור אותו אוטומטית
+    const course = courses && courses.length > 0 ? courses[0] : null;
+    
     if (course_name && !course) {
-      console.log(`✨ Creating new course: ${course_name}`);
-      course = await base44.asServiceRole.entities.Course.create({
-        name: course_name,
-        type: 'קורס קבוע',
-        status: 'פתוח להרשמה',
-        description: '',
-        current_students: 0
-      });
-      console.log(`✅ Course created with ID: ${course.id}`);
+      console.log(`⚠️ Course not found: ${course_name}`);
     } else if (course) {
       console.log(`✅ Course found: ${course.name} (ID: ${course.id})`);
     }
@@ -207,8 +198,13 @@ Deno.serve(async (req) => {
           }
           
           const courseName = course ? course.name : 'הקורס';
-
-          let whatsappMessage = `הי ${first_name || 'שלום'}, קיבלנו את פנייתך בנוגע ל${courseName}, ניצור איתך קשר בהקדם 💜 סטודיו פנטהריי`;
+          const courseDescription = course?.description || '';
+          
+          let whatsappMessage = `היי ${first_name || 'שלום'} קיבלנו את פנייתך בנוגע לקורס ${courseName}`;
+          if (courseDescription) {
+            whatsappMessage += `, ${courseDescription}`;
+          }
+          whatsappMessage += `. ניצור איתך קשר בהקדם 💜 סטודיו פנטהריי`;
           
           const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
           

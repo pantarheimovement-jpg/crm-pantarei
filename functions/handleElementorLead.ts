@@ -207,13 +207,8 @@ Deno.serve(async (req) => {
           }
           
           const courseName = course ? course.name : 'הקורס';
-          const courseDescription = course?.description || '';
 
-          let whatsappMessage = `הי ${first_name || 'שלום'}, קיבלנו את פנייתך בנוגע ל${courseName}`;
-          if (courseDescription) {
-            whatsappMessage += `, ${courseDescription}`;
-          }
-          whatsappMessage += `, ניצור איתך קשר בהקדם 💜 סטודיו פנטהריי`;
+          let whatsappMessage = `הי ${first_name || 'שלום'}, קיבלנו את פנייתך בנוגע ל${courseName}, ניצור איתך קשר בהקדם 💜 סטודיו פנטהריי`;
           
           const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
           

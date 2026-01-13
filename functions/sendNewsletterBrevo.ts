@@ -14,6 +14,9 @@ Deno.serve(async (req) => {
 
     const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY');
     
+    console.log('🔍 BREVO_API_KEY length:', BREVO_API_KEY ? BREVO_API_KEY.length : 'undefined');
+    console.log('🔍 BREVO_API_KEY starts with:', BREVO_API_KEY ? BREVO_API_KEY.substring(0, 5) : 'undefined');
+    
     if (!BREVO_API_KEY) {
       return Response.json({ 
         error: 'BREVO_API_KEY must be configured in Dashboard → Secrets' 

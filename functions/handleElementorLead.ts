@@ -121,15 +121,31 @@ Deno.serve(async (req) => {
     
     // חיפוש קורס
     console.log(`🔍 Searching for course: ${course_name}`);
-    const courses = course_name 
-      ? await base44.asServiceRole.entities.Course.filter({ name: course_name })
-      : [];
-    const course = courses && courses.length > 0 ? courses[0] : null;
+    let course = null;
     
-    if (course_name && !course) {
-      console.log(`⚠️ Course not found: ${course_name}`);
-    } else if (course) {
-      console.log(`✅ Course found: ${course.name} (ID: ${course.id})`);
+    if (course_name) {
+      // 1. נסה למצוא קורס קיים
+      const courses = await base44.asServiceRole.entities.Course.filter({ name: course_name });
+      course = courses && courses.length > 0 ? courses[0] : null;
+      
+      // 2. אם לא נמצא - נסה ליצור חדש בזהירות
+      if (!course) {
+        console.log(`✨ Course not found. Attempting to create: ${course_name}`);
+        try {
+          // נסיון ליצור עם שדות מינימליים בלבד כדי למנוע שגיאות
+          course = await base44.asServiceRole.entities.Course.create({
+            name: course_name,
+            current_students: 0
+          });
+          console.log(`✅ Course created successfully: ${course.id}`);
+        } catch (createError) {
+          console.error(`⚠️ Failed to auto-create course: ${createError.message}`);
+          console.log(`Continuing lead creation without linking to a course.`);
+          // ממשיכים! הליד ייווצר גם אם הקורס לא הצליח
+        }
+      } else {
+        console.log(`✅ Course found: ${course.name} (ID: ${course.id})`);
+      }
     }
     
     // חיפוש student קיים
@@ -200,11 +216,11 @@ Deno.serve(async (req) => {
           const courseName = course ? course.name : 'הקורס';
           const courseDescription = course?.description || '';
           
-          let whatsappMessage = `היי ${first_name || 'שלום'} קיבלנו את פנייתך בנוגע לקורס ${courseName}`;
+          let whatsappMessage = `הי ${first_name || 'שלום'}, קיבלנו את פנייתך בנוגע ל${courseName}`;
           if (courseDescription) {
             whatsappMessage += `, ${courseDescription}`;
           }
-          whatsappMessage += `. ניצור איתך קשר בהקדם 💜 סטודיו פנטהריי`;
+          whatsappMessage += `. ניצור איתך קשר בהקדם💜 סטודיו פנטהריי`;
           
           const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
           

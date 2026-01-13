@@ -6,75 +6,103 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // קבלת הנתונים מהטופס (Elementor שולח form data, לא JSON)
+    // קבלת הנתונים מהטופס
     const contentType = req.headers.get('content-type') || '';
-    let payload;
+    let rawPayload;
     
     if (contentType.includes('application/json')) {
-      payload = await req.json();
+      rawPayload = await req.json();
     } else {
       // Form data מ-Elementor
       const formData = await req.formData();
-      payload = {};
+      rawPayload = {};
       for (const [key, value] of formData.entries()) {
-        payload[key] = value;
+        rawPayload[key] = value;
       }
     }
     
-    console.log('📦 Payload received:', JSON.stringify(payload, null, 2));
+    console.log('📦 Raw Payload:', JSON.stringify(rawPayload, null, 2));
     
-    // חילוץ הפרטים מהטופס - תמיכה בעברית ואנגלית
-    // אלמנטור שולח לפעמים את השדות בעברית
-    let first_name = payload.first_name || payload.name || payload['שם פרטי'] || payload['שם'] || '';
-    let last_name = payload.last_name || payload['שם משפחה'] || '';
-    let email = (payload.email || payload['דוא"ל'] || payload["דוא\\'ל"] || '')?.toLowerCase().trim();
-    
-    // חיפוש מספר טלפון - יכול להיות בשם השדה או בערך
-    let phone = payload.phone || payload['טלפון'] || '';
-    if (!phone) {
-      // אם אין, חפש מפתח שהערך שלו הוא "טלפון" והמפתח נראה כמו מספר
+    // ===== פונקציית עזר לחילוץ נתונים מפורמט הפוך =====
+    function extractField(payload, fieldNames) {
+      // חיפוש רגיל (מפתח = שם שדה, ערך = תוכן)
+      for (const fieldName of fieldNames) {
+        if (payload[fieldName]) {
+          return payload[fieldName];
+        }
+      }
+      
+      // חיפוש הפוך (ערך = שם שדה, מפתח = תוכן) - אלמנטור עושה את זה
       for (const [key, value] of Object.entries(payload)) {
-        if ((value === 'טלפון' || value === 'phone') && /^\d+$/.test(key)) {
-          phone = key;
+        if (fieldNames.includes(value)) {
+          return key;
+        }
+      }
+      
+      return null;
+    }
+    
+    // חילוץ השדות
+    const first_name = extractField(rawPayload, ['first_name', 'name', 'שם פרטי', 'שם']) || '';
+    const last_name = extractField(rawPayload, ['last_name', 'שם משפחה']) || '';
+    const phone = extractField(rawPayload, ['phone', 'טלפון', 'telephone']) || '';
+    const message = extractField(rawPayload, ['message', 'הודעה', 'תוכן']) || '';
+    
+    // חילוץ מייל - יכול להיות גם לפי תבנית
+    let email = extractField(rawPayload, ['email', 'אימייל', 'דוא"ל', "דוא\\'ל", 'מייל']);
+    if (!email) {
+      // חפש מפתח שנראה כמו מייל
+      for (const [key, value] of Object.entries(rawPayload)) {
+        if (typeof key === 'string' && key.includes('@')) {
+          email = key;
           break;
         }
       }
     }
+    email = email?.toLowerCase().trim() || '';
     
-    // חיפוש קורס - יכול להיות שם או URL
-    let course_name = payload.course_name || payload.course || payload['קורס'] || '';
+    // חילוץ קורס
+    let course_name = extractField(rawPayload, ['course_name', 'course', 'קורס', 'במה מתעניין', 'תחום עניין']) || '';
+    
+    // אם אין, חפש URL שמכיל "courses"
     if (!course_name) {
-      // חפש URL שמכיל "courses" - זה כנראה קישור לקורס
-      for (const [key, value] of Object.entries(payload)) {
-        if (typeof value === 'string' && value.includes('/courses/')) {
-          // חלץ את שם הקורס מה-URL
-          const urlParts = value.split('/courses/')[1];
-          if (urlParts) {
-            course_name = urlParts.split('/')[0].replace(/-/g, ' ');
+      for (const [key, value] of Object.entries(rawPayload)) {
+        const str = typeof value === 'string' ? value : key;
+        if (str.includes('/courses/')) {
+          const match = str.match(/\/courses\/([^\/]+)/);
+          if (match) {
+            course_name = match[1].replace(/-/g, ' ');
+            break;
           }
-          break;
         }
       }
     }
     
-    const message = payload.message || payload['הודעה'] || '';
+    console.log('✅ Extracted data:', {
+      first_name,
+      last_name,
+      email,
+      phone,
+      course_name,
+      message
+    });
     
     // וולידציה בסיסית
     if (!email) {
+      console.log('❌ No email found');
       return Response.json({ error: 'Email is required' }, { status: 400 });
     }
     
-    const full_name = `${first_name || ''} ${last_name || ''}`.trim();
+    const full_name = `${first_name || ''} ${last_name || ''}`.trim() || email;
     
-    // וולידציה של מייל
+    // וולידציה של מייל וטלפון
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isEmailValid = emailRegex.test(email);
     
-    // וולידציה של טלפון (מספר ישראלי)
     const phoneRegex = /^(\+972|972|0)?[5][0-9]{8}$/;
-    const isPhoneValid = phone ? phoneRegex.test(phone.toString().replace(/[\s\-\(\)]/g, '')) : true;
+    const cleanPhone = phone.replace(/[\s\-\(\)\.]/g, '');
+    const isPhoneValid = phone ? phoneRegex.test(cleanPhone) : true;
     
-    // הערות אם יש בעיות בוולידציה
     let validationNotes = [];
     if (!isEmailValid) {
       validationNotes.push('⚠️ דרוש בדיקה: מייל לא תקין');
@@ -83,32 +111,34 @@ Deno.serve(async (req) => {
       validationNotes.push('⚠️ דרוש בדיקה: טלפון לא תקין');
     }
     
-    // חיפוש קורס לפי שם
+    // חיפוש קורס
     console.log(`🔍 Searching for course: ${course_name}`);
-    const courses = await base44.asServiceRole.entities.Course.filter({ name: course_name });
+    const courses = course_name 
+      ? await base44.asServiceRole.entities.Course.filter({ name: course_name })
+      : [];
     const course = courses && courses.length > 0 ? courses[0] : null;
     
-    if (!course) {
+    if (course_name && !course) {
       console.log(`⚠️ Course not found: ${course_name}`);
-    } else {
+    } else if (course) {
       console.log(`✅ Course found: ${course.name} (ID: ${course.id})`);
     }
     
-    // חיפוש Student קיים לפי email
+    // חיפוש student קיים
     console.log(`🔍 Checking if student exists: ${email}`);
     const existingStudents = await base44.asServiceRole.entities.Student.filter({ email });
     const existingStudent = existingStudents && existingStudents.length > 0 ? existingStudents[0] : null;
     
-    // קבלת הסטטוס "ליד חדש"
+    // קבלת סטטוסים
     const leadStatuses = await base44.asServiceRole.entities.LeadStatuses.filter({ name: 'ליד חדש' });
     const leadStatus = leadStatuses && leadStatuses.length > 0 ? leadStatuses[0].name : 'ליד חדש';
     
-    // קבלת הסטטוס "רשום"
     const registeredStatuses = await base44.asServiceRole.entities.LeadStatuses.filter({ name: 'רשום' });
     const registeredStatus = registeredStatuses && registeredStatuses.length > 0 ? registeredStatuses[0].name : 'רשום';
     
+    // הכנת נתוני Student
     let studentData = {
-      full_name: full_name || email,
+      full_name,
       email,
       phone: phone || null,
       status: leadStatus,
@@ -117,7 +147,6 @@ Deno.serve(async (req) => {
       notes: [...validationNotes, message].filter(Boolean).join('\n')
     };
     
-    // הוספת שיוך לקורס אם נמצא
     if (course) {
       studentData.course_id = course.id;
       studentData.course_name = course.name;
@@ -128,51 +157,46 @@ Deno.serve(async (req) => {
     if (existingStudent) {
       console.log(`🔄 Student exists: ${existingStudent.full_name}`);
       
-      // אם הסטטוס הוא "רשום" - לא משנים כלום
       if (existingStudent.status === registeredStatus) {
-        console.log(`ℹ️ Student is already registered, skipping update`);
+        console.log(`ℹ️ Student already registered, skipping update`);
         student = existingStudent;
       } else {
-        // עדכון לליד חדש
         console.log(`📝 Updating student to "ליד חדש"`);
         student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
       }
     } else {
-      // יצירת Student חדש
       console.log(`✨ Creating new student: ${full_name}`);
       student = await base44.asServiceRole.entities.Student.create(studentData);
     }
     
-    // שליחת הודעת WhatsApp (רק אם הטלפון תקין)
+    // שליחת WhatsApp
     let whatsappSent = false;
     if (isPhoneValid && phone) {
       try {
-        console.log('📱 Sending WhatsApp message...');
+        console.log('📱 Sending WhatsApp...');
         
         const GREEN_ID = Deno.env.get('GREEN_ID');
         const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
         
         if (!GREEN_ID || !GREEN_TOKEN) {
-          console.log('⚠️ Green API credentials not configured');
+          console.log('⚠️ Green API not configured');
         } else {
-          // עיצוב מספר הטלפון
-          let phoneNumber = phone.toString().trim().replace(/[\s\-\(\)\.]/g, '');
-          if (phoneNumber.startsWith('+')) {
-            phoneNumber = phoneNumber.substring(1);
-          }
+          let phoneNumber = cleanPhone;
           if (phoneNumber.startsWith('0')) {
             phoneNumber = '972' + phoneNumber.substring(1);
           }
+          if (phoneNumber.startsWith('+')) {
+            phoneNumber = phoneNumber.substring(1);
+          }
           
-          // הודעת ברכה
-          const courseName = course ? course.name : 'הקורס שלנו';
-          const courseDescription = course && course.description ? course.description : '';
+          const courseName = course ? course.name : 'הקורס';
+          const courseDescription = course?.description || '';
           
-          let whatsappMessage = `היי ${first_name || 'שלום'}, ראינו שנרשמת לקורס ${courseName}`;
+          let whatsappMessage = `היי ${first_name || 'שלום'} קיבלנו את פנייתך בנוגע לקורס ${courseName}`;
           if (courseDescription) {
             whatsappMessage += `, ${courseDescription}`;
           }
-          whatsappMessage += `. נחזור אלייך בקרוב 💜 סטודיו פנטהרי`;
+          whatsappMessage += `. ניצור איתך קשר בהקדם 💜 סטודיו פנטהריי`;
           
           const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
           
@@ -188,7 +212,7 @@ Deno.serve(async (req) => {
           const whatsappResult = await whatsappResponse.json();
           
           if (whatsappResponse.ok && whatsappResult.idMessage) {
-            console.log(`✅ WhatsApp sent successfully: ${whatsappResult.idMessage}`);
+            console.log(`✅ WhatsApp sent: ${whatsappResult.idMessage}`);
             whatsappSent = true;
           } else {
             console.log(`❌ WhatsApp failed:`, whatsappResult);
@@ -198,10 +222,10 @@ Deno.serve(async (req) => {
         console.error('❌ WhatsApp error:', error.message);
       }
     } else {
-      console.log('⏭️ Skipping WhatsApp (invalid phone)');
+      console.log('⏭️ Skipping WhatsApp (invalid or missing phone)');
     }
     
-    console.log('✅ handleElementorLead completed successfully');
+    console.log('✅ Webhook completed successfully');
     
     return Response.json({
       success: true,
@@ -214,8 +238,8 @@ Deno.serve(async (req) => {
     
   } catch (error) {
     console.error('=== ❌ ERROR in handleElementorLead ===');
-    console.error('Error message:', error.message);
-    console.error('Stack trace:', error.stack);
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
     return Response.json({ 
       error: error.message,
       stack: error.stack 

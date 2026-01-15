@@ -9,8 +9,11 @@ Deno.serve(async (req) => {
     // קבלת הנתונים מ-Summit
     let payload;
     try {
+      console.log('🔹 Step 1: About to parse request JSON...');
       payload = await req.json();
-      console.log('📦 Payload received:', JSON.stringify(payload, null, 2));
+      console.log('🔹 Step 2: JSON parsed successfully');
+      console.log('📦 Payload EntityID:', payload?.EntityID);
+      console.log('📦 Payload Type:', payload?.Type);
     } catch (jsonError) {
       console.error('❌ Failed to parse JSON:', jsonError.message);
       return Response.json({ error: 'Invalid JSON payload' }, { status: 400 });

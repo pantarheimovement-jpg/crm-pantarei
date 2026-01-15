@@ -23,10 +23,37 @@ Deno.serve(async (req) => {
     console.log('🔍 ALL Properties keys:', Object.keys(properties));
     
     // שם הלקוח
-    // Summit שולחת את הנתונים כמערכים בתוך Properties
     const customerName = properties.Billing_Customer && properties.Billing_Customer[0] 
       ? properties.Billing_Customer[0].Name 
       : null;
+    
+    // חילוץ טלפון ומייל - Summit שולחת מערך של ערכים
+    let customerPhone = null;
+    let customerEmail = null;
+    
+    // נסה למצוא טלפון בשדות שונים אפשריים
+    if (properties.Billing_CustomerPhone && properties.Billing_CustomerPhone.length > 0) {
+      customerPhone = properties.Billing_CustomerPhone[0];
+    } else if (properties.Customer_Phone && properties.Customer_Phone.length > 0) {
+      customerPhone = properties.Customer_Phone[0];
+    } else if (properties.Phone && properties.Phone.length > 0) {
+      customerPhone = properties.Phone[0];
+    }
+    
+    // נסה למצוא מייל בשדות שונים אפשריים
+    if (properties.Billing_CustomerEmail && properties.Billing_CustomerEmail.length > 0) {
+      customerEmail = properties.Billing_CustomerEmail[0];
+    } else if (properties.Customer_Email && properties.Customer_Email.length > 0) {
+      customerEmail = properties.Customer_Email[0];
+    } else if (properties.Email && properties.Email.length > 0) {
+      customerEmail = properties.Email[0];
+    }
+    
+    // ברירת מחדל לטלפון (required)
+    if (!customerPhone || customerPhone.trim() === '') {
+      customerPhone = 'לא זמין';
+      console.log('⚠️ No phone found in payload, using default');
+    }
     
     // שם הקורס/מוצר
     const courseName = properties.Billing_Items && properties.Billing_Items[0]
@@ -40,6 +67,8 @@ Deno.serve(async (req) => {
     
     console.log('✅ Extracted data:', {
       customerName,
+      customerPhone,
+      customerEmail: customerEmail || 'לא סופק',
       courseName,
       billingDate
     });
@@ -94,10 +123,16 @@ Deno.serve(async (req) => {
     // הכנת נתוני Student
     let studentData = {
       full_name: customerName,
+      phone: customerPhone,
       status: registeredStatus,
       registration_date: billingDate,
       notes: `תשלום דרך Summit בתאריך ${billingDate}`
     };
+    
+    // הוספת מייל אם קיים
+    if (customerEmail) {
+      studentData.email = customerEmail;
+    }
     
     // הוספת שיוך לקורס אם נמצא
     if (course) {
@@ -118,9 +153,17 @@ Deno.serve(async (req) => {
         existingStudent.course_id === course.id;
       
       if (wasAlreadyRegisteredToSameCourse) {
-        console.log(`ℹ️ Student already registered to this course, skipping counter update`);
+        console.log(`ℹ️ Student already registered to this course, updating contact info`);
         isNewRegistration = false;
-        student = existingStudent;
+        // עדכון מייל/טלפון אם חסרים או אם הטלפון היה "לא זמין"
+        const updateData = { notes: `${existingStudent.notes || ''}\nתשלום נוסף: ${billingDate}`.trim() };
+        if ((!existingStudent.phone || existingStudent.phone === 'לא זמין') && customerPhone !== 'לא זמין') {
+          updateData.phone = customerPhone;
+        }
+        if (!existingStudent.email && customerEmail) {
+          updateData.email = customerEmail;
+        }
+        student = await base44.asServiceRole.entities.Student.update(existingStudent.id, updateData);
       } else {
         console.log(`📝 Updating student to "רשום" status`);
         isNewRegistration = existingStudent.status !== registeredStatus || existingStudent.course_id !== course?.id;
@@ -151,6 +194,8 @@ Deno.serve(async (req) => {
       success: true,
       student_id: student.id,
       student_name: student.full_name,
+      phone: student.phone,
+      email: student.email || 'לא סופק',
       status: student.status,
       course: course ? course.name : 'לא שויך',
       is_new_registration: isNewRegistration

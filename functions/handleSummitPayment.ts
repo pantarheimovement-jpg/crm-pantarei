@@ -7,11 +7,20 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     
     // קבלת הנתונים מ-Summit
-    const payload = await req.json();
-    console.log('📦 Payload received:', JSON.stringify(payload, null, 2));
+    let payload;
+    try {
+      payload = await req.json();
+      console.log('📦 Payload received:', JSON.stringify(payload, null, 2));
+    } catch (jsonError) {
+      console.error('❌ Failed to parse JSON:', jsonError.message);
+      return Response.json({ error: 'Invalid JSON payload' }, { status: 400 });
+    }
     
     // חילוץ נתונים מפורמט Summit
     const properties = payload.Properties || {};
+    console.log('🔍 Properties object exists:', !!properties);
+    console.log('🔍 Billing_Customer exists:', !!properties.Billing_Customer);
+    console.log('🔍 Billing_Items exists:', !!properties.Billing_Items);
     
     // שם הלקוח
     // Summit שולחת את הנתונים כמערכים בתוך Properties
@@ -46,7 +55,9 @@ Deno.serve(async (req) => {
     let course = null;
     
     if (courseName) {
+      console.log('🔍 About to query Course entity...');
       const courses = await base44.asServiceRole.entities.Course.filter({ name: courseName });
+      console.log(`🔍 Course query completed. Found ${courses ? courses.length : 0} courses`);
       course = courses && courses.length > 0 ? courses[0] : null;
       
       // אם הקורס לא קיים - צור אותו
@@ -69,11 +80,15 @@ Deno.serve(async (req) => {
     
     // חיפוש Student קיים לפי שם מלא (כי אין מייל מ-Summit)
     console.log(`🔍 Checking if student exists: ${customerName}`);
+    console.log('🔍 About to query Student entity...');
     const existingStudents = await base44.asServiceRole.entities.Student.filter({ full_name: customerName });
+    console.log(`🔍 Student query completed. Found ${existingStudents ? existingStudents.length : 0} students`);
     const existingStudent = existingStudents && existingStudents.length > 0 ? existingStudents[0] : null;
     
     // קבלת הסטטוס "רשום"
+    console.log('🔍 About to query LeadStatuses entity...');
     const registeredStatuses = await base44.asServiceRole.entities.LeadStatuses.filter({ name: 'רשום' });
+    console.log(`🔍 LeadStatuses query completed. Found ${registeredStatuses ? registeredStatuses.length : 0} statuses`);
     const registeredStatus = registeredStatuses && registeredStatuses.length > 0 ? registeredStatuses[0].name : 'רשום';
     
     // הכנת נתוני Student
@@ -143,10 +158,13 @@ Deno.serve(async (req) => {
     
   } catch (error) {
     console.error('=== ❌ ERROR in handleSummitPayment ===');
+    console.error('Error type:', error.constructor.name);
     console.error('Error message:', error.message);
     console.error('Stack trace:', error.stack);
+    console.error('Error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     return Response.json({ 
       error: error.message,
+      error_type: error.constructor.name,
       stack: error.stack 
     }, { status: 500 });
   }

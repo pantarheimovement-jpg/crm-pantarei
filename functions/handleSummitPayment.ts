@@ -12,8 +12,7 @@ Deno.serve(async (req) => {
       console.log('🔹 Step 1: About to parse request JSON...');
       payload = await req.json();
       console.log('🔹 Step 2: JSON parsed successfully');
-      console.log('📦 Payload EntityID:', payload?.EntityID);
-      console.log('📦 Payload Type:', payload?.Type);
+      console.log('📦 FULL PAYLOAD:', JSON.stringify(payload, null, 2));
     } catch (jsonError) {
       console.error('❌ Failed to parse JSON:', jsonError.message);
       return Response.json({ error: 'Invalid JSON payload' }, { status: 400 });
@@ -21,9 +20,7 @@ Deno.serve(async (req) => {
     
     // חילוץ נתונים מפורמט Summit
     const properties = payload.Properties || {};
-    console.log('🔍 Properties object exists:', !!properties);
-    console.log('🔍 Billing_Customer exists:', !!properties.Billing_Customer);
-    console.log('🔍 Billing_Items exists:', !!properties.Billing_Items);
+    console.log('🔍 ALL Properties keys:', Object.keys(properties));
     
     // שם הלקוח
     // Summit שולחת את הנתונים כמערכים בתוך Properties

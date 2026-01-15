@@ -10,35 +10,51 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     console.log('📦 Payload received:', JSON.stringify(payload, null, 2));
     
-    // התאמת שדות מ-Summit (להתאים לפי הפורמט האמיתי)
-    // נניח שהשדות הם: payer_name, payer_email, payer_phone, course_name, transaction_date
-    const { 
-      payer_name,
-      payer_email, 
-      payer_phone, 
-      course_name,
-      transaction_date 
-    } = payload;
+    // חילוץ נתונים מפורמט Summit
+    const props = payload.Properties || {};
+    
+    // Summit שולח את הנתונים במערכים - נחלץ את האיבר הראשון
+    const payer_name = props.Billing_Customer?.[0]?.Name || '';
+    const course_name = props.Billing_Items?.[0]?.Name || '';
+    const transaction_date = props.Billing_Date?.[0] || new Date().toISOString();
+    
+    console.log('📝 Extracted data:', { payer_name, course_name, transaction_date });
     
     // וולידציה בסיסית
-    if (!payer_email) {
-      return Response.json({ error: 'Email is required' }, { status: 400 });
+    if (!payer_name) {
+      return Response.json({ error: 'Customer name is required' }, { status: 400 });
     }
     
     // חיפוש קורס לפי שם
     console.log(`🔍 Searching for course: ${course_name}`);
-    const courses = await base44.asServiceRole.entities.Course.filter({ name: course_name });
-    const course = courses && courses.length > 0 ? courses[0] : null;
+    let course = null;
     
-    if (!course) {
-      console.log(`⚠️ Course not found: ${course_name} - continuing without course link`);
-    } else {
-      console.log(`✅ Course found: ${course.name} (ID: ${course.id})`);
+    if (course_name) {
+      const courses = await base44.asServiceRole.entities.Course.filter({ name: course_name });
+      course = courses && courses.length > 0 ? courses[0] : null;
+      
+      // אם הקורס לא נמצא - ניצור אותו
+      if (!course) {
+        console.log(`✨ Course not found. Creating: ${course_name}`);
+        try {
+          course = await base44.asServiceRole.entities.Course.create({
+            name: course_name,
+            type: 'קורס קבוע',
+            current_students: 0
+          });
+          console.log(`✅ Course created successfully: ${course.id}`);
+        } catch (createError) {
+          console.error(`⚠️ Failed to auto-create course: ${createError.message}`);
+          console.log(`Continuing without course link.`);
+        }
+      } else {
+        console.log(`✅ Course found: ${course.name} (ID: ${course.id})`);
+      }
     }
     
-    // חיפוש Student קיים לפי email
-    console.log(`🔍 Checking if student exists: ${payer_email}`);
-    const existingStudents = await base44.asServiceRole.entities.Student.filter({ email: payer_email });
+    // חיפוש Student קיים לפי שם מלא (אין מייל מ-Summit)
+    console.log(`🔍 Checking if student exists: ${payer_name}`);
+    const existingStudents = await base44.asServiceRole.entities.Student.filter({ full_name: payer_name });
     const existingStudent = existingStudents && existingStudents.length > 0 ? existingStudents[0] : null;
     
     // קבלת הסטטוס "רשום"
@@ -47,11 +63,10 @@ Deno.serve(async (req) => {
     
     // הכנת נתוני Student
     let studentData = {
-      full_name: payer_name || payer_email,
-      email: payer_email,
-      phone: payer_phone || null,
+      full_name: payer_name,
       status: registeredStatus,
-      registration_date: transaction_date || new Date().toISOString().split('T')[0]
+      registration_date: transaction_date.split('T')[0], // קח רק את התאריך
+      last_contact_date: new Date().toISOString()
     };
     
     // הוספת שיוך לקורס אם נמצא
@@ -86,7 +101,8 @@ Deno.serve(async (req) => {
     } else {
       // יצירת Student חדש
       console.log(`✨ Creating new student: ${payer_name}`);
-      studentData.lead_source = 'אחר';
+      studentData.lead_source = 'תשלום';
+      studentData.phone = existingStudent?.phone || null; // שמור טלפון אם יש
       student = await base44.asServiceRole.entities.Student.create(studentData);
       isNewRegistration = true;
     }

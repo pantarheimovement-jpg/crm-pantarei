@@ -10,35 +10,66 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     console.log('📦 Payload received:', JSON.stringify(payload, null, 2));
     
-    // התאמת שדות מ-Summit (להתאים לפי הפורמט האמיתי)
-    // נניח שהשדות הם: payer_name, payer_email, payer_phone, course_name, transaction_date
-    const { 
-      payer_name,
-      payer_email, 
-      payer_phone, 
-      course_name,
-      transaction_date 
-    } = payload;
+    // חילוץ נתונים מפורמט Summit
+    const properties = payload.Properties || {};
+    
+    // שם הלקוח
+    // Summit שולחת את הנתונים כמערכים בתוך Properties
+    const customerName = properties.Billing_Customer && properties.Billing_Customer[0] 
+      ? properties.Billing_Customer[0].Name 
+      : null;
+    
+    // שם הקורס/מוצר
+    const courseName = properties.Billing_Items && properties.Billing_Items[0]
+      ? properties.Billing_Items[0].Name
+      : null;
+    
+    // תאריך התשלום
+    const billingDate = properties.Billing_Date && properties.Billing_Date[0]
+      ? properties.Billing_Date[0].split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    
+    console.log('✅ Extracted data:', {
+      customerName,
+      courseName,
+      billingDate
+    });
     
     // וולידציה בסיסית
-    if (!payer_email) {
-      return Response.json({ error: 'Email is required' }, { status: 400 });
+    if (!customerName) {
+      console.log('❌ No customer name found');
+      return Response.json({ error: 'Customer name is required' }, { status: 400 });
     }
     
-    // חיפוש קורס לפי שם
-    console.log(`🔍 Searching for course: ${course_name}`);
-    const courses = await base44.asServiceRole.entities.Course.filter({ name: course_name });
-    const course = courses && courses.length > 0 ? courses[0] : null;
+    // חיפוש או יצירת קורס
+    console.log(`🔍 Searching for course: ${courseName}`);
+    let course = null;
     
-    if (!course) {
-      console.log(`⚠️ Course not found: ${course_name} - continuing without course link`);
-    } else {
-      console.log(`✅ Course found: ${course.name} (ID: ${course.id})`);
+    if (courseName) {
+      const courses = await base44.asServiceRole.entities.Course.filter({ name: courseName });
+      course = courses && courses.length > 0 ? courses[0] : null;
+      
+      // אם הקורס לא קיים - צור אותו
+      if (!course) {
+        console.log(`✨ Course not found. Creating new course: ${courseName}`);
+        try {
+          course = await base44.asServiceRole.entities.Course.create({
+            name: courseName,
+            current_students: 0
+          });
+          console.log(`✅ Course created successfully: ${course.id}`);
+        } catch (createError) {
+          console.error(`⚠️ Failed to auto-create course: ${createError.message}`);
+          console.log(`Continuing without course link.`);
+        }
+      } else {
+        console.log(`✅ Course found: ${course.name} (ID: ${course.id})`);
+      }
     }
     
-    // חיפוש Student קיים לפי email
-    console.log(`🔍 Checking if student exists: ${payer_email}`);
-    const existingStudents = await base44.asServiceRole.entities.Student.filter({ email: payer_email });
+    // חיפוש Student קיים לפי שם מלא (כי אין מייל מ-Summit)
+    console.log(`🔍 Checking if student exists: ${customerName}`);
+    const existingStudents = await base44.asServiceRole.entities.Student.filter({ full_name: customerName });
     const existingStudent = existingStudents && existingStudents.length > 0 ? existingStudents[0] : null;
     
     // קבלת הסטטוס "רשום"
@@ -47,11 +78,10 @@ Deno.serve(async (req) => {
     
     // הכנת נתוני Student
     let studentData = {
-      full_name: payer_name || payer_email,
-      email: payer_email,
-      phone: payer_phone || null,
+      full_name: customerName,
       status: registeredStatus,
-      registration_date: transaction_date || new Date().toISOString().split('T')[0]
+      registration_date: billingDate,
+      notes: `תשלום דרך Summit בתאריך ${billingDate}`
     };
     
     // הוספת שיוך לקורס אם נמצא
@@ -75,18 +105,17 @@ Deno.serve(async (req) => {
       if (wasAlreadyRegisteredToSameCourse) {
         console.log(`ℹ️ Student already registered to this course, skipping counter update`);
         isNewRegistration = false;
+        student = existingStudent;
       } else {
-        console.log(`📝 Updating student to "רשום"`);
+        console.log(`📝 Updating student to "רשום" status`);
         isNewRegistration = existingStudent.status !== registeredStatus || existingStudent.course_id !== course?.id;
+        student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
       }
-      
-      // עדכון Student
-      student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
       
     } else {
       // יצירת Student חדש
-      console.log(`✨ Creating new student: ${payer_name}`);
-      studentData.lead_source = 'אחר';
+      console.log(`✨ Creating new student: ${customerName}`);
+      studentData.lead_source = 'Summit';
       student = await base44.asServiceRole.entities.Student.create(studentData);
       isNewRegistration = true;
     }

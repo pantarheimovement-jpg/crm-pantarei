@@ -30,31 +30,19 @@ Deno.serve(async (req) => {
     const customerName = properties.Billing_Customer && properties.Billing_Customer[0] 
       ? properties.Billing_Customer[0].Name 
       : null;
-
-    // מייל הלקוח
-    const customerEmail = properties.Billing_Customer && properties.Billing_Customer[0]
-      ? properties.Billing_Customer[0].Email
-      : null;
-
-    // טלפון הלקוח
-    const customerPhone = properties.Billing_Customer && properties.Billing_Customer[0]
-      ? properties.Billing_Customer[0].Phone
-      : null;
-
+    
     // שם הקורס/מוצר
     const courseName = properties.Billing_Items && properties.Billing_Items[0]
       ? properties.Billing_Items[0].Name
       : null;
-
+    
     // תאריך התשלום
     const billingDate = properties.Billing_Date && properties.Billing_Date[0]
       ? properties.Billing_Date[0].split('T')[0]
       : new Date().toISOString().split('T')[0];
-
+    
     console.log('✅ Extracted data:', {
       customerName,
-      customerEmail,
-      customerPhone,
       courseName,
       billingDate
     });
@@ -109,8 +97,6 @@ Deno.serve(async (req) => {
     // הכנת נתוני Student
     let studentData = {
       full_name: customerName,
-      phone: customerPhone || '',
-      email: customerEmail || '',
       status: registeredStatus,
       registration_date: billingDate,
       notes: `תשלום דרך Summit בתאריך ${billingDate}`

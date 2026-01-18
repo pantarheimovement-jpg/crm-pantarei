@@ -98,7 +98,21 @@ export default function Students() {
   const handleDelete = async (id) => {
     if (!confirm('האם למחוק משתתף זה?')) return;
     try {
+      const student = students.find(s => s.id === id);
+      const isRegistered = student?.status === 'נרשם' || student?.status === 'רשום';
+      
       await base44.entities.Student.delete(id);
+      
+      // עדכון מונה הקורס אם המשתתף היה רשום
+      if (isRegistered && student?.course_id) {
+        const courses = await base44.entities.Course.list();
+        const course = courses.find(c => c.id === student.course_id);
+        if (course) {
+          const newCount = Math.max(0, (course.current_students || 0) - 1);
+          await base44.entities.Course.update(course.id, { current_students: newCount });
+        }
+      }
+      
       await loadStudents();
     } catch (error) {
       console.error('Error deleting student:', error);

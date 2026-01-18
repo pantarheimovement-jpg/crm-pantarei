@@ -30,6 +30,11 @@ Deno.serve(async (req) => {
     const customerId = properties.Billing_Customer && properties.Billing_Customer[0]
       ? properties.Billing_Customer[0].ID
       : null;
+      
+    // מסמך חשבונאי (חשבונית) - לצורך שליפת פרטים נוספים
+    const documentId = properties.Accounting_Document && properties.Accounting_Document[0]
+      ? properties.Accounting_Document[0].ID
+      : null;
     
     // שם הקורס/מוצר
     const courseName = properties.Billing_Items && properties.Billing_Items[0]
@@ -55,6 +60,7 @@ Deno.serve(async (req) => {
     console.log('✅ Basic data extracted:', {
       customerName,
       customerId,
+      documentId,
       courseName,
       billingDate,
       paymentNumber,
@@ -67,9 +73,78 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Customer name and ID are required' }, { status: 400 });
     }
     
-    // פרטי התקשרות - ייקבעו מתוך webhook בעתיד
+    // קריאה ל-Summit API לקבלת פרטי הלקוח
     let customerPhone = 'לא זמין';
     let customerEmail = null;
+    
+    const SUMMIT_API_TOKEN = Deno.env.get('SUMIT_TOKEN');
+    
+    if (SUMMIT_API_TOKEN) {
+      // 1. נסיון ראשון: שליפה לפי Customer ID
+      try {
+        console.log(`🔍 Try 1: Fetching customer details from Summit API for ID: ${customerId}`);
+        const customerResponse = await fetch(`https://app.sumit.co.il/api/Entity/${customerId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${SUMMIT_API_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (customerResponse.ok) {
+          const customerData = await customerResponse.json();
+          console.log('✅ Customer API response:', JSON.stringify(customerData, null, 2));
+          const props = customerData.Properties || {};
+          
+          if (props.Contact_Phone?.[0] || props.Phone?.[0] || props.Mobile?.[0]) 
+             customerPhone = props.Contact_Phone?.[0] || props.Phone?.[0] || props.Mobile?.[0];
+          if (props.Contact_Email?.[0] || props.Email?.[0]) 
+             customerEmail = props.Contact_Email?.[0] || props.Email?.[0];
+        } else {
+          console.log('⚠️ Failed to fetch customer:', customerResponse.status);
+        }
+      } catch (err) { console.log('⚠️ API Error (Customer):', err.message); }
+      
+      // 2. נסיון שני: אם עדיין חסר, שליפה לפי Document ID (חשבונית)
+      if ((customerPhone === 'לא זמין' || !customerEmail) && documentId) {
+        try {
+          console.log(`🔍 Try 2: Fetching Document (Invoice) details from Summit API for ID: ${documentId}`);
+          const docResponse = await fetch(`https://app.sumit.co.il/api/Entity/${documentId}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${SUMMIT_API_TOKEN}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (docResponse.ok) {
+            const docData = await docResponse.json();
+            console.log('✅ Document API response:', JSON.stringify(docData, null, 2));
+            const props = docData.Properties || {};
+            
+            // בחשבוניות המידע עשוי להיות תחת שדות שונים
+            if (customerPhone === 'לא זמין') {
+              if (props.Values_Mobile?.[0] || props.Recipient_Phone?.[0] || props.Contact_Phone?.[0]) {
+                customerPhone = props.Values_Mobile?.[0] || props.Recipient_Phone?.[0] || props.Contact_Phone?.[0];
+                console.log('🎉 Found phone in Document entity!');
+              }
+            }
+            if (!customerEmail) {
+              if (props.Values_Email?.[0] || props.Recipient_Email?.[0] || props.Contact_Email?.[0]) {
+                customerEmail = props.Values_Email?.[0] || props.Recipient_Email?.[0] || props.Contact_Email?.[0];
+                console.log('🎉 Found email in Document entity!');
+              }
+            }
+          } else {
+            console.log('⚠️ Failed to fetch document:', docResponse.status);
+          }
+        } catch (err) { console.log('⚠️ API Error (Document):', err.message); }
+      }
+      
+      console.log('✅ Final extracted data:', { customerPhone, customerEmail });
+    } else {
+      console.log('⚠️ SUMIT_TOKEN not set, skipping API calls');
+    }
     
     // חיפוש או יצירת קורס
     console.log(`🔍 Searching for course: ${courseName}`);

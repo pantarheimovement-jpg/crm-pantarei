@@ -67,72 +67,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Customer name and ID are required' }, { status: 400 });
     }
     
-    // 🆕 קריאה ל-Summit API לקבלת פרטי הלקוח המלאים
+    // פרטי התקשרות - ייקבעו מתוך webhook בעתיד
     let customerPhone = 'לא זמין';
     let customerEmail = null;
-    
-    const SUMMIT_API_TOKEN = Deno.env.get('SUMIT_TOKEN');
-    
-    if (SUMMIT_API_TOKEN) {
-      try {
-        const apiUrl = `https://app.sumit.co.il/api/Entity/${customerId}`;
-        console.log(`🔍 Fetching customer details from Summit API`);
-        console.log(`📍 Full URL: ${apiUrl}`);
-        console.log(`🔑 Token (first 10 chars): ${SUMMIT_API_TOKEN.substring(0, 10)}...`);
-        console.log(`🆔 Customer ID: ${customerId}`);
-        
-        const summitResponse = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${SUMMIT_API_TOKEN}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        console.log(`📊 Response Status: ${summitResponse.status}`);
-        console.log(`📊 Response Status Text: ${summitResponse.statusText}`);
-        console.log(`📋 Response Headers:`, JSON.stringify(Object.fromEntries(summitResponse.headers.entries())));
-        
-        if (summitResponse.ok) {
-          const customerData = await summitResponse.json();
-          console.log('✅ Summit API response:', JSON.stringify(customerData, null, 2));
-          
-          // חילוץ טלפון ומייל מהתשובה של Summit
-          const props = customerData.Properties || {};
-          
-          // טלפון - נסה שדות שונים
-          if (props.Contact_Phone && props.Contact_Phone.length > 0) {
-            customerPhone = props.Contact_Phone[0];
-          } else if (props.Phone && props.Phone.length > 0) {
-            customerPhone = props.Phone[0];
-          } else if (props.Mobile && props.Mobile.length > 0) {
-            customerPhone = props.Mobile[0];
-          }
-          
-          // מייל
-          if (props.Contact_Email && props.Contact_Email.length > 0) {
-            customerEmail = props.Contact_Email[0];
-          } else if (props.Email && props.Email.length > 0) {
-            customerEmail = props.Email[0];
-          }
-          
-          console.log('✅ Extracted from Summit API:', { customerPhone, customerEmail });
-        } else {
-          // נסה לקרוא את גוף התשובה גם במקרה של שגיאה
-          const errorText = await summitResponse.text();
-          console.log('⚠️ Failed to fetch customer from Summit API');
-          console.log('❌ Status:', summitResponse.status);
-          console.log('❌ Response Body:', errorText);
-        }
-      } catch (apiError) {
-        console.log('⚠️ Error calling Summit API');
-        console.log('❌ Error type:', apiError.constructor.name);
-        console.log('❌ Error message:', apiError.message);
-        console.log('❌ Error stack:', apiError.stack);
-      }
-    } else {
-      console.log('⚠️ SUMIT_TOKEN not set, using default phone');
-    }
     
     // חיפוש או יצירת קורס
     console.log(`🔍 Searching for course: ${courseName}`);

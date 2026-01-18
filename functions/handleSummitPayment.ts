@@ -75,16 +75,23 @@ Deno.serve(async (req) => {
     
     if (SUMMIT_API_TOKEN) {
       try {
-        console.log(`🔍 Fetching customer details from Summit API for ID: ${customerId}`);
+        const apiUrl = `https://app.sumit.co.il/api/Entity/${customerId}`;
+        console.log(`🔍 Fetching customer details from Summit API`);
+        console.log(`📍 Full URL: ${apiUrl}`);
+        console.log(`🔑 Token (first 10 chars): ${SUMMIT_API_TOKEN.substring(0, 10)}...`);
+        console.log(`🆔 Customer ID: ${customerId}`);
         
-        // תיקון: הכתובת הנכונה היא app.sumit.co.il (עם m אחת)
-        const summitResponse = await fetch(`https://app.sumit.co.il/api/Entity/${customerId}`, {
+        const summitResponse = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${SUMMIT_API_TOKEN}`,
             'Content-Type': 'application/json'
           }
         });
+        
+        console.log(`📊 Response Status: ${summitResponse.status}`);
+        console.log(`📊 Response Status Text: ${summitResponse.statusText}`);
+        console.log(`📋 Response Headers:`, JSON.stringify(Object.fromEntries(summitResponse.headers.entries())));
         
         if (summitResponse.ok) {
           const customerData = await summitResponse.json();
@@ -111,10 +118,17 @@ Deno.serve(async (req) => {
           
           console.log('✅ Extracted from Summit API:', { customerPhone, customerEmail });
         } else {
-          console.log('⚠️ Failed to fetch customer from Summit API:', summitResponse.status);
+          // נסה לקרוא את גוף התשובה גם במקרה של שגיאה
+          const errorText = await summitResponse.text();
+          console.log('⚠️ Failed to fetch customer from Summit API');
+          console.log('❌ Status:', summitResponse.status);
+          console.log('❌ Response Body:', errorText);
         }
       } catch (apiError) {
-        console.log('⚠️ Error calling Summit API:', apiError.message);
+        console.log('⚠️ Error calling Summit API');
+        console.log('❌ Error type:', apiError.constructor.name);
+        console.log('❌ Error message:', apiError.message);
+        console.log('❌ Error stack:', apiError.stack);
       }
     } else {
       console.log('⚠️ SUMIT_TOKEN not set, using default phone');

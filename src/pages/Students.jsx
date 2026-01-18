@@ -28,7 +28,9 @@ export default function Students() {
     course_id: '',
     course_name: '',
     notes: '',
-    tags: []
+    tags: [],
+    payment_number: '',
+    total_payments: ''
   });
 
   useEffect(() => {
@@ -122,7 +124,9 @@ export default function Students() {
         course_id: '',
         course_name: '',
         notes: '',
-        tags: []
+        tags: [],
+        payment_number: '',
+        total_payments: ''
       });
     }
     setShowModal(true);
@@ -487,6 +491,24 @@ export default function Students() {
                     type="date"
                     value={formData.registration_date}
                     onChange={(e) => setFormData({...formData, registration_date: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">מספר תשלום</label>
+                  <Input
+                    type="number"
+                    value={formData.payment_number}
+                    onChange={(e) => setFormData({...formData, payment_number: e.target.value})}
+                    placeholder="1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">סה"כ תשלומים</label>
+                  <Input
+                    type="number"
+                    value={formData.total_payments}
+                    onChange={(e) => setFormData({...formData, total_payments: e.target.value})}
+                    placeholder="1"
                   />
                 </div>
               </div>

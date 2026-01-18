@@ -323,6 +323,13 @@ export default function Students() {
                       ניסיון: {new Date(student.trial_date).toLocaleDateString('he-IL')}
                     </div>
                   )}
+                  {student.payment_number && student.total_payments && (
+                    <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-80">
+                      <span className="font-medium">תשלומים:</span>
+                      {student.payment_number} מתוך {student.total_payments} 
+                      <span className="text-xs">({student.total_payments - student.payment_number} נותרו)</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -341,6 +348,7 @@ export default function Students() {
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">טלפון</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מייל</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">קורס</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">תשלומים</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות</th>
                   </tr>
                 </thead>
@@ -359,6 +367,11 @@ export default function Students() {
                       <td className="px-4 py-3 text-sm text-gray-600">{student.phone}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{student.email}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{student.course_name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {student.payment_number && student.total_payments 
+                          ? `${student.payment_number}/${student.total_payments} (${student.total_payments - student.payment_number} נותרו)`
+                          : '-'}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <button

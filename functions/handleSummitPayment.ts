@@ -22,38 +22,14 @@ Deno.serve(async (req) => {
     const properties = payload.Properties || {};
     console.log('🔍 ALL Properties keys:', Object.keys(properties));
     
-    // שם הלקוח
+    // שם הלקוח ו-ID
     const customerName = properties.Billing_Customer && properties.Billing_Customer[0] 
       ? properties.Billing_Customer[0].Name 
       : null;
     
-    // חילוץ טלפון ומייל - Summit שולחת מערך של ערכים
-    let customerPhone = null;
-    let customerEmail = null;
-    
-    // נסה למצוא טלפון בשדות שונים אפשריים
-    if (properties.Billing_CustomerPhone && properties.Billing_CustomerPhone.length > 0) {
-      customerPhone = properties.Billing_CustomerPhone[0];
-    } else if (properties.Customer_Phone && properties.Customer_Phone.length > 0) {
-      customerPhone = properties.Customer_Phone[0];
-    } else if (properties.Phone && properties.Phone.length > 0) {
-      customerPhone = properties.Phone[0];
-    }
-    
-    // נסה למצוא מייל בשדות שונים אפשריים
-    if (properties.Billing_CustomerEmail && properties.Billing_CustomerEmail.length > 0) {
-      customerEmail = properties.Billing_CustomerEmail[0];
-    } else if (properties.Customer_Email && properties.Customer_Email.length > 0) {
-      customerEmail = properties.Customer_Email[0];
-    } else if (properties.Email && properties.Email.length > 0) {
-      customerEmail = properties.Email[0];
-    }
-    
-    // ברירת מחדל לטלפון (required)
-    if (!customerPhone || customerPhone.trim() === '') {
-      customerPhone = 'לא זמין';
-      console.log('⚠️ No phone found in payload, using default');
-    }
+    const customerId = properties.Billing_Customer && properties.Billing_Customer[0]
+      ? properties.Billing_Customer[0].ID
+      : null;
     
     // שם הקורס/מוצר
     const courseName = properties.Billing_Items && properties.Billing_Items[0]
@@ -65,18 +41,82 @@ Deno.serve(async (req) => {
       ? properties.Billing_Date[0].split('T')[0]
       : new Date().toISOString().split('T')[0];
     
-    console.log('✅ Extracted data:', {
+    // 🆕 חילוץ פרטי תשלומים (מספר תשלום וסה"כ)
+    let paymentNumber = null;
+    let totalPayments = null;
+    
+    if (properties.Billing_PaymentNumber && properties.Billing_PaymentNumber.length > 0) {
+      paymentNumber = parseInt(properties.Billing_PaymentNumber[0]);
+    }
+    if (properties.Billing_TotalPayments && properties.Billing_TotalPayments.length > 0) {
+      totalPayments = parseInt(properties.Billing_TotalPayments[0]);
+    }
+    
+    console.log('✅ Basic data extracted:', {
       customerName,
-      customerPhone,
-      customerEmail: customerEmail || 'לא סופק',
+      customerId,
       courseName,
-      billingDate
+      billingDate,
+      paymentNumber,
+      totalPayments
     });
     
     // וולידציה בסיסית
-    if (!customerName) {
-      console.log('❌ No customer name found');
-      return Response.json({ error: 'Customer name is required' }, { status: 400 });
+    if (!customerName || !customerId) {
+      console.log('❌ Customer name or ID missing');
+      return Response.json({ error: 'Customer name and ID are required' }, { status: 400 });
+    }
+    
+    // 🆕 קריאה ל-Summit API לקבלת פרטי הלקוח המלאים
+    let customerPhone = 'לא זמין';
+    let customerEmail = null;
+    
+    const SUMMIT_API_TOKEN = Deno.env.get('SUMMIT_API_TOKEN');
+    
+    if (SUMMIT_API_TOKEN) {
+      try {
+        console.log(`🔍 Fetching customer details from Summit API for ID: ${customerId}`);
+        
+        const summitResponse = await fetch(`https://app.summitcrm.co.il/api/Entity/${customerId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${SUMMIT_API_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (summitResponse.ok) {
+          const customerData = await summitResponse.json();
+          console.log('✅ Summit API response:', JSON.stringify(customerData, null, 2));
+          
+          // חילוץ טלפון ומייל מהתשובה של Summit
+          const props = customerData.Properties || {};
+          
+          // טלפון - נסה שדות שונים
+          if (props.Contact_Phone && props.Contact_Phone.length > 0) {
+            customerPhone = props.Contact_Phone[0];
+          } else if (props.Phone && props.Phone.length > 0) {
+            customerPhone = props.Phone[0];
+          } else if (props.Mobile && props.Mobile.length > 0) {
+            customerPhone = props.Mobile[0];
+          }
+          
+          // מייל
+          if (props.Contact_Email && props.Contact_Email.length > 0) {
+            customerEmail = props.Contact_Email[0];
+          } else if (props.Email && props.Email.length > 0) {
+            customerEmail = props.Email[0];
+          }
+          
+          console.log('✅ Extracted from Summit API:', { customerPhone, customerEmail });
+        } else {
+          console.log('⚠️ Failed to fetch customer from Summit API:', summitResponse.status);
+        }
+      } catch (apiError) {
+        console.log('⚠️ Error calling Summit API:', apiError.message);
+      }
+    } else {
+      console.log('⚠️ SUMMIT_API_TOKEN not set, using default phone');
     }
     
     // חיפוש או יצירת קורס
@@ -132,6 +172,14 @@ Deno.serve(async (req) => {
     // הוספת מייל אם קיים
     if (customerEmail) {
       studentData.email = customerEmail;
+    }
+    
+    // 🆕 הוספת פרטי תשלומים אם קיימים
+    if (paymentNumber) {
+      studentData.payment_number = paymentNumber;
+    }
+    if (totalPayments) {
+      studentData.total_payments = totalPayments;
     }
     
     // הוספת שיוך לקורס אם נמצא
@@ -198,6 +246,7 @@ Deno.serve(async (req) => {
       email: student.email || 'לא סופק',
       status: student.status,
       course: course ? course.name : 'לא שויך',
+      payment_info: paymentNumber && totalPayments ? `${paymentNumber}/${totalPayments}` : 'לא זמין',
       is_new_registration: isNewRegistration
     });
     

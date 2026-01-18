@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
     let customerPhone = 'לא זמין';
     let customerEmail = null;
     
-    const SUMMIT_API_TOKEN = Deno.env.get('SUMMIT_API_TOKEN');
+    const SUMMIT_API_TOKEN = Deno.env.get('SUMIT_TOKEN');
     
     if (SUMMIT_API_TOKEN) {
       try {
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
         console.log('⚠️ Error calling Summit API:', apiError.message);
       }
     } else {
-      console.log('⚠️ SUMMIT_API_TOKEN not set, using default phone');
+      console.log('⚠️ SUMIT_TOKEN not set, using default phone');
     }
     
     // חיפוש או יצירת קורס

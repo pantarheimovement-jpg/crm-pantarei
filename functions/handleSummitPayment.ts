@@ -77,7 +77,8 @@ Deno.serve(async (req) => {
       try {
         console.log(`🔍 Fetching customer details from Summit API for ID: ${customerId}`);
         
-        const summitResponse = await fetch(`https://app.summitcrm.co.il/api/Entity/${customerId}`, {
+        // תיקון: הכתובת הנכונה היא app.sumit.co.il (עם m אחת)
+        const summitResponse = await fetch(`https://app.sumit.co.il/api/Entity/${customerId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${SUMMIT_API_TOKEN}`,

@@ -6,7 +6,7 @@ Deno.serve(async () => {
   }
 
   try {
-    const response = await fetch('https://app.sumit.co.il/api/Entity?entity=Customer', {
+    const response = await fetch('https://app.sumit.co.il/api/Entity?entity=לקוחות', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${SUMIT_TOKEN}`,
@@ -14,11 +14,11 @@ Deno.serve(async () => {
       }
     });
 
-    const text = await response.text(); // במקום json נשתמש ב-text כדי לבדוק מה הגיע
+    const text = await response.text(); // כדי לבדוק מה חוזר גם אם זה לא JSON
 
     return Response.json({
       status: response.status,
-      body_sample: text.slice(0, 300) // נציג רק את ההתחלה
+      body_sample: text.slice(0, 300)
     });
 
   } catch (error) {

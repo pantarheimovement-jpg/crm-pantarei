@@ -5,23 +5,44 @@ Deno.serve(async () => {
     return Response.json({ error: "SUMIT_TOKEN not found in secrets" }, { status: 500 });
   }
 
-  try {
-    const response = await fetch('https://app.sumit.co.il/api/Entity?entity=לקוחות', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${SUMIT_TOKEN}`,
-        'Content-Type': 'application/json'
-      }
-    });
+  const possibleEntities = [
+    "Customer",
+    "Customers",
+    "Client",
+    "Clients",
+    "לקוח",
+    "לקוחות",
+    "Student",
+    "Students",
+    "CustomerCard",
+    "CustomerCards"
+  ];
 
-    const text = await response.text(); // כדי לבדוק מה חוזר גם אם זה לא JSON
+  const results = [];
 
-    return Response.json({
-      status: response.status,
-      body_sample: text.slice(0, 300)
-    });
+  for (const entity of possibleEntities) {
+    try {
+      const res = await fetch(`https://app.sumit.co.il/api/Entity?entity=${encodeURIComponent(entity)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${SUMIT_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-  } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+      const text = await res.text();
+
+      results.push({
+        entity,
+        status: res.status,
+        is_json: text.trim().startsWith("{") || text.trim().startsWith("["),
+        snippet: text.slice(0, 100)
+      });
+
+    } catch (e) {
+      results.push({ entity, error: e.message });
+    }
   }
+
+  return Response.json({ tried: possibleEntities.length, results });
 });

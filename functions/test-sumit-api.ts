@@ -9,11 +9,13 @@ Deno.serve(async () => {
     const response = await fetch("https://api.sumit.co.il/crm/schema/listfolders/", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${SUMIT_TOKEN}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        CompanyID: 333125807
+        Credentials: {
+          CompanyID: 333125807,
+          APIKey: SUMIT_TOKEN
+        }
       })
     });
 

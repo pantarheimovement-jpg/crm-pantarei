@@ -6,7 +6,7 @@ Deno.serve(async () => {
   }
 
   try {
-    const response = await fetch("https://api.sumit.co.il/crm/schema/listfolders/", {
+    const response = await fetch("https://api.sumit.co.il/crm/search/advanced/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -15,17 +15,27 @@ Deno.serve(async () => {
         Credentials: {
           CompanyID: 333125807,
           APIKey: SUMIT_TOKEN
-        }
+        },
+        FolderID: 332551083, // תיקיית לקוחות
+        PageSize: 5,
+        PageNumber: 1
       })
     });
 
     const data = await response.json();
 
+    const preview = (data?.Data?.Entities || []).map((e) => ({
+      id: e.ID,
+      name: e.Name,
+      email: e.Email,
+      phone: e.Phone
+    }));
+
     return Response.json({
       status: response.status,
-      folders_found: Array.isArray(data?.Folders) ? data.Folders.length : 0,
-      preview: data?.Folders?.slice?.(0, 5) || [],
-      full_response: data
+      total: data?.Data?.Total || 0,
+      customers_preview: preview,
+      raw: data
     });
 
   } catch (error) {

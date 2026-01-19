@@ -8,7 +8,6 @@ Deno.serve(async () => {
   }
 
   try {
-    // שליפת 10 לקוחות מהתיקיה
     const listRes = await fetch("https://api.sumit.co.il/crm/data/listentities/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -43,16 +42,13 @@ Deno.serve(async () => {
       });
 
       const detailData = await detailRes.json();
-      const props = detailData?.Data?.Properties || [];
-
-      // בודק אם יש שם, טלפון, מייל
-      const getProp = (name) => props.find(p => p.Name === name)?.Value || null;
+      const raw = detailData?.Data;
 
       details.push({
         id: entity.ID,
-        name: getProp("Name"),
-        phone: getProp("Phone"),
-        email: getProp("Email")
+        name: raw?.Customer?.Name || null,
+        phone: raw?.Customer?.Phone || null,
+        email: raw?.Customer?.EmailAddress || null
       });
     }
 

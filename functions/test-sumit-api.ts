@@ -5,44 +5,28 @@ Deno.serve(async () => {
     return Response.json({ error: "SUMIT_TOKEN not found in secrets" }, { status: 500 });
   }
 
-  const possibleEntities = [
-    "Customer",
-    "Customers",
-    "Client",
-    "Clients",
-    "לקוח",
-    "לקוחות",
-    "Student",
-    "Students",
-    "CustomerCard",
-    "CustomerCards"
-  ];
+  try {
+    const response = await fetch("https://api.sumit.co.il/crm/schema/listfolders/", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${SUMIT_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        CompanyID: 333125807
+      })
+    });
 
-  const results = [];
+    const data = await response.json();
 
-  for (const entity of possibleEntities) {
-    try {
-      const res = await fetch(`https://app.sumit.co.il/api/Entity?entity=${encodeURIComponent(entity)}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${SUMIT_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
-      });
+    return Response.json({
+      status: response.status,
+      folders_found: Array.isArray(data?.Folders) ? data.Folders.length : 0,
+      preview: data?.Folders?.slice?.(0, 5) || [],
+      full_response: data
+    });
 
-      const text = await res.text();
-
-      results.push({
-        entity,
-        status: res.status,
-        is_json: text.trim().startsWith("{") || text.trim().startsWith("["),
-        snippet: text.slice(0, 100)
-      });
-
-    } catch (e) {
-      results.push({ entity, error: e.message });
-    }
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
   }
-
-  return Response.json({ tried: possibleEntities.length, results });
 });

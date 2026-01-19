@@ -16,17 +16,25 @@ Deno.serve(async () => {
           CompanyID: 333125807,
           APIKey: SUMIT_TOKEN
         },
-        FolderID: 332551083,       // Folder של "לקוחות"
-        EntityName: "לקוחות",    // שם הישות לפי התיקיה
-        PageSize: 20,             // מספר רשומות להחזיר (לדוגמה)
+        Folder: 332551083,         // 👈 שם השדה הנכון!
+        PageSize: 10,
         PageNumber: 1
       })
     });
 
     const data = await response.json();
 
+    const preview = (data?.Data?.Entities || []).map((e) => ({
+      id: e.ID,
+      name: e.Name,
+      phone: e.Phone,
+      email: e.Email
+    }));
+
     return Response.json({
       status: response.status,
+      total: data?.Data?.Total || 0,
+      preview,
       raw: data
     });
 

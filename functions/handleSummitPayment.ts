@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
-  console.log('=== 💳 handleSummitPayment Webhook Started ===');
+  console.log('=== 💳 handleSummitPayment Webhook Started (v2 - Improved Matching) ===');
   
   try {
     const base44 = createClientFromRequest(req);
@@ -9,261 +9,143 @@ Deno.serve(async (req) => {
     // קבלת הנתונים מ-Summit
     let payload;
     try {
-      console.log('🔹 Step 1: About to parse request JSON...');
       payload = await req.json();
-      console.log('🔹 Step 2: JSON parsed successfully');
       console.log('📦 FULL PAYLOAD:', JSON.stringify(payload, null, 2));
     } catch (jsonError) {
       console.error('❌ Failed to parse JSON:', jsonError.message);
       return Response.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
     
-    // חילוץ נתונים מפורמט Summit
+    // 🆕 חילוץ נתונים מפורמט Summit החדש
     const properties = payload.Properties || {};
-    console.log('🔍 ALL Properties keys:', Object.keys(properties));
     
-    // שם הלקוח ו-ID
-    const customerName = properties.Billing_Customer && properties.Billing_Customer[0] 
-      ? properties.Billing_Customer[0].Name 
-      : null;
+    // חילוץ שדות
+    const customerName = properties.Billing_PaymentMethod?.[0]?.Name || null;
+    const customerEmail = properties["Property_M-2"]?.[0] || null;
+    const customerPhone = properties["Property_M-3"]?.[0] || 'לא זמין';
+    const courseName = properties.Billing_PaymentSource?.[0]?.Name || null;
+    const billingDate = properties.Billing_Amount?.[0]?.split('T')[0] || new Date().toISOString().split('T')[0];
+    const documentName = properties["Property_M-1"]?.[0]?.Name || null;
+    const paymentNumber = properties.Billing_PaymentNumber?.length > 0 ? parseInt(properties.Billing_PaymentNumber[0]) : null;
+    const totalPayments = properties.Billing_TotalPayments?.length > 0 ? parseInt(properties.Billing_TotalPayments[0]) : null;
     
-    const customerId = properties.Billing_Customer && properties.Billing_Customer[0]
-      ? properties.Billing_Customer[0].ID
-      : null;
-      
-    // מסמך חשבונאי (חשבונית) - לצורך שליפת פרטים נוספים
-    const documentId = properties.Accounting_Document && properties.Accounting_Document[0]
-      ? properties.Accounting_Document[0].ID
-      : null;
+    console.log('✅ Extracted Data:', { customerName, customerEmail, customerPhone, courseName });
     
-    // שם הקורס/מוצר
-    const courseName = properties.Billing_Items && properties.Billing_Items[0]
-      ? properties.Billing_Items[0].Name
-      : null;
-    
-    // תאריך התשלום
-    const billingDate = properties.Billing_Date && properties.Billing_Date[0]
-      ? properties.Billing_Date[0].split('T')[0]
-      : new Date().toISOString().split('T')[0];
-    
-    // 🆕 חילוץ פרטי תשלומים (מספר תשלום וסה"כ)
-    let paymentNumber = null;
-    let totalPayments = null;
-    
-    if (properties.Billing_PaymentNumber && properties.Billing_PaymentNumber.length > 0) {
-      paymentNumber = parseInt(properties.Billing_PaymentNumber[0]);
-    }
-    if (properties.Billing_TotalPayments && properties.Billing_TotalPayments.length > 0) {
-      totalPayments = parseInt(properties.Billing_TotalPayments[0]);
+    if (!customerName) {
+      return Response.json({ error: 'Customer name is required' }, { status: 400 });
     }
     
-    console.log('✅ Basic data extracted:', {
-      customerName,
-      customerId,
-      documentId,
-      courseName,
-      billingDate,
-      paymentNumber,
-      totalPayments
-    });
-    
-    // וולידציה בסיסית
-    if (!customerName || !customerId) {
-      console.log('❌ Customer name or ID missing');
-      return Response.json({ error: 'Customer name and ID are required' }, { status: 400 });
-    }
-    
-    // קריאה ל-Summit API לקבלת פרטי הלקוח
-    let customerPhone = 'לא זמין';
-    let customerEmail = null;
-    
-    const SUMMIT_API_TOKEN = Deno.env.get('SUMIT_TOKEN');
-    
-    if (SUMMIT_API_TOKEN) {
-      // 1. נסיון ראשון: שליפה לפי Customer ID
-      try {
-        console.log(`🔍 Try 1: Fetching customer details from Summit API for ID: ${customerId}`);
-        const customerResponse = await fetch(`https://app.sumit.co.il/api/Entity/${customerId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${SUMMIT_API_TOKEN}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (customerResponse.ok) {
-          const customerData = await customerResponse.json();
-          console.log('✅ Customer API response:', JSON.stringify(customerData, null, 2));
-          const props = customerData.Properties || {};
-          
-          if (props.Contact_Phone?.[0] || props.Phone?.[0] || props.Mobile?.[0]) 
-             customerPhone = props.Contact_Phone?.[0] || props.Phone?.[0] || props.Mobile?.[0];
-          if (props.Contact_Email?.[0] || props.Email?.[0]) 
-             customerEmail = props.Contact_Email?.[0] || props.Email?.[0];
-        } else {
-          console.log('⚠️ Failed to fetch customer:', customerResponse.status);
-        }
-      } catch (err) { console.log('⚠️ API Error (Customer):', err.message); }
-      
-      // 2. נסיון שני: אם עדיין חסר, שליפה לפי Document ID (חשבונית)
-      if ((customerPhone === 'לא זמין' || !customerEmail) && documentId) {
-        try {
-          console.log(`🔍 Try 2: Fetching Document (Invoice) details from Summit API for ID: ${documentId}`);
-          const docResponse = await fetch(`https://app.sumit.co.il/api/Entity/${documentId}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${SUMMIT_API_TOKEN}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (docResponse.ok) {
-            const docData = await docResponse.json();
-            console.log('✅ Document API response:', JSON.stringify(docData, null, 2));
-            const props = docData.Properties || {};
-            
-            // בחשבוניות המידע עשוי להיות תחת שדות שונים
-            if (customerPhone === 'לא זמין') {
-              if (props.Values_Mobile?.[0] || props.Recipient_Phone?.[0] || props.Contact_Phone?.[0]) {
-                customerPhone = props.Values_Mobile?.[0] || props.Recipient_Phone?.[0] || props.Contact_Phone?.[0];
-                console.log('🎉 Found phone in Document entity!');
-              }
-            }
-            if (!customerEmail) {
-              if (props.Values_Email?.[0] || props.Recipient_Email?.[0] || props.Contact_Email?.[0]) {
-                customerEmail = props.Values_Email?.[0] || props.Recipient_Email?.[0] || props.Contact_Email?.[0];
-                console.log('🎉 Found email in Document entity!');
-              }
-            }
-          } else {
-            console.log('⚠️ Failed to fetch document:', docResponse.status);
-          }
-        } catch (err) { console.log('⚠️ API Error (Document):', err.message); }
-      }
-      
-      console.log('✅ Final extracted data:', { customerPhone, customerEmail });
-    } else {
-      console.log('⚠️ SUMIT_TOKEN not set, skipping API calls');
-    }
-    
-    // חיפוש או יצירת קורס
-    console.log(`🔍 Searching for course: ${courseName}`);
+    // 1. חיפוש/יצירת קורס
     let course = null;
-    
     if (courseName) {
-      console.log('🔍 About to query Course entity...');
       const courses = await base44.asServiceRole.entities.Course.filter({ name: courseName });
-      console.log(`🔍 Course query completed. Found ${courses ? courses.length : 0} courses`);
-      course = courses && courses.length > 0 ? courses[0] : null;
+      course = courses?.[0] || null;
       
-      // אם הקורס לא קיים - צור אותו
       if (!course) {
-        console.log(`✨ Course not found. Creating new course: ${courseName}`);
+        console.log(`✨ Creating new course: ${courseName}`);
         try {
           course = await base44.asServiceRole.entities.Course.create({
             name: courseName,
             current_students: 0
           });
-          console.log(`✅ Course created successfully: ${course.id}`);
-        } catch (createError) {
-          console.error(`⚠️ Failed to auto-create course: ${createError.message}`);
-          console.log(`Continuing without course link.`);
+        } catch (e) {
+          console.error(`⚠️ Failed to create course: ${e.message}`);
         }
-      } else {
-        console.log(`✅ Course found: ${course.name} (ID: ${course.id})`);
       }
     }
     
-    // חיפוש Student קיים לפי שם מלא (כי אין מייל מ-Summit)
-    console.log(`🔍 Checking if student exists: ${customerName}`);
-    console.log('🔍 About to query Student entity...');
-    const existingStudents = await base44.asServiceRole.entities.Student.filter({ full_name: customerName });
-    console.log(`🔍 Student query completed. Found ${existingStudents ? existingStudents.length : 0} students`);
-    const existingStudent = existingStudents && existingStudents.length > 0 ? existingStudents[0] : null;
+    // 2. חיפוש תלמיד (שיפור: חיפוש רב-שלבי)
+    let existingStudent = null;
     
-    // קבלת הסטטוס "רשום"
-    console.log('🔍 About to query LeadStatuses entity...');
-    const registeredStatuses = await base44.asServiceRole.entities.LeadStatuses.filter({ name: 'רשום' });
-    console.log(`🔍 LeadStatuses query completed. Found ${registeredStatuses ? registeredStatuses.length : 0} statuses`);
-    const registeredStatus = registeredStatuses && registeredStatuses.length > 0 ? registeredStatuses[0].name : 'רשום';
-    
-    // הכנת נתוני Student
-    let studentData = {
-      full_name: customerName,
-      phone: customerPhone,
-      status: registeredStatus,
-      registration_date: billingDate,
-      notes: `תשלום דרך Summit בתאריך ${billingDate}`
-    };
-    
-    // הוספת מייל אם קיים
+    // א. חיפוש לפי אימייל (אם קיים)
     if (customerEmail) {
-      studentData.email = customerEmail;
+      console.log(`🔍 Searching student by Email: ${customerEmail}`);
+      const byEmail = await base44.asServiceRole.entities.Student.filter({ email: customerEmail });
+      if (byEmail?.[0]) existingStudent = byEmail[0];
     }
     
-    // 🆕 הוספת פרטי תשלומים אם קיימים
-    if (paymentNumber) {
-      studentData.payment_number = paymentNumber;
-    }
-    if (totalPayments) {
-      studentData.total_payments = totalPayments;
+    // ב. חיפוש לפי טלפון (אם לא נמצא ואם קיים טלפון תקין)
+    if (!existingStudent && customerPhone && customerPhone !== 'לא זמין') {
+      console.log(`🔍 Searching student by Phone: ${customerPhone}`);
+      const byPhone = await base44.asServiceRole.entities.Student.filter({ phone: customerPhone });
+      if (byPhone?.[0]) existingStudent = byPhone[0];
     }
     
-    // הוספת שיוך לקורס אם נמצא
-    if (course) {
-      studentData.course_id = course.id;
-      studentData.course_name = course.name;
+    // ג. חיפוש לפי שם (ברירת מחדל אחרונה)
+    if (!existingStudent) {
+      console.log(`🔍 Searching student by Name: ${customerName}`);
+      const byName = await base44.asServiceRole.entities.Student.filter({ full_name: customerName });
+      if (byName?.[0]) existingStudent = byName[0];
     }
+    
+    if (existingStudent) {
+      console.log(`✅ Found existing student: ${existingStudent.full_name} (ID: ${existingStudent.id})`);
+    } else {
+      console.log(`👤 Student not found. Will create new.`);
+    }
+    
+    // 3. הכנת נתונים וביצוע (יצירה/עדכון)
+    const registeredStatuses = await base44.asServiceRole.entities.LeadStatuses.filter({ name: 'רשום' });
+    const registeredStatus = registeredStatuses?.[0]?.name || 'רשום';
     
     let student;
     let isNewRegistration = false;
     
+    // נתונים בסיסיים לעדכון/יצירה
+    const studentData = {
+      full_name: customerName,
+      status: registeredStatus,
+      registration_date: billingDate,
+      course_id: course?.id,
+      course_name: course?.name,
+      // מעדכנים מייל/טלפון רק אם הם קיימים בבקשה הנוכחית
+      ...(customerEmail && { email: customerEmail }),
+      ...(customerPhone && customerPhone !== 'לא זמין' && { phone: customerPhone }),
+      ...(paymentNumber && { payment_number: paymentNumber }),
+      ...(totalPayments && { total_payments: totalPayments })
+    };
+    
+    const noteText = `תשלום דרך Summit בתאריך ${billingDate}${documentName ? ` (${documentName})` : ''}`;
+    
     if (existingStudent) {
-      console.log(`🔄 Student exists: ${existingStudent.full_name}`);
+      // האם כבר רשום לקורס הזה?
+      const isSameCourse = existingStudent.course_id === course?.id && existingStudent.status === registeredStatus;
       
-      // בדיקה האם כבר רשום לאותו קורס
-      const wasAlreadyRegisteredToSameCourse = 
-        existingStudent.status === registeredStatus && 
-        course && 
-        existingStudent.course_id === course.id;
-      
-      if (wasAlreadyRegisteredToSameCourse) {
-        console.log(`ℹ️ Student already registered to this course, updating contact info`);
+      if (isSameCourse) {
+        console.log(`ℹ️ Student already registered to this course.`);
         isNewRegistration = false;
-        // עדכון מייל/טלפון אם חסרים או אם הטלפון היה "לא זמין"
-        const updateData = { notes: `${existingStudent.notes || ''}\nתשלום נוסף: ${billingDate}`.trim() };
-        if ((!existingStudent.phone || existingStudent.phone === 'לא זמין') && customerPhone !== 'לא זמין') {
-          updateData.phone = customerPhone;
-        }
-        if (!existingStudent.email && customerEmail) {
-          updateData.email = customerEmail;
-        }
-        student = await base44.asServiceRole.entities.Student.update(existingStudent.id, updateData);
+        
+        // הוספת הערה בלבד + עדכון קל
+        const newNotes = (existingStudent.notes ? existingStudent.notes + '\n' : '') + noteText;
+        student = await base44.asServiceRole.entities.Student.update(existingStudent.id, {
+          notes: newNotes,
+          // מעדכנים פרטי קשר רק אם חסרים אצל הסטודנט הקיים
+          ...(!existingStudent.email && customerEmail ? { email: customerEmail } : {}),
+          ...((!existingStudent.phone || existingStudent.phone === 'לא זמין') && customerPhone !== 'לא זמין' ? { phone: customerPhone } : {}),
+          ...(paymentNumber && { payment_number: paymentNumber }),
+          ...(totalPayments && { total_payments: totalPayments })
+        });
       } else {
-        console.log(`📝 Updating student to "רשום" status`);
-        isNewRegistration = existingStudent.status !== registeredStatus || existingStudent.course_id !== course?.id;
+        console.log(`📝 Updating student registration (New Course/Status).`);
+        isNewRegistration = true;
+        studentData.notes = noteText;
         student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
       }
       
     } else {
-      // יצירת Student חדש
-      console.log(`✨ Creating new student: ${customerName}`);
-      studentData.lead_source = 'Summit';
-      student = await base44.asServiceRole.entities.Student.create(studentData);
+      console.log(`✨ Creating new student.`);
       isNewRegistration = true;
+      studentData.lead_source = 'Summit';
+      studentData.notes = noteText;
+      student = await base44.asServiceRole.entities.Student.create(studentData);
     }
     
-    // עדכון מונה הקורס (רק אם זה רישום חדש)
+    // 4. עדכון מונה
     if (course && isNewRegistration) {
-      console.log(`📊 Updating course student count: ${course.name}`);
-      const currentCount = course.current_students || 0;
       await base44.asServiceRole.entities.Course.update(course.id, {
-        current_students: currentCount + 1
+        current_students: (course.current_students || 0) + 1
       });
-      console.log(`✅ Course counter updated: ${currentCount} → ${currentCount + 1}`);
     }
-    
-    console.log('✅ handleSummitPayment completed successfully');
     
     return Response.json({
       success: true,
@@ -274,19 +156,13 @@ Deno.serve(async (req) => {
       status: student.status,
       course: course ? course.name : 'לא שויך',
       payment_info: paymentNumber && totalPayments ? `${paymentNumber}/${totalPayments}` : 'לא זמין',
+      document: documentName || 'לא זמין',
       is_new_registration: isNewRegistration
     });
     
   } catch (error) {
-    console.error('=== ❌ ERROR in handleSummitPayment ===');
-    console.error('Error type:', error.constructor.name);
-    console.error('Error message:', error.message);
-    console.error('Stack trace:', error.stack);
-    console.error('Error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    return Response.json({ 
-      error: error.message,
-      error_type: error.constructor.name,
-      stack: error.stack 
-    }, { status: 500 });
+    console.error('❌ Error:', error.message);
+    console.error('Stack:', error.stack);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 });

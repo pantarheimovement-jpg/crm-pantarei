@@ -14,12 +14,11 @@ Deno.serve(async () => {
       }
     });
 
-    const data = await response.json();
+    const text = await response.text(); // במקום json נשתמש ב-text כדי לבדוק מה הגיע
 
     return Response.json({
       status: response.status,
-      count: data?.Entities?.length || 0,
-      preview: data?.Entities?.slice?.(0, 3) || []
+      body_sample: text.slice(0, 300) // נציג רק את ההתחלה
     });
 
   } catch (error) {

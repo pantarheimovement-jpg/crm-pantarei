@@ -182,32 +182,60 @@ Deno.serve(async (req) => {
       console.log(`🔄 Student exists: ${existingStudent.full_name}`);
       
       // בדיקה: האם הליד הוא לאותו קורס?
-      const sameOrNoCourse = !course || existingStudent.course_id === course.id;
+      const existingCourses = existingStudent.courses || [];
+      const courseInArray = course ? existingCourses.find(c => c.course_id === course.id) : null;
       
-      if (existingStudent.status === registeredStatus) {
-        if (sameOrNoCourse) {
-          console.log(`ℹ️ Student already registered to this course, skipping update`);
-          student = existingStudent;
+      if (courseInArray && courseInArray.status === registeredStatus) {
+        // כבר רשום לקורס הזה - לא עושים כלום
+        console.log(`ℹ️ Student already registered to this course, skipping update`);
+        student = existingStudent;
+      } else if (course) {
+        // מעדכנים/מוסיפים קורס למערך courses
+        console.log(`📝 Adding/Updating course in courses array: ${course.name}`);
+        
+        const updatedCourses = [...existingCourses];
+        const courseIndex = updatedCourses.findIndex(c => c.course_id === course.id);
+        
+        const newCourseEntry = {
+          course_id: course.id,
+          course_name: course.name,
+          status: leadStatus,
+          registration_date: new Date().toISOString().split('T')[0]
+        };
+        
+        if (courseIndex >= 0) {
+          // עדכון קורס קיים
+          updatedCourses[courseIndex] = { ...updatedCourses[courseIndex], ...newCourseEntry };
         } else {
-          // משתתפת רשומה מתעניינת בקורס נוסף - צור ליד חדש
-          console.log(`🆕 Registered student interested in different course - creating new lead for: ${course.name}`);
-          
-          // יצירת ליד חדש עם סטטוס "ליד חדש"
-          const newLeadData = {
-            ...studentData,
-            status: leadStatus,
-            notes: `${studentData.notes}\n\n⚠️ משתתפת רשומה לקורס "${existingStudent.course_name || 'קיים'}" מתעניינת בקורס נוסף`
-          };
-          
-          student = await base44.asServiceRole.entities.Student.create(newLeadData);
+          // הוספת קורס חדש
+          updatedCourses.push(newCourseEntry);
         }
+        
+        // קביעת סטטוס כללי (הגבוה ביותר מכל הקורסים)
+        const hasRegistered = updatedCourses.some(c => c.status === registeredStatus);
+        const generalStatus = hasRegistered ? registeredStatus : leadStatus;
+        
+        studentData.courses = updatedCourses;
+        studentData.status = generalStatus;
+        
+        student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
       } else {
-        // ליד קיים - נעדכן אותו לקורס החדש
-        console.log(`📝 Updating existing lead to new course: ${course?.name || 'N/A'}`);
+        // אין קורס - עדכון רגיל
         student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
       }
     } else {
       console.log(`✨ Creating new student: ${full_name}`);
+      
+      // יצירת משתתף חדש עם courses array
+      if (course) {
+        studentData.courses = [{
+          course_id: course.id,
+          course_name: course.name,
+          status: leadStatus,
+          registration_date: new Date().toISOString().split('T')[0]
+        }];
+      }
+      
       student = await base44.asServiceRole.entities.Student.create(studentData);
     }
     

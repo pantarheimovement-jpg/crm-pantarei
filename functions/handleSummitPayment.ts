@@ -108,10 +108,11 @@ Deno.serve(async (req) => {
     const noteText = `תשלום דרך Summit בתאריך ${billingDate}${documentName ? ` (${documentName})` : ''}`;
     
     if (existingStudent) {
-      // האם כבר רשום לקורס הזה?
-      const isSameCourse = existingStudent.course_id === course?.id && existingStudent.status === registeredStatus;
+      // בדיקה במערך courses
+      const existingCourses = existingStudent.courses || [];
+      const courseInArray = course ? existingCourses.find(c => c.course_id === course.id) : null;
       
-      if (isSameCourse) {
+      if (courseInArray && courseInArray.status === registeredStatus) {
         console.log(`ℹ️ Student already registered to this course.`);
         isNewRegistration = false;
         
@@ -125,10 +126,38 @@ Deno.serve(async (req) => {
           ...(paymentNumber && { payment_number: paymentNumber }),
           ...(totalPayments && { total_payments: totalPayments })
         });
+      } else if (course) {
+        console.log(`📝 Adding/Updating course in courses array: ${course.name}`);
+        isNewRegistration = !courseInArray; // רישום חדש רק אם זה קורס חדש
+        
+        const updatedCourses = [...existingCourses];
+        const courseIndex = updatedCourses.findIndex(c => c.course_id === course.id);
+        
+        const newCourseEntry = {
+          course_id: course.id,
+          course_name: course.name,
+          status: registeredStatus,
+          registration_date: billingDate
+        };
+        
+        if (courseIndex >= 0) {
+          // עדכון קורס קיים
+          updatedCourses[courseIndex] = { ...updatedCourses[courseIndex], ...newCourseEntry };
+        } else {
+          // הוספת קורס חדש
+          updatedCourses.push(newCourseEntry);
+        }
+        
+        studentData.courses = updatedCourses;
+        studentData.status = registeredStatus; // תמיד רשום אם התקבל תשלום
+        studentData.notes = (existingStudent.notes ? existingStudent.notes + '\n' : '') + noteText;
+        
+        student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
       } else {
-        console.log(`📝 Updating student registration (New Course/Status).`);
-        isNewRegistration = true;
-        studentData.notes = noteText;
+        // אין קורס - עדכון רגיל
+        console.log(`📝 Updating student without course.`);
+        isNewRegistration = false;
+        studentData.notes = (existingStudent.notes ? existingStudent.notes + '\n' : '') + noteText;
         student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
       }
       
@@ -137,6 +166,17 @@ Deno.serve(async (req) => {
       isNewRegistration = true;
       studentData.lead_source = 'Summit';
       studentData.notes = noteText;
+      
+      // יצירת משתתף חדש עם courses array
+      if (course) {
+        studentData.courses = [{
+          course_id: course.id,
+          course_name: course.name,
+          status: registeredStatus,
+          registration_date: billingDate
+        }];
+      }
+      
       student = await base44.asServiceRole.entities.Student.create(studentData);
     }
     

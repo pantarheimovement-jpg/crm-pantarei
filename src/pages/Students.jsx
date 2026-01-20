@@ -90,6 +90,33 @@ export default function Students() {
         total_payments: formData.total_payments === '' ? null : formData.total_payments
       };
 
+      // עדכון מערך courses אם נבחר קורס - חיוני למניעת דריסת סטטוס על ידי webhooks
+      if (cleanedData.course_id && cleanedData.course_name) {
+        const existingCourses = originalStudent?.courses || [];
+        const courseIndex = existingCourses.findIndex(c => c.course_id === cleanedData.course_id);
+        
+        const courseEntry = {
+          course_id: cleanedData.course_id,
+          course_name: cleanedData.course_name,
+          status: cleanedData.status,
+          registration_date: (cleanedData.status === 'נרשם' || cleanedData.status === 'רשום') 
+            ? (cleanedData.registration_date || new Date().toISOString().split('T')[0])
+            : (existingCourses[courseIndex]?.registration_date || new Date().toISOString().split('T')[0]),
+          trial_date: cleanedData.trial_date || existingCourses[courseIndex]?.trial_date
+        };
+        
+        const updatedCourses = [...existingCourses];
+        if (courseIndex >= 0) {
+          // עדכון קורס קיים - שמירה על נתונים קיימים
+          updatedCourses[courseIndex] = { ...updatedCourses[courseIndex], ...courseEntry };
+        } else {
+          // הוספת קורס חדש
+          updatedCourses.push(courseEntry);
+        }
+        
+        cleanedData.courses = updatedCourses;
+      }
+
       if (editingStudent) {
         await base44.entities.Student.update(editingStudent.id, cleanedData);
       } else {

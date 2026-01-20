@@ -437,12 +437,27 @@ export default function Students() {
                       {student.email}
                     </div>
                   )}
-                  {student.course_name && (
+                  {student.courses && student.courses.length > 0 ? (
+                    <div className="space-y-1">
+                      {student.courses.map((course, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-[var(--crm-text)] opacity-80">
+                          <Tag className="w-4 h-4" />
+                          <span className="font-medium">{course.course_name}</span>
+                          <span
+                            className="inline-block px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                            style={{ backgroundColor: getStatusColor(course.status) }}
+                          >
+                            {course.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : student.course_name ? (
                     <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-80">
                       <Tag className="w-4 h-4" />
                       {student.course_name}
                     </div>
-                  )}
+                  ) : null}
                   {student.trial_date && (
                     <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-80">
                       <Calendar className="w-4 h-4" />
@@ -478,10 +493,9 @@ export default function Students() {
                       />
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">שם</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">סטטוס</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">טלפון</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מייל</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">קורס</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">קורסים וסטטוסים</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">תשלומים</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות</th>
                   </tr>
@@ -504,17 +518,39 @@ export default function Students() {
                         />
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-[var(--crm-text)]">{student.full_name}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
-                          style={{ backgroundColor: getStatusColor(student.status) }}
-                        >
-                          {student.status}
-                        </span>
-                      </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{student.phone}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{student.email}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{student.course_name}</td>
+                      <td className="px-4 py-3">
+                        <div className="space-y-1">
+                          {student.courses && student.courses.length > 0 ? (
+                            student.courses.map((course, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-sm">
+                                <span className="font-medium text-[var(--crm-text)]">{course.course_name}</span>
+                                <span
+                                  className="inline-block px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                                  style={{ backgroundColor: getStatusColor(course.status) }}
+                                >
+                                  {course.status}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="flex items-center gap-2 text-sm">
+                              {student.course_name && (
+                                <>
+                                  <span className="font-medium text-[var(--crm-text)]">{student.course_name}</span>
+                                  <span
+                                    className="inline-block px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                                    style={{ backgroundColor: getStatusColor(student.status) }}
+                                  >
+                                    {student.status}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {student.payment_number && student.total_payments 
                           ? `${student.payment_number}/${student.total_payments} (${student.total_payments - student.payment_number} נותרו)`
@@ -618,8 +654,8 @@ export default function Students() {
                     <option value="אחר">אחר</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">קורס</label>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">קורס ראשי (לתצוגה)</label>
                   <select
                     value={formData.course_id}
                     onChange={(e) => {
@@ -637,7 +673,35 @@ export default function Students() {
                       <option key={course.id} value={course.id}>{course.name}</option>
                     ))}
                   </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    זהו הקורס שיוצג בתצוגה הכללית. מערך הקורסים המלא מתנהל אוטומטית על ידי המערכת
+                  </p>
                 </div>
+
+                {formData.courses && formData.courses.length > 0 && (
+                  <div className="md:col-span-2 bg-gray-50 p-4 rounded-lg">
+                    <label className="block text-sm font-medium mb-3">כל הקורסים והסטטוסים</label>
+                    <div className="space-y-2">
+                      {formData.courses.map((course, idx) => (
+                        <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-medium text-[var(--crm-text)]">{course.course_name}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {course.registration_date && `רישום: ${new Date(course.registration_date).toLocaleDateString('he-IL')}`}
+                              {course.trial_date && ` | ניסיון: ${new Date(course.trial_date).toLocaleDateString('he-IL')}`}
+                            </div>
+                          </div>
+                          <span
+                            className="px-3 py-1 rounded-full text-xs font-medium text-white"
+                            style={{ backgroundColor: getStatusColor(course.status) }}
+                          >
+                            {course.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium mb-2">תאריך ניסיון</label>
                   <Input

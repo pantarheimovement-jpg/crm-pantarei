@@ -224,7 +224,10 @@ Deno.serve(async (req) => {
         
         student = await base44.asServiceRole.entities.Student.update(existingStudent.id, updateData);
       } else {
-        // אין קורס - עדכון רגיל
+        // אין קורס בפנייה הנוכחית - עדכון רגיל
+        // FIX: Don't downgrade status if just sending a message or no specific course is mentioned
+        console.log(`📝 Updating student without specific course in this lead. Preserving existing status: ${existingStudent.status}`);
+        studentData.status = existingStudent.status; // שמור על הסטטוס הקיים
         student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
       }
     } else {

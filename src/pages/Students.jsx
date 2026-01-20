@@ -37,22 +37,6 @@ export default function Students() {
   useEffect(() => {
     loadStudents();
     loadCourses();
-    
-    // קריאת פרמטרים מה-URL (מהדשבורד)
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlStatusFilter = urlParams.get('statusFilter');
-    const urlCourseFilter = urlParams.get('courseFilter');
-    const urlSearch = urlParams.get('search');
-    
-    if (urlStatusFilter) {
-      setStatusFilter(urlStatusFilter);
-    }
-    if (urlCourseFilter) {
-      setCourseFilter(urlCourseFilter);
-    }
-    if (urlSearch) {
-      setSearchTerm(urlSearch);
-    }
   }, []);
 
   const loadStudents = async () => {

@@ -126,6 +126,9 @@ export default function Students() {
     if (!confirm(`האם למחוק ${selectedIds.length} משתתפים?`)) return;
     
     try {
+      const allCourses = await base44.entities.Course.list();
+      const courseUpdates = {};
+      
       for (const id of selectedIds) {
         const student = students.find(s => s.id === id);
         const isRegistered = student?.status === 'נרשם' || student?.status === 'רשום';
@@ -133,20 +136,27 @@ export default function Students() {
         await base44.entities.Student.delete(id);
         
         if (isRegistered && student?.course_id) {
-          const courses = await base44.entities.Course.list();
-          const course = courses.find(c => c.id === student.course_id);
-          if (course) {
-            const newCount = Math.max(0, (course.current_students || 0) - 1);
-            await base44.entities.Course.update(course.id, { current_students: newCount });
+          if (!courseUpdates[student.course_id]) {
+            const course = allCourses.find(c => c.id === student.course_id);
+            if (course) {
+              courseUpdates[student.course_id] = course.current_students || 0;
+            }
+          }
+          if (courseUpdates[student.course_id] !== undefined) {
+            courseUpdates[student.course_id] = Math.max(0, courseUpdates[student.course_id] - 1);
           }
         }
+      }
+      
+      for (const [courseId, newCount] of Object.entries(courseUpdates)) {
+        await base44.entities.Course.update(courseId, { current_students: newCount });
       }
       
       setSelectedIds([]);
       await loadStudents();
     } catch (error) {
       console.error('Error bulk deleting:', error);
-      alert('שגיאה במחיקה');
+      alert('שגיאה במחיקה: ' + error.message);
     }
   };
 

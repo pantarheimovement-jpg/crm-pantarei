@@ -84,11 +84,61 @@ export default function Students() {
       const isNowRegistered = formData.status === 'נרשם' || formData.status === 'רשום';
 
       // נקה שדות מספריים ריקים
-      const cleanedData = {
+      let cleanedData = {
         ...formData,
         payment_number: formData.payment_number === '' ? null : formData.payment_number,
         total_payments: formData.total_payments === '' ? null : formData.total_payments
       };
+
+      // עדכון מערך courses בהתאם לנתונים בטופס
+      let updatedCourses = originalStudent?.courses ? [...originalStudent.courses] : [];
+      
+      if (cleanedData.course_id && cleanedData.course_name) {
+        const courseIndex = updatedCourses.findIndex(c => c.course_id === cleanedData.course_id);
+        
+        const newCourseEntry = {
+          course_id: cleanedData.course_id,
+          course_name: cleanedData.course_name,
+          status: cleanedData.status,
+          registration_date: (cleanedData.status === 'נרשם' || cleanedData.status === 'רשום') && cleanedData.registration_date 
+            ? cleanedData.registration_date 
+            : new Date().toISOString().split('T')[0]
+        };
+        
+        if (cleanedData.trial_date) {
+          newCourseEntry.trial_date = cleanedData.trial_date;
+        }
+        
+        if (courseIndex >= 0) {
+          // עדכון קורס קיים
+          updatedCourses[courseIndex] = { ...updatedCourses[courseIndex], ...newCourseEntry };
+        } else {
+          // הוספת קורס חדש
+          updatedCourses.push(newCourseEntry);
+        }
+      }
+      
+      // קביעת סטטוס כללי וקורס ראשי מתוך מערך courses
+      const registeredCourses = updatedCourses.filter(c => c.status === 'נרשם' || c.status === 'רשום');
+      
+      if (registeredCourses.length > 0) {
+        // אם יש קורסים רשומים - הסטטוס הכללי יהיה "רשום" והקורס הראשי יהיה האחרון שנרשם
+        cleanedData.status = 'רשום';
+        const latestRegistered = registeredCourses.sort((a, b) => 
+          new Date(b.registration_date || 0) - new Date(a.registration_date || 0)
+        )[0];
+        cleanedData.course_id = latestRegistered.course_id;
+        cleanedData.course_name = latestRegistered.course_name;
+      } else if (updatedCourses.length > 0) {
+        // אם אין קורסים רשומים אבל יש קורסים - לקחת את האחרון
+        const latestCourse = updatedCourses[updatedCourses.length - 1];
+        cleanedData.course_id = latestCourse.course_id;
+        cleanedData.course_name = latestCourse.course_name;
+        cleanedData.status = latestCourse.status;
+      }
+      
+      // עדכון מערך courses
+      cleanedData.courses = updatedCourses;
 
       if (editingStudent) {
         await base44.entities.Student.update(editingStudent.id, cleanedData);

@@ -181,11 +181,29 @@ Deno.serve(async (req) => {
     if (existingStudent) {
       console.log(`🔄 Student exists: ${existingStudent.full_name}`);
       
+      // בדיקה: האם הליד הוא לאותו קורס?
+      const sameOrNoCourse = !course || existingStudent.course_id === course.id;
+      
       if (existingStudent.status === registeredStatus) {
-        console.log(`ℹ️ Student already registered, skipping update`);
-        student = existingStudent;
+        if (sameOrNoCourse) {
+          console.log(`ℹ️ Student already registered to this course, skipping update`);
+          student = existingStudent;
+        } else {
+          // משתתפת רשומה מתעניינת בקורס נוסף - צור ליד חדש
+          console.log(`🆕 Registered student interested in different course - creating new lead for: ${course.name}`);
+          
+          // יצירת ליד חדש עם סטטוס "ליד חדש"
+          const newLeadData = {
+            ...studentData,
+            status: leadStatus,
+            notes: `${studentData.notes}\n\n⚠️ משתתפת רשומה לקורס "${existingStudent.course_name || 'קיים'}" מתעניינת בקורס נוסף`
+          };
+          
+          student = await base44.asServiceRole.entities.Student.create(newLeadData);
+        }
       } else {
-        console.log(`📝 Updating student to "ליד חדש"`);
+        // ליד קיים - נעדכן אותו לקורס החדש
+        console.log(`📝 Updating existing lead to new course: ${course?.name || 'N/A'}`);
         student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
       }
     } else {

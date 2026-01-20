@@ -26,8 +26,8 @@ Deno.serve(async (req) => {
     const courseName = properties.Billing_PaymentSource?.[0]?.Name || null;
     const billingDate = properties.Billing_Amount?.[0]?.split('T')[0] || new Date().toISOString().split('T')[0];
     const documentName = properties["Property_M-1"]?.[0]?.Name || null;
-    const paymentNumber = properties.Billing_PaymentNumber?.length > 0 ? parseInt(properties.Billing_PaymentNumber[0]) : null;
-    const totalPayments = properties.Billing_TotalPayments?.length > 0 ? parseInt(properties.Billing_TotalPayments[0]) : null;
+    const paymentNumber = properties["מספר תשלומים"]?.[0] ? parseInt(properties["מספר תשלומים"][0]) : null;
+    const totalPayments = properties["סה״כ תשלומים"]?.[0] ? parseInt(properties["סה״כ תשלומים"][0]) : null;
     
     console.log('✅ Extracted Data:', { customerName, customerEmail, customerPhone, courseName });
     

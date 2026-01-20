@@ -19,12 +19,12 @@ Deno.serve(async (req) => {
     // 🆕 חילוץ נתונים מפורמט Summit החדש
     const properties = payload.Properties || {};
     
-    // חילוץ שדות
-    const customerName = properties.Billing_PaymentMethod?.[0]?.Name || null;
-    const customerEmail = properties["Property_M-2"]?.[0] || null;
-    const customerPhone = properties["Property_M-3"]?.[0] || 'לא זמין';
-    const courseName = properties.Billing_PaymentSource?.[0]?.Name || null;
-    const billingDate = properties.Billing_Amount?.[0]?.split('T')[0] || new Date().toISOString().split('T')[0];
+    // חילוץ שדות (תצוגת ניהול תשלומים)
+    const customerName = properties.Property_2?.[0]?.Name || null;
+    const customerEmail = properties.Property_6?.[0] || null;
+    const customerPhone = properties.Property_7?.[0] || 'לא זמין';
+    const courseName = properties.Property_3?.[0]?.Name || null;
+    const billingDate = properties.Property_1?.[0]?.split('T')[0] || new Date().toISOString().split('T')[0];
     const documentName = properties["Property_M-1"]?.[0]?.Name || null;
     const paymentNumber = properties["מספר תשלומים"]?.[0] ? parseInt(properties["מספר תשלומים"][0]) : null;
     const totalPayments = properties["סה״כ תשלומים"]?.[0] ? parseInt(properties["סה״כ תשלומים"][0]) : null;

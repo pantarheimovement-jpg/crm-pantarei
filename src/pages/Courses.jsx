@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
 import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar, MapPin, DollarSign } from 'lucide-react';
@@ -31,6 +33,18 @@ export default function Courses() {
   useEffect(() => {
     loadCourses();
   }, []);
+
+  // פתיחה אוטומטית של קורס ספציפי מה-URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const courseId = urlParams.get('course');
+    if (courseId && courses.length > 0) {
+      const course = courses.find(c => c.id === courseId);
+      if (course) {
+        openModal(course);
+      }
+    }
+  }, [courses]);
 
   const loadCourses = async () => {
     try {
@@ -293,10 +307,16 @@ export default function Courses() {
                     </div>
                   )}
                   {(course.max_students || course.current_students) && (
-                    <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-80">
+                    <Link 
+                      to={createPageUrl('Students') + '?course=' + course.id}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-2 text-[var(--crm-text)] opacity-80 hover:text-[var(--crm-primary)] hover:opacity-100 transition-all"
+                    >
                       <Users className="w-4 h-4" />
-                      {course.current_students || 0} / {course.max_students || '∞'}
-                    </div>
+                      <span className="font-medium underline">
+                        {course.current_students || 0} / {course.max_students || '∞'}
+                      </span>
+                    </Link>
                   )}
                 </div>
               </div>

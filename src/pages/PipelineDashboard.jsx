@@ -81,10 +81,21 @@ export default function PipelineDashboard() {
     });
   }, [students, dateFilter]);
 
-  // מדדי סטטוסים
+  // מדדי סטטוסים - תומך במערך courses
   const statusMetrics = useMemo(() => {
     const getStats = (statusName) => {
-      const all = students.filter(s => s.status === statusName);
+      let all;
+      if (statusName === 'חדש') {
+        // ליד חדש: סטודנטים שיש להם קורס אחד לפחות עם סטטוס "חדש" במערך courses
+        all = filteredStudents.filter(s => {
+          if (s.courses && s.courses.length > 0) {
+            return s.courses.some(c => c.status === 'חדש' || c.status === 'ליד חדש');
+          }
+          return s.status === 'חדש' || s.status === 'ליד חדש';
+        });
+      } else {
+        all = filteredStudents.filter(s => s.status === statusName);
+      }
       return {
         count: all.length,
         today: all.filter(s => isToday(s.registration_date || s.created_date)).length,
@@ -97,23 +108,44 @@ export default function PipelineDashboard() {
       newLeads: getStats('חדש'),
       trial: getStats('ניסיון')
     };
-  }, [students]);
+  }, [filteredStudents]);
 
-  // יחס המרה + נתונים לגרף
+  // יחס המרה + נתונים לגרף - חישוב ספציפי לקורס
   const conversionData = useMemo(() => {
-    const registered = students.filter(s => s.status === 'רשום').length;
-    const leads = students.filter(s => s.status !== 'רשום' && s.status !== 'לא רלוונטי').length;
-    const total = registered + leads;
-    const rate = total === 0 ? 0 : ((registered / total) * 100).toFixed(1);
+    let convertedCount = 0;
+    let leadsCount = 0;
+    
+    filteredStudents.forEach(student => {
+      if (student.courses && student.courses.length > 0) {
+        student.courses.forEach(course => {
+          // בדיקה אם הסטודנט היה ליד באותו קורס והפך לרשום
+          if (course.status === 'רשום' || course.status === 'נרשם') {
+            convertedCount++;
+          } else if (course.status === 'חדש' || course.status === 'ליד חדש' || course.status === 'ניסיון') {
+            leadsCount++;
+          }
+        });
+      } else {
+        // fallback למבנה ישן
+        if (student.status === 'רשום' || student.status === 'נרשם') {
+          convertedCount++;
+        } else if (student.status !== 'לא רלוונטי') {
+          leadsCount++;
+        }
+      }
+    });
+    
+    const total = convertedCount + leadsCount;
+    const rate = total === 0 ? 0 : ((convertedCount / total) * 100).toFixed(1);
 
     return {
       rate,
       chartData: [
-        { name: 'נרשמו', value: registered, color: 'var(--crm-primary)' },
-        { name: 'בתהליך', value: leads, color: 'var(--crm-accent)' }
+        { name: 'נרשמו', value: convertedCount, color: 'var(--crm-primary)' },
+        { name: 'בתהליך', value: leadsCount, color: 'var(--crm-accent)' }
       ]
     };
-  }, [students]);
+  }, [filteredStudents]);
 
   // משימות להיום
   const todaysTasks = useMemo(() => {
@@ -181,7 +213,13 @@ export default function PipelineDashboard() {
 
   // חיפוש
   const handleSearch = (e) => {
-    if (e.key === 'Enter' && searchTerm.trim()) {
+    if (e && e.key === 'Enter' && searchTerm.trim()) {
+      window.location.href = `${createPageUrl('Students')}?search=${encodeURIComponent(searchTerm)}`;
+    }
+  };
+  
+  const handleSearchClick = () => {
+    if (searchTerm.trim()) {
       window.location.href = `${createPageUrl('Students')}?search=${encodeURIComponent(searchTerm)}`;
     }
   };
@@ -212,26 +250,23 @@ export default function PipelineDashboard() {
           <div className="flex items-center gap-3 w-full md:w-auto">
             {/* חיפוש משופר */}
             <div className="relative flex-1 md:flex-initial flex gap-2">
-              <select
-                className="bg-white border border-gray-200 rounded-full px-3 py-2 text-xs focus:outline-none focus:border-[var(--crm-primary)]"
-                defaultValue="name"
-              >
-                <option value="name">שם</option>
-                <option value="email">מייל</option>
-                <option value="phone">טלפון</option>
-                <option value="course">קורס</option>
-              </select>
               <div className="relative flex-1">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="חיפוש..."
+                  placeholder="חיפוש משתתף..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={handleSearch}
-                  className="w-full md:w-48 bg-white border border-gray-200 rounded-full py-2 px-4 pr-10 text-sm focus:outline-none focus:border-[var(--crm-primary)] transition-colors"
+                  className="w-full md:w-64 bg-white border border-gray-200 rounded-full py-2 px-4 pr-10 text-sm focus:outline-none focus:border-[var(--crm-primary)] transition-colors"
                 />
               </div>
+              <button
+                onClick={handleSearchClick}
+                className="bg-[var(--crm-primary)] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[var(--crm-primary)]/90 transition-colors"
+              >
+                חפש
+              </button>
             </div>
 
             {/* פילטר תאריכים מורחב */}
@@ -493,7 +528,7 @@ export default function PipelineDashboard() {
                   {coursesWithStats.map(course => (
                     <tr
                       key={course.id}
-                      onClick={() => window.location.href = `${createPageUrl('Courses')}?course=${course.id}`}
+                      onClick={() => window.location.href = createPageUrl('Courses') + '?course=' + course.id}
                       className="hover:bg-gray-50 transition-colors cursor-pointer group"
                     >
                       <td className="p-4 font-semibold text-[var(--crm-text)]">

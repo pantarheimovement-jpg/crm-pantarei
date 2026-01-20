@@ -208,16 +208,26 @@ Deno.serve(async (req) => {
         // קביעת סטטוס כללי (הגבוה ביותר מכל הקורסים)
         const hasRegistered = updatedCourses.some(c => c.status === registeredStatus);
         const generalStatus = hasRegistered ? registeredStatus : leadStatus;
-        
-        // עדכון course_id ו-course_name רק אם זה הקורס הראשון, או אם אין כבר קורס עיקרי
+
+        // עדכון course_id/course_name לפי סדר עדיפויות:
+        // 1. אם יש קורס רשום - לקחת את האחרון שנוסף/עודכן עם סטטוס רשום
+        // 2. אם אין קורס רשום - לקחת את הקורס הנוכחי (האחרון שנוסף)
         const updateData = {
           ...studentData,
           courses: updatedCourses,
           status: generalStatus
         };
-        
-        // עדכן course_id/course_name רק אם לא קיים או אם הקורס החדש הוא רשום
-        if (!existingStudent.course_id || newCourseEntry.status === registeredStatus) {
+
+        if (hasRegistered) {
+          // חפש את הקורס הרשום האחרון (לפי תאריך רישום)
+          const registeredCourses = updatedCourses.filter(c => c.status === registeredStatus);
+          const latestRegistered = registeredCourses.sort((a, b) => 
+            new Date(b.registration_date || 0) - new Date(a.registration_date || 0)
+          )[0];
+          updateData.course_id = latestRegistered.course_id;
+          updateData.course_name = latestRegistered.course_name;
+        } else {
+          // אם אין רשום - הקורס הנוכחי הוא הראשי
           updateData.course_id = course.id;
           updateData.course_name = course.name;
         }

@@ -83,10 +83,17 @@ export default function Students() {
       const wasRegistered = originalStudent?.status === 'נרשם' || originalStudent?.status === 'רשום';
       const isNowRegistered = formData.status === 'נרשם' || formData.status === 'רשום';
 
+      // נקה שדות מספריים ריקים
+      const cleanedData = {
+        ...formData,
+        payment_number: formData.payment_number === '' ? null : formData.payment_number,
+        total_payments: formData.total_payments === '' ? null : formData.total_payments
+      };
+
       if (editingStudent) {
-        await base44.entities.Student.update(editingStudent.id, formData);
+        await base44.entities.Student.update(editingStudent.id, cleanedData);
       } else {
-        await base44.entities.Student.create(formData);
+        await base44.entities.Student.create(cleanedData);
       }
 
       // עדכון חכם של current_students בקורס

@@ -37,7 +37,9 @@ export default function Students() {
   useEffect(() => {
     loadStudents();
     loadCourses();
-    
+  }, []);
+
+  useEffect(() => {
     // קריאת פרמטרים מה-URL ועדכון הסינונים בהתאם
     const urlParams = new URLSearchParams(window.location.search);
     const urlStatus = urlParams.get('status');
@@ -53,7 +55,7 @@ export default function Students() {
     if (urlSearch) {
       setSearchTerm(urlSearch);
     }
-  }, []);
+  }, [window.location.search]);
 
   const loadStudents = async () => {
     try {
@@ -216,10 +218,12 @@ export default function Students() {
   };
 
   const filteredStudents = students.filter(student => {
+    // חיפוש
     const matchesSearch = student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.phone?.includes(searchTerm) ||
                          student.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
+    // סינון לפי סטטוס
     let matchesStatus = true;
     if (statusFilter === 'leads') {
       matchesStatus = student.status !== 'נרשם' && student.status !== 'רשום' && student.status !== 'לא רלוונטי';
@@ -229,9 +233,28 @@ export default function Students() {
       matchesStatus = student.status === statusFilter;
     }
     
+    // סינון לפי קורס
     const matchesCourse = !courseFilter || student.course_id === courseFilter;
     
-    return matchesSearch && matchesStatus && matchesCourse;
+    // סינון לפי תאריך (מה-URL)
+    const urlParams = new URLSearchParams(window.location.search);
+    const dateParam = urlParams.get('date');
+    let matchesDate = true;
+    
+    if (dateParam === 'today') {
+      const today = new Date().toDateString();
+      const studentDate = student.registration_date || student.created_date;
+      matchesDate = studentDate && new Date(studentDate).toDateString() === today;
+    } else if (dateParam === 'week') {
+      const now = new Date();
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+      const studentDate = student.registration_date || student.created_date;
+      matchesDate = studentDate && new Date(studentDate) >= weekStart;
+    }
+    
+    return matchesSearch && matchesStatus && matchesCourse && matchesDate;
   });
 
   const getStatusColor = (status) => {

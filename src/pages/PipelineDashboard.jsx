@@ -62,11 +62,22 @@ export default function PipelineDashboard() {
   const filteredStudents = useMemo(() => {
     if (dateFilter === 'all') return students;
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    let startDate;
+    if (dateFilter === 'today') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (dateFilter === 'week') {
+      startDate = new Date(now);
+      startDate.setDate(now.getDate() - now.getDay());
+      startDate.setHours(0, 0, 0, 0);
+    } else if (dateFilter === 'month') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+    
     return students.filter(s => {
       if (!s.registration_date && !s.created_date) return false;
       const dateToCheck = new Date(s.registration_date || s.created_date);
-      return dateToCheck >= monthStart;
+      return dateToCheck >= startDate;
     });
   }, [students, dateFilter]);
 
@@ -199,24 +210,35 @@ export default function PipelineDashboard() {
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* חיפוש */}
-            <div className="relative flex-1 md:flex-initial">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="חיפוש משתתף..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={handleSearch}
-                className="w-full md:w-64 bg-white border border-gray-200 rounded-full py-2 px-4 pr-10 text-sm focus:outline-none focus:border-[var(--crm-primary)] transition-colors"
-              />
+            {/* חיפוש משופר */}
+            <div className="relative flex-1 md:flex-initial flex gap-2">
+              <select
+                className="bg-white border border-gray-200 rounded-full px-3 py-2 text-xs focus:outline-none focus:border-[var(--crm-primary)]"
+                defaultValue="name"
+              >
+                <option value="name">שם</option>
+                <option value="email">מייל</option>
+                <option value="phone">טלפון</option>
+                <option value="course">קורס</option>
+              </select>
+              <div className="relative flex-1">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="חיפוש..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={handleSearch}
+                  className="w-full md:w-48 bg-white border border-gray-200 rounded-full py-2 px-4 pr-10 text-sm focus:outline-none focus:border-[var(--crm-primary)] transition-colors"
+                />
+              </div>
             </div>
 
-            {/* פילטר תאריכים */}
-            <div className="bg-white p-1 rounded-full border border-gray-200 flex text-sm">
+            {/* פילטר תאריכים מורחב */}
+            <div className="bg-white p-1 rounded-full border border-gray-200 flex text-xs">
               <button
                 onClick={() => setDateFilter('all')}
-                className={`px-4 py-1.5 rounded-full transition-all ${
+                className={`px-3 py-1.5 rounded-full transition-all ${
                   dateFilter === 'all' 
                     ? 'bg-[var(--crm-action)] text-[var(--crm-text)] font-bold' 
                     : 'text-gray-500 hover:text-gray-700'
@@ -225,8 +247,28 @@ export default function PipelineDashboard() {
                 הכל
               </button>
               <button
+                onClick={() => setDateFilter('today')}
+                className={`px-3 py-1.5 rounded-full transition-all ${
+                  dateFilter === 'today' 
+                    ? 'bg-[var(--crm-action)] text-[var(--crm-text)] font-bold' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                היום
+              </button>
+              <button
+                onClick={() => setDateFilter('week')}
+                className={`px-3 py-1.5 rounded-full transition-all ${
+                  dateFilter === 'week' 
+                    ? 'bg-[var(--crm-action)] text-[var(--crm-text)] font-bold' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                השבוע
+              </button>
+              <button
                 onClick={() => setDateFilter('month')}
-                className={`px-4 py-1.5 rounded-full transition-all ${
+                className={`px-3 py-1.5 rounded-full transition-all ${
                   dateFilter === 'month' 
                     ? 'bg-[var(--crm-action)] text-[var(--crm-text)] font-bold' 
                     : 'text-gray-500 hover:text-gray-700'
@@ -264,70 +306,94 @@ export default function PipelineDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           
           {/* רשומים */}
-          <Link to={createPageUrl('Students') + '?status=רשום'}>
-            <div
-              className="bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-[var(--crm-primary)] transition-all cursor-pointer group hover:-translate-y-1"
-              style={{ borderRadius: 'var(--crm-border-radius)' }}
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-primary)', opacity: 0.1 }}>
-                  <Users size={24} style={{ color: 'var(--crm-primary)' }} />
-                </div>
-                {statusMetrics.registered.today > 0 && (
-                  <span className="text-xs font-bold text-green-600">+{statusMetrics.registered.today} היום</span>
-                )}
-              </div>
-              <h3 className="text-3xl font-bold mb-1 text-[var(--crm-text)]">{statusMetrics.registered.count}</h3>
-              <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">משתתפים רשומים</p>
-              <div className="mt-4 pt-4 border-t border-gray-50 flex items-center gap-2 text-xs text-gray-400">
-                <span className="bg-gray-50 px-2 py-1 rounded-md">+{statusMetrics.registered.week} השבוע</span>
+          <div
+            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
+            style={{ borderRadius: 'var(--crm-border-radius)' }}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-primary)' }}>
+                <Users size={24} style={{ color: 'white' }} />
               </div>
             </div>
-          </Link>
+            <Link to={createPageUrl('Students') + '?status=רשום'}>
+              <h3 className="text-3xl font-bold mb-1 text-[var(--crm-text)] cursor-pointer hover:text-[var(--crm-primary)] transition-colors">
+                {statusMetrics.registered.count}
+              </h3>
+            </Link>
+            <p className="text-sm font-medium text-[var(--crm-text)] opacity-70 mb-4">משתתפים רשומים</p>
+            <div className="pt-3 border-t border-gray-100 flex items-center gap-2 text-xs flex-wrap">
+              <Link to={createPageUrl('Students') + '?status=רשום&date=today'}>
+                <span className="bg-[#9CCFB7] text-white px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-[#8BBFA7] transition-colors">
+                  +{statusMetrics.registered.today} היום
+                </span>
+              </Link>
+              <Link to={createPageUrl('Students') + '?status=רשום&date=week'}>
+                <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-gray-200 transition-colors">
+                  +{statusMetrics.registered.week} השבוע
+                </span>
+              </Link>
+            </div>
+          </div>
 
           {/* לידים */}
-          <Link to={createPageUrl('Students') + '?status=חדש'}>
-            <div
-              className="bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-[var(--crm-accent)] transition-all cursor-pointer group hover:-translate-y-1"
-              style={{ borderRadius: 'var(--crm-border-radius)' }}
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-accent)', opacity: 0.1 }}>
-                  <UserPlus size={24} style={{ color: 'var(--crm-accent)' }} />
-                </div>
-                {statusMetrics.newLeads.today > 0 && (
-                  <span className="text-xs font-bold text-green-600">+{statusMetrics.newLeads.today} היום</span>
-                )}
-              </div>
-              <h3 className="text-3xl font-bold mb-1 text-[var(--crm-text)]">{statusMetrics.newLeads.count}</h3>
-              <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">לידים חדשים</p>
-              <div className="mt-4 pt-4 border-t border-gray-50 flex items-center gap-2 text-xs text-gray-400">
-                <span className="bg-gray-50 px-2 py-1 rounded-md">+{statusMetrics.newLeads.week} השבוע</span>
+          <div
+            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
+            style={{ borderRadius: 'var(--crm-border-radius)' }}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-accent)' }}>
+                <UserPlus size={24} style={{ color: 'white' }} />
               </div>
             </div>
-          </Link>
+            <Link to={createPageUrl('Students') + '?status=חדש'}>
+              <h3 className="text-3xl font-bold mb-1 text-[var(--crm-text)] cursor-pointer hover:text-[var(--crm-accent)] transition-colors">
+                {statusMetrics.newLeads.count}
+              </h3>
+            </Link>
+            <p className="text-sm font-medium text-[var(--crm-text)] opacity-70 mb-4">לידים חדשים</p>
+            <div className="pt-3 border-t border-gray-100 flex items-center gap-2 text-xs flex-wrap">
+              <Link to={createPageUrl('Students') + '?status=חדש&date=today'}>
+                <span className="bg-[#9CCFB7] text-white px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-[#8BBFA7] transition-colors">
+                  +{statusMetrics.newLeads.today} היום
+                </span>
+              </Link>
+              <Link to={createPageUrl('Students') + '?status=חדש&date=week'}>
+                <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-gray-200 transition-colors">
+                  +{statusMetrics.newLeads.week} השבוע
+                </span>
+              </Link>
+            </div>
+          </div>
 
           {/* ניסיונות */}
-          <Link to={createPageUrl('Students') + '?status=ניסיון'}>
-            <div
-              className="bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-[var(--crm-action)] transition-all cursor-pointer group hover:-translate-y-1"
-              style={{ borderRadius: 'var(--crm-border-radius)' }}
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-action)', opacity: 0.1 }}>
-                  <Sparkles size={24} style={{ color: 'var(--crm-action)' }} />
-                </div>
-                {statusMetrics.trial.today > 0 && (
-                  <span className="text-xs font-bold text-green-600">+{statusMetrics.trial.today} היום</span>
-                )}
-              </div>
-              <h3 className="text-3xl font-bold mb-1 text-[var(--crm-text)]">{statusMetrics.trial.count}</h3>
-              <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">שיעורי ניסיון</p>
-              <div className="mt-4 pt-4 border-t border-gray-50 flex items-center gap-2 text-xs text-gray-400">
-                <span className="bg-gray-50 px-2 py-1 rounded-md">+{statusMetrics.trial.week} השבוע</span>
+          <div
+            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
+            style={{ borderRadius: 'var(--crm-border-radius)' }}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-action)' }}>
+                <Sparkles size={24} style={{ color: 'white' }} />
               </div>
             </div>
-          </Link>
+            <Link to={createPageUrl('Students') + '?status=ניסיון'}>
+              <h3 className="text-3xl font-bold mb-1 text-[var(--crm-text)] cursor-pointer hover:text-[var(--crm-action)] transition-colors">
+                {statusMetrics.trial.count}
+              </h3>
+            </Link>
+            <p className="text-sm font-medium text-[var(--crm-text)] opacity-70 mb-4">שיעורי ניסיון</p>
+            <div className="pt-3 border-t border-gray-100 flex items-center gap-2 text-xs flex-wrap">
+              <Link to={createPageUrl('Students') + '?status=ניסיון&date=today'}>
+                <span className="bg-[#9CCFB7] text-white px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-[#8BBFA7] transition-colors">
+                  +{statusMetrics.trial.today} היום
+                </span>
+              </Link>
+              <Link to={createPageUrl('Students') + '?status=ניסיון&date=week'}>
+                <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-gray-200 transition-colors">
+                  +{statusMetrics.trial.week} השבוע
+                </span>
+              </Link>
+            </div>
+          </div>
 
           {/* יחס המרה עם גרף */}
           <div
@@ -363,7 +429,9 @@ export default function PipelineDashboard() {
               </ResponsiveContainer>
             </div>
             
-            <p className="text-xs text-gray-400 mt-2">לידים שהפכו ללקוחות</p>
+            <p className="text-xs text-gray-400 mt-2">
+              {conversionData.chartData[0].value} נרשמו מתוך {conversionData.chartData[0].value + conversionData.chartData[1].value}
+            </p>
           </div>
 
         </div>
@@ -425,8 +493,8 @@ export default function PipelineDashboard() {
                   {coursesWithStats.map(course => (
                     <tr
                       key={course.id}
-                      onClick={() => window.location.href = `${createPageUrl('Students')}?course=${course.id}`}
-                      className="hover:bg-[var(--crm-primary)] hover:bg-opacity-5 transition-colors cursor-pointer group"
+                      onClick={() => window.location.href = `${createPageUrl('Courses')}?course=${course.id}`}
+                      className="hover:bg-gray-50 transition-colors cursor-pointer group"
                     >
                       <td className="p-4 font-semibold text-[var(--crm-text)]">
                         {course.name}
@@ -438,8 +506,8 @@ export default function PipelineDashboard() {
                       </td>
                       <td className="p-4">
                         <span
-                          className="inline-block px-2.5 py-0.5 rounded-md text-xs font-bold"
-                          style={{ backgroundColor: 'var(--crm-primary)', opacity: 0.1, color: 'var(--crm-primary)' }}
+                          className="inline-block px-2.5 py-0.5 rounded-md text-xs font-bold text-white"
+                          style={{ backgroundColor: 'var(--crm-primary)' }}
                         >
                           {course.studentsCount}
                           {course.max_students && ` / ${course.max_students}`}
@@ -447,7 +515,7 @@ export default function PipelineDashboard() {
                       </td>
                       <td className="p-4 text-gray-500">
                         {course.newToday > 0 ? (
-                          <span className="text-green-600 font-bold">+{course.newToday}</span>
+                          <span className="text-[#9CCFB7] font-bold">+{course.newToday}</span>
                         ) : '-'}
                       </td>
                       <td className="p-4 text-gray-500">
@@ -477,8 +545,8 @@ export default function PipelineDashboard() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col" style={{ borderRadius: 'var(--crm-border-radius)' }}>
             <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
               <div className="flex items-center gap-2">
-                <CheckSquare size={18} className="text-gray-400" />
-                <h2 className="font-bold text-lg text-[var(--crm-text)]">משימות להיום</h2>
+                <CheckSquare size={16} className="text-gray-400" />
+                <h2 className="font-bold text-base text-[var(--crm-text)]">משימות להיום</h2>
               </div>
               <span
                 className="text-xs px-2 py-0.5 rounded-full font-bold"
@@ -488,7 +556,7 @@ export default function PipelineDashboard() {
               </span>
             </div>
 
-            <div className="p-4 flex-grow overflow-y-auto max-h-[400px]">
+            <div className="p-4 flex-grow overflow-y-auto max-h-[280px]">
               {todaysTasks.length > 0 ? (
                 <div className="space-y-3">
                   {todaysTasks.map(task => (

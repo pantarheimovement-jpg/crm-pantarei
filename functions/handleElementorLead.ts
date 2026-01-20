@@ -165,16 +165,10 @@ Deno.serve(async (req) => {
       full_name,
       email,
       phone: phone || null,
-      status: leadStatus,
       lead_source: 'אתר',
       last_contact_date: new Date().toISOString(),
       notes: [...validationNotes, message].filter(Boolean).join('\n')
     };
-    
-    if (course) {
-      studentData.course_id = course.id;
-      studentData.course_name = course.name;
-    }
     
     let student;
     
@@ -215,10 +209,20 @@ Deno.serve(async (req) => {
         const hasRegistered = updatedCourses.some(c => c.status === registeredStatus);
         const generalStatus = hasRegistered ? registeredStatus : leadStatus;
         
-        studentData.courses = updatedCourses;
-        studentData.status = generalStatus;
+        // עדכון course_id ו-course_name רק אם זה הקורס הראשון, או אם אין כבר קורס עיקרי
+        const updateData = {
+          ...studentData,
+          courses: updatedCourses,
+          status: generalStatus
+        };
         
-        student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
+        // עדכן course_id/course_name רק אם לא קיים או אם הקורס החדש הוא רשום
+        if (!existingStudent.course_id || newCourseEntry.status === registeredStatus) {
+          updateData.course_id = course.id;
+          updateData.course_name = course.name;
+        }
+        
+        student = await base44.asServiceRole.entities.Student.update(existingStudent.id, updateData);
       } else {
         // אין קורס - עדכון רגיל
         student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
@@ -226,8 +230,12 @@ Deno.serve(async (req) => {
     } else {
       console.log(`✨ Creating new student: ${full_name}`);
       
+      studentData.status = leadStatus;
+      
       // יצירת משתתף חדש עם courses array
       if (course) {
+        studentData.course_id = course.id;
+        studentData.course_name = course.name;
         studentData.courses = [{
           course_id: course.id,
           course_name: course.name,

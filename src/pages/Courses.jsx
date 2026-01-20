@@ -12,6 +12,7 @@ export default function Courses() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     type: 'קורס קבוע',
@@ -65,6 +66,30 @@ export default function Courses() {
     } catch (error) {
       console.error('Error deleting course:', error);
       alert('שגיאה במחיקת הקורס');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`האם למחוק ${selectedIds.length} קורסים?`)) return;
+    
+    try {
+      for (const id of selectedIds) {
+        await base44.entities.Course.delete(id);
+      }
+      setSelectedIds([]);
+      await loadCourses();
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      alert('שגיאה במחיקה');
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredCourses.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredCourses.map(c => c.id));
     }
   };
 
@@ -136,27 +161,53 @@ export default function Courses() {
               </p>
             </div>
           </div>
-          <Button
-            onClick={() => openModal()}
-            className="bg-[var(--crm-action)] text-[var(--crm-text)] hover:bg-[var(--crm-action)]/90"
-            style={{ borderRadius: 'var(--crm-button-radius)' }}
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            {systemTexts?.entity_course_singular || 'קורס'} חדש
-          </Button>
+          <div className="flex gap-2">
+            {selectedIds.length > 0 && (
+              <Button
+                onClick={handleBulkDelete}
+                variant="outline"
+                className="border-red-500 text-red-500 hover:bg-red-50"
+                style={{ borderRadius: 'var(--crm-button-radius)' }}
+              >
+                <Trash2 className="w-5 h-5 mr-2" />
+                מחק {selectedIds.length}
+              </Button>
+            )}
+            <Button
+              onClick={() => openModal()}
+              className="bg-[var(--crm-action)] text-[var(--crm-text)] hover:bg-[var(--crm-action)]/90"
+              style={{ borderRadius: 'var(--crm-button-radius)' }}
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              {systemTexts?.entity_course_singular || 'קורס'} חדש
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="חיפוש קורס..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pr-10"
-            />
+          <div className="flex gap-4 items-center">
+            {filteredCourses.length > 0 && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.length === filteredCourses.length}
+                  onChange={toggleSelectAll}
+                  className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
+                />
+                <span className="text-sm text-gray-600">בחר הכל</span>
+              </label>
+            )}
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="חיפוש קורס..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-10"
+              />
+            </div>
           </div>
         </div>
 
@@ -165,9 +216,21 @@ export default function Courses() {
           {filteredCourses.map(course => (
             <div
               key={course.id}
-              className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+              className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow relative"
               style={{ borderRadius: 'var(--crm-border-radius)' }}
             >
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(course.id)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedIds([...selectedIds, course.id]);
+                  } else {
+                    setSelectedIds(selectedIds.filter(id => id !== course.id));
+                  }
+                }}
+                className="absolute top-4 left-4 w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded z-10"
+              />
               {course.image_url && (
                 <img
                   src={course.image_url}

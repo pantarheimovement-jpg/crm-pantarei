@@ -73,6 +73,7 @@ export default function NewsletterManager() {
 
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
 
   useEffect(() => {
     loadSubscribers();
@@ -1115,6 +1116,30 @@ export default function NewsletterManager() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(t(`האם למחוק ${selectedIds.length} מנויים?`, `Delete ${selectedIds.length} subscribers?`))) return;
+    
+    try {
+      for (const id of selectedIds) {
+        await base44.entities.Subscribers.delete(id);
+      }
+      setSelectedIds([]);
+      loadSubscribers();
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      alert(t('שגיאה במחיקה', 'Error deleting'));
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredSubscribers.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredSubscribers.map(s => s.id));
+    }
+  };
+
   const handleUpdateSubscriberGroup = async (subscriberId, newGroup) => {
     try {
       await base44.entities.Subscribers.update(subscriberId, { group: newGroup });
@@ -1392,13 +1417,24 @@ export default function NewsletterManager() {
                 )}
 
                 <div className="flex justify-between items-center">
-                  <button
-                    onClick={() => setShowAddSubscriber(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 flex items-center gap-2"
-                  >
-                    <Plus className="w-5 h-5" />
-                    {t('הוסף מנוי (יתווסף אוטומטית לקבוצה פנויה)', 'Add Subscriber (will be auto-assigned to available group)')}
-                  </button>
+                  <div className="flex gap-2">
+                    {selectedIds.length > 0 && (
+                      <button
+                        onClick={handleBulkDelete}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 flex items-center gap-2"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                        {t('מחק', 'Delete')} {selectedIds.length}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowAddSubscriber(true)}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 flex items-center gap-2"
+                    >
+                      <Plus className="w-5 h-5" />
+                      {t('הוסף מנוי (יתווסף אוטומטית לקבוצה פנויה)', 'Add Subscriber (will be auto-assigned to available group)')}
+                    </button>
+                  </div>
                 </div>
 
                 {showAddSubscriber && (
@@ -1769,6 +1805,14 @@ export default function NewsletterManager() {
                     <table className="w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
+                          <th className="px-4 py-3 text-center w-12">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.length === filteredSubscribers.length && filteredSubscribers.length > 0}
+                              onChange={toggleSelectAll}
+                              className="w-5 h-5 text-blue-600 border-gray-300 rounded"
+                            />
+                          </th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '180px' }}>
                             {t('מייל', 'Email')}
                           </th>
@@ -1801,6 +1845,20 @@ export default function NewsletterManager() {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {filteredSubscribers.map((sub) => (
                           <tr key={sub.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-4 text-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.includes(sub.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedIds([...selectedIds, sub.id]);
+                                  } else {
+                                    setSelectedIds(selectedIds.filter(id => id !== sub.id));
+                                  }
+                                }}
+                                className="w-5 h-5 text-blue-600 border-gray-300 rounded"
+                              />
+                            </td>
                             <td className="px-4 py-4 text-sm text-gray-900" style={{ wordBreak: 'break-all' }}>
                               {sub.email || '-'}
                             </td>

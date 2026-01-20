@@ -16,6 +16,7 @@ export default function Students() {
   const [viewMode, setViewMode] = useState('cards');
   const [showModal, setShowModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -120,6 +121,43 @@ export default function Students() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`האם למחוק ${selectedIds.length} משתתפים?`)) return;
+    
+    try {
+      for (const id of selectedIds) {
+        const student = students.find(s => s.id === id);
+        const isRegistered = student?.status === 'נרשם' || student?.status === 'רשום';
+        
+        await base44.entities.Student.delete(id);
+        
+        if (isRegistered && student?.course_id) {
+          const courses = await base44.entities.Course.list();
+          const course = courses.find(c => c.id === student.course_id);
+          if (course) {
+            const newCount = Math.max(0, (course.current_students || 0) - 1);
+            await base44.entities.Course.update(course.id, { current_students: newCount });
+          }
+        }
+      }
+      
+      setSelectedIds([]);
+      await loadStudents();
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      alert('שגיאה במחיקה');
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredStudents.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredStudents.map(s => s.id));
+    }
+  };
+
   const openModal = (student = null) => {
     if (student) {
       setEditingStudent(student);
@@ -199,14 +237,27 @@ export default function Students() {
               </p>
             </div>
           </div>
-          <Button
-            onClick={() => openModal()}
-            className="bg-[var(--crm-action)] text-[var(--crm-text)] hover:bg-[var(--crm-action)]/90"
-            style={{ borderRadius: 'var(--crm-button-radius)' }}
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            {systemTexts?.entity_student_singular || 'משתתף'} חדש
-          </Button>
+          <div className="flex gap-2">
+            {selectedIds.length > 0 && (
+              <Button
+                onClick={handleBulkDelete}
+                variant="outline"
+                className="border-red-500 text-red-500 hover:bg-red-50"
+                style={{ borderRadius: 'var(--crm-button-radius)' }}
+              >
+                <Trash2 className="w-5 h-5 mr-2" />
+                מחק {selectedIds.length}
+              </Button>
+            )}
+            <Button
+              onClick={() => openModal()}
+              className="bg-[var(--crm-action)] text-[var(--crm-text)] hover:bg-[var(--crm-action)]/90"
+              style={{ borderRadius: 'var(--crm-button-radius)' }}
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              {systemTexts?.entity_student_singular || 'משתתף'} חדש
+            </Button>
+          </div>
         </div>
 
         {/* Quick Filter Tabs */}
@@ -281,9 +332,21 @@ export default function Students() {
             {filteredStudents.map(student => (
               <div
                 key={student.id}
-                className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow"
+                className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow relative"
                 style={{ borderRadius: 'var(--crm-border-radius)' }}
               >
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(student.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedIds([...selectedIds, student.id]);
+                    } else {
+                      setSelectedIds(selectedIds.filter(id => id !== student.id));
+                    }
+                  }}
+                  className="absolute top-4 left-4 w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
+                />
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-[var(--crm-text)] mb-1">
@@ -357,6 +420,14 @@ export default function Students() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b">
                   <tr>
+                    <th className="px-4 py-3 text-center w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.length === filteredStudents.length && filteredStudents.length > 0}
+                        onChange={toggleSelectAll}
+                        className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">שם</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">סטטוס</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">טלפון</th>
@@ -369,6 +440,20 @@ export default function Students() {
                 <tbody className="divide-y divide-gray-200">
                   {filteredStudents.map(student => (
                     <tr key={student.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(student.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedIds([...selectedIds, student.id]);
+                            } else {
+                              setSelectedIds(selectedIds.filter(id => id !== student.id));
+                            }
+                          }}
+                          className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
+                        />
+                      </td>
                       <td className="px-4 py-3 text-sm font-medium text-[var(--crm-text)]">{student.full_name}</td>
                       <td className="px-4 py-3">
                         <span

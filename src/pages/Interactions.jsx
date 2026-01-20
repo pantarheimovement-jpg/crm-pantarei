@@ -19,6 +19,7 @@ export default function Interactions() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedInteraction, setSelectedInteraction] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0] + 'T12:00',
     type: 'שיחה',
@@ -164,6 +165,30 @@ export default function Interactions() {
     } catch (error) {
       console.error('Error deleting interaction:', error);
       alert('שגיאה במחיקת האינטראקציה');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`האם למחוק ${selectedIds.length} אינטראקציות?`)) return;
+    
+    try {
+      for (const id of selectedIds) {
+        await base44.entities.Interaction.delete(id);
+      }
+      setSelectedIds([]);
+      loadData();
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      alert('שגיאה במחיקה');
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredInteractions.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredInteractions.map(i => i.id));
     }
   };
 
@@ -330,6 +355,15 @@ export default function Interactions() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {selectedIds.length > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-500 rounded-lg hover:bg-red-50 flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  מחק {selectedIds.length}
+                </button>
+              )}
               <button
                 onClick={() => setShowImportModal(true)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
@@ -358,6 +392,19 @@ export default function Interactions() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div className="flex items-center gap-4 mb-4">
+            {filteredInteractions.length > 0 && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.length === filteredInteractions.length}
+                  onChange={toggleSelectAll}
+                  className="w-5 h-5 text-[#005e6c] border-gray-300 rounded"
+                />
+                <span className="text-sm text-gray-600">בחר הכל</span>
+              </label>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -414,6 +461,19 @@ export default function Interactions() {
             {filteredInteractions.map((interaction) => (
               <div key={interaction.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(interaction.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds([...selectedIds, interaction.id]);
+                        } else {
+                          setSelectedIds(selectedIds.filter(id => id !== interaction.id));
+                        }
+                      }}
+                      className="mt-1 w-5 h-5 text-[#005e6c] border-gray-300 rounded"
+                    />
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="text-[#005e6c]">
@@ -445,6 +505,7 @@ export default function Interactions() {
                         {interaction.type}
                       </span>
                     </div>
+                  </div>
                   </div>
 
                   <div className="flex items-center gap-2">

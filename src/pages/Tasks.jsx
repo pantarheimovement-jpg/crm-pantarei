@@ -16,6 +16,7 @@ export default function Tasks() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [formData, setFormData] = useState({
     description: '',
     assigned_to: '',
@@ -93,6 +94,30 @@ export default function Tasks() {
     } catch (error) {
       console.error('Error deleting task:', error);
       alert('שגיאה במחיקת המשימה');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`האם למחוק ${selectedIds.length} משימות?`)) return;
+    
+    try {
+      for (const id of selectedIds) {
+        await base44.entities.Task.delete(id);
+      }
+      setSelectedIds([]);
+      loadData();
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      alert('שגיאה במחיקה');
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredTasks.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredTasks.map(t => t.id));
     }
   };
 
@@ -246,6 +271,15 @@ export default function Tasks() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {selectedIds.length > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-500 rounded-lg hover:bg-red-50 flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  מחק {selectedIds.length}
+                </button>
+              )}
               <button
                 onClick={() => setShowImportModal(true)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
@@ -295,6 +329,19 @@ export default function Tasks() {
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div className="flex items-center gap-4 mb-4">
+            {filteredTasks.length > 0 && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.length === filteredTasks.length}
+                  onChange={toggleSelectAll}
+                  className="w-5 h-5 text-[#005e6c] border-gray-300 rounded"
+                />
+                <span className="text-sm text-gray-600">בחר הכל</span>
+              </label>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -346,6 +393,18 @@ export default function Tasks() {
             {filteredTasks.map((task) => (
               <div key={task.id} className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(task.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedIds([...selectedIds, task.id]);
+                      } else {
+                        setSelectedIds(selectedIds.filter(id => id !== task.id));
+                      }
+                    }}
+                    className="mt-1 w-5 h-5 text-[#005e6c] border-gray-300 rounded flex-shrink-0"
+                  />
                   <button
                     onClick={() => handleToggleStatus(task)}
                     className="mt-1 flex-shrink-0"

@@ -152,18 +152,37 @@ export default function Students() {
     if (!confirm('האם למחוק משתתף זה?')) return;
     try {
       const student = students.find(s => s.id === id);
-      const isRegistered = student?.status === 'נרשם' || student?.status === 'רשום';
       
       await base44.entities.Student.delete(id);
       
-      // עדכון מונה הקורס אם המשתתף היה רשום
-      if (isRegistered && student?.course_id) {
-        const courses = await base44.entities.Course.list();
-        const course = courses.find(c => c.id === student.course_id);
-        if (course) {
-          const newCount = Math.max(0, (course.current_students || 0) - 1);
-          await base44.entities.Course.update(course.id, { current_students: newCount });
+      // עדכון מונה הקורסים - תמיכה במערך courses
+      const allCourses = await base44.entities.Course.list();
+      const courseUpdates = {};
+      
+      if (student?.courses && student.courses.length > 0) {
+        // מעבר על כל הקורסים של הסטודנט במערך courses
+        student.courses.forEach(courseEntry => {
+          if (courseEntry.status === 'נרשם' || courseEntry.status === 'רשום') {
+            const course = allCourses.find(c => c.id === courseEntry.course_id);
+            if (course && !courseUpdates[course.id]) {
+              courseUpdates[course.id] = Math.max(0, (course.current_students || 0) - 1);
+            }
+          }
+        });
+      } else if (student?.course_id) {
+        // fallback למבנה ישן
+        const isRegistered = student?.status === 'נרשם' || student?.status === 'רשום';
+        if (isRegistered) {
+          const course = allCourses.find(c => c.id === student.course_id);
+          if (course) {
+            courseUpdates[course.id] = Math.max(0, (course.current_students || 0) - 1);
+          }
         }
+      }
+      
+      // עדכון כל הקורסים שצריך
+      for (const [courseId, newCount] of Object.entries(courseUpdates)) {
+        await base44.entities.Course.update(courseId, { current_students: newCount });
       }
       
       await loadStudents();
@@ -183,19 +202,37 @@ export default function Students() {
       
       for (const id of selectedIds) {
         const student = students.find(s => s.id === id);
-        const isRegistered = student?.status === 'נרשם' || student?.status === 'רשום';
         
         await base44.entities.Student.delete(id);
         
-        if (isRegistered && student?.course_id) {
-          if (!courseUpdates[student.course_id]) {
-            const course = allCourses.find(c => c.id === student.course_id);
-            if (course) {
-              courseUpdates[student.course_id] = course.current_students || 0;
+        // תמיכה במערך courses
+        if (student?.courses && student.courses.length > 0) {
+          student.courses.forEach(courseEntry => {
+            if (courseEntry.status === 'נרשם' || courseEntry.status === 'רשום') {
+              if (!courseUpdates[courseEntry.course_id]) {
+                const course = allCourses.find(c => c.id === courseEntry.course_id);
+                if (course) {
+                  courseUpdates[courseEntry.course_id] = course.current_students || 0;
+                }
+              }
+              if (courseUpdates[courseEntry.course_id] !== undefined) {
+                courseUpdates[courseEntry.course_id] = Math.max(0, courseUpdates[courseEntry.course_id] - 1);
+              }
             }
-          }
-          if (courseUpdates[student.course_id] !== undefined) {
-            courseUpdates[student.course_id] = Math.max(0, courseUpdates[student.course_id] - 1);
+          });
+        } else if (student?.course_id) {
+          // fallback למבנה ישן
+          const isRegistered = student?.status === 'נרשם' || student?.status === 'רשום';
+          if (isRegistered) {
+            if (!courseUpdates[student.course_id]) {
+              const course = allCourses.find(c => c.id === student.course_id);
+              if (course) {
+                courseUpdates[student.course_id] = course.current_students || 0;
+              }
+            }
+            if (courseUpdates[student.course_id] !== undefined) {
+              courseUpdates[student.course_id] = Math.max(0, courseUpdates[student.course_id] - 1);
+            }
           }
         }
       }

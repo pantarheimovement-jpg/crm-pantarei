@@ -52,8 +52,36 @@ export default function Courses() {
 
   const loadCourses = async () => {
     try {
-      const data = await base44.entities.Course.list('-created_date');
-      setCourses(data || []);
+      const [coursesData, studentsData] = await Promise.all([
+        base44.entities.Course.list('-created_date'),
+        base44.entities.Student.list()
+      ]);
+      
+      // חישוב דינמי של מספר המשתתפים הרשומים בכל קורס
+      const coursesWithCounts = (coursesData || []).map(course => {
+        let registeredCount = 0;
+        
+        (studentsData || []).forEach(student => {
+          // בדיקה במערך courses
+          if (student.courses && Array.isArray(student.courses)) {
+            const courseEntry = student.courses.find(c => c.course_id === course.id);
+            if (courseEntry && (courseEntry.status === 'נרשם' || courseEntry.status === 'רשום')) {
+              registeredCount++;
+            }
+          } 
+          // fallback למבנה ישן
+          else if (student.course_id === course.id && (student.status === 'נרשם' || student.status === 'רשום')) {
+            registeredCount++;
+          }
+        });
+        
+        return {
+          ...course,
+          current_students: registeredCount
+        };
+      });
+      
+      setCourses(coursesWithCounts);
     } catch (error) {
       console.error('Error loading courses:', error);
     } finally {

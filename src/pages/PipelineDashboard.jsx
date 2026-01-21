@@ -162,7 +162,7 @@ export default function PipelineDashboard() {
     return types;
   }, [courses]);
 
-  // קורסים עם סטטיסטיקות + פילטר לפי סוג
+  // קורסים עם סטטיסטיקות + פילטר לפי סוג - חישוב דינמי עם תמיכה במערך courses
   const coursesWithStats = useMemo(() => {
     let filteredCourses = courses;
     
@@ -171,16 +171,26 @@ export default function PipelineDashboard() {
     }
 
     return filteredCourses.map(course => {
-      const courseStudents = students.filter(s => s.course_id === course.id && (s.status === 'רשום' || s.status === 'נרשם'));
-      const newToday = courseStudents.filter(s => isToday(s.registration_date || s.created_date)).length;
-      const newWeek = courseStudents.filter(s => isThisWeek(s.registration_date || s.created_date)).length;
+      // חישוב דינמי של סטודנטים רשומים - תמיכה במערך courses
+      const registeredStudents = students.filter(student => {
+        // בדיקה במערך courses
+        if (student.courses && Array.isArray(student.courses)) {
+          const courseEntry = student.courses.find(c => c.course_id === course.id);
+          return courseEntry && (courseEntry.status === 'רשום' || courseEntry.status === 'נרשם');
+        }
+        // fallback למבנה ישן
+        return student.course_id === course.id && (student.status === 'רשום' || student.status === 'נרשם');
+      });
+      
+      const newToday = registeredStudents.filter(s => isToday(s.registration_date || s.created_date)).length;
+      const newWeek = registeredStudents.filter(s => isThisWeek(s.registration_date || s.created_date)).length;
       
       return {
         ...course,
-        studentsCount: courseStudents.length,
+        studentsCount: registeredStudents.length,
         newToday,
         newWeek,
-        fillPercent: course.max_students ? Math.round((courseStudents.length / course.max_students) * 100) : 0
+        fillPercent: course.max_students ? Math.round((registeredStudents.length / course.max_students) * 100) : 0
       };
     });
   }, [courses, students, courseTypeFilter]);

@@ -34,14 +34,18 @@ export default function Courses() {
     loadCourses();
   }, []);
 
-  // פתיחה אוטומטית של קורס ספציפי מה-URL
+  // גלילה והדגשת קורס ספציפי מה-URL
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const courseId = urlParams.get('course');
     if (courseId && courses.length > 0) {
-      const course = courses.find(c => c.id === courseId);
-      if (course) {
-        openModal(course);
+      const courseElement = document.getElementById(`course-${courseId}`);
+      if (courseElement) {
+        courseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        courseElement.classList.add('ring-4', 'ring-[var(--crm-primary)]', 'ring-opacity-50');
+        setTimeout(() => {
+          courseElement.classList.remove('ring-4', 'ring-[var(--crm-primary)]', 'ring-opacity-50');
+        }, 2000);
       }
     }
   }, [courses]);
@@ -229,8 +233,9 @@ export default function Courses() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map(course => (
             <div
+              id={`course-${course.id}`}
               key={course.id}
-              className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow relative"
+              className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all relative"
               style={{ borderRadius: 'var(--crm-border-radius)' }}
             >
               <input

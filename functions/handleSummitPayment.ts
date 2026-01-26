@@ -163,6 +163,7 @@ Deno.serve(async (req) => {
       
     } else {
       console.log(`✨ Creating new student.`);
+      console.log(`📋 Student data to create:`, JSON.stringify(studentData, null, 2));
       isNewRegistration = true;
       studentData.lead_source = 'Summit';
       studentData.notes = noteText;
@@ -175,9 +176,17 @@ Deno.serve(async (req) => {
           status: registeredStatus,
           registration_date: billingDate
         }];
+        console.log(`📚 Course added to student: ${course.name} (ID: ${course.id})`);
       }
       
-      student = await base44.asServiceRole.entities.Student.create(studentData);
+      try {
+        student = await base44.asServiceRole.entities.Student.create(studentData);
+        console.log(`✅ Student created successfully! ID: ${student.id}, Name: ${student.full_name}`);
+      } catch (createError) {
+        console.error(`❌ CRITICAL: Failed to create student!`, createError.message);
+        console.error(`Stack:`, createError.stack);
+        throw createError;
+      }
     }
     
     // 4. עדכון מונה

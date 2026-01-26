@@ -21,6 +21,16 @@ export default function PipelineDashboard() {
 
   useEffect(() => {
     loadData();
+
+    // רענון אוטומטי כשהדף חוזר להיות visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadData();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const loadData = async () => {

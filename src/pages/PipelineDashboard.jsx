@@ -29,8 +29,18 @@ export default function PipelineDashboard() {
       }
     };
     
+    // רענון כשחוזרים לדף מדף אחר באפליקציה
+    const handleFocus = () => {
+      loadData();
+    };
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const loadData = async () => {

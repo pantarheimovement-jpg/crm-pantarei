@@ -175,7 +175,7 @@ export default function Courses() {
 
   const getStatusColor = (status) => {
     const colors = {
-      'פתוח להרשמה': '#4CAF50',
+      'פתוח להרשמה': '#297058',
       'מלא': '#D29486',
       'בתהליך': '#FAD980',
       'הסתיים': '#9E9E9E'

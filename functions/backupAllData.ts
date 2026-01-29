@@ -32,7 +32,10 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     
     const entityNames = [
-      'Student'
+      'Subscribers', 'NewsletterLogs', 'Contact', 'Interaction', 'Opportunity',
+      'EmailTemplate', 'Automation', 'Task', 'Event', 'DesignSettings',
+      'SystemTexts', 'LeadStatuses', 'AutomationSettings', 'GeneralSettings',
+      'Student', 'Course', 'WhatsappQueue'
     ];
 
     console.log('🔐 Getting Google Drive access token...');

@@ -136,8 +136,15 @@ Deno.serve(async (req) => {
       '--' + boundary + '--'
     ].join('\r\n');
 
-    // המרה ל-base64url (URL-safe base64)
-    const encodedMessage = btoa(emailContent)
+    // המרה ל-base64url (URL-safe base64) - בחלקים כדי למנוע Latin1 error
+    const emailBytes = encoder.encode(emailContent);
+    let encodedMessage = '';
+    const emailChunkSize = 32768;
+    for (let i = 0; i < emailBytes.length; i += emailChunkSize) {
+      const chunk = emailBytes.slice(i, i + emailChunkSize);
+      encodedMessage += btoa(String.fromCharCode.apply(null, Array.from(chunk)));
+    }
+    encodedMessage = encodedMessage
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');

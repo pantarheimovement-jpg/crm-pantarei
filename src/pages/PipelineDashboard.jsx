@@ -51,7 +51,7 @@ export default function PipelineDashboard() {
         base44.entities.Student.list('-created_date'),
         base44.entities.Course.list('-created_date'),
         base44.entities.Task.list('-scheduled_date'),
-        base44.entities.Task.filter({ description: "שיחת היכרות" }, '-scheduled_date')
+        base44.entities.Task.filter({ name: "שיחת היכרות" }, '-scheduled_date')
       ]);
       setStudents(studentsData || []);
       setCourses(coursesData || []);
@@ -667,8 +667,8 @@ export default function PipelineDashboard() {
                         }`}
                       />
                       <div className="flex-grow">
-                        <p className={`text-sm font-medium ${task.status === 'הושלם' ? 'text-gray-400 line-through' : 'text-[var(--crm-text)]'}`}>
-                          {task.description}
+                        <p className={`text-sm font-bold ${task.status === 'הושלם' ? 'text-gray-400 line-through' : 'text-[var(--crm-text)]'}`}>
+                          {task.name}
                         </p>
                         {task.student_name && (
                           <p className="text-xs text-gray-400 mt-1">{task.student_name}</p>

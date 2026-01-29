@@ -598,7 +598,10 @@ export default function Students() {
                                 <span className="text-xs text-gray-500">
                                   {new Date(task.created_date).toLocaleDateString('he-IL')}
                                 </span>
-                                <p className="text-sm font-medium text-[var(--crm-text)]">{task.description}</p>
+                                <p className="text-sm font-bold text-[var(--crm-text)]">{task.name}</p>
+                                {task.description && (
+                                  <p className="text-xs text-gray-600">{task.description}</p>
+                                )}
                               </div>
                               <span
                                 className={`text-xs px-2 py-1 rounded-full ${
@@ -748,7 +751,10 @@ export default function Students() {
                                         <span className="text-xs text-gray-500 mr-2">
                                           {new Date(task.created_date).toLocaleDateString('he-IL')}
                                         </span>
-                                        <span className="text-sm font-medium">{task.description}</span>
+                                        <span className="text-sm font-bold">{task.name}</span>
+                                        {task.description && (
+                                          <span className="text-xs text-gray-600 block">{task.description}</span>
+                                        )}
                                       </div>
                                       <span
                                         className={`text-xs px-2 py-1 rounded-full ${

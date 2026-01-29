@@ -15,7 +15,8 @@ Deno.serve(async (req) => {
 
     // יצירת השיחה
     const task = await base44.asServiceRole.entities.Task.create({
-      description: "שיחת היכרות",
+      name: "שיחת היכרות",
+      description: `שיחת היכרות עם ${student.full_name}`,
       status: "בבדיקה",
       scheduled_date: scheduledDate.toISOString().split('T')[0],
       student_id: student.id,

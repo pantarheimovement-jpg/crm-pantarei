@@ -18,6 +18,7 @@ export default function Tasks() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [formData, setFormData] = useState({
+    name: '',
     description: '',
     student_id: '',
     student_name: '',
@@ -49,8 +50,8 @@ export default function Tasks() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.description.trim()) {
-      alert('אנא הזיני תיאור');
+    if (!formData.name.trim()) {
+      alert('אנא הזיני שם משימה');
       return;
     }
 
@@ -132,6 +133,7 @@ export default function Tasks() {
 
   const resetForm = () => {
     setFormData({
+      name: '',
       description: '',
       student_id: '',
       student_name: '',
@@ -143,6 +145,7 @@ export default function Tasks() {
   const openEditModal = (task) => {
     setSelectedTask(task);
     setFormData({
+      name: task.name || '',
       description: task.description || '',
       student_id: task.student_id || '',
       student_name: task.student_name || '',
@@ -157,7 +160,7 @@ export default function Tasks() {
     let errorCount = 0;
 
     for (const item of items) {
-      if (!item.description) {
+      if (!item.name) {
         errorCount++;
         continue;
       }
@@ -176,7 +179,8 @@ export default function Tasks() {
         }
 
         await base44.entities.Task.create({
-          description: item.description,
+          name: item.name,
+          description: item.description || '',
           student_id: studentId,
           student_name: studentName,
           status: item.status || 'בבדיקה',
@@ -194,9 +198,10 @@ export default function Tasks() {
   };
 
   const exportToCSV = () => {
-    const headers = ['תיאור', 'משתתף', 'סטטוס', 'תאריך מתוזמן'];
+    const headers = ['שם המשימה', 'תיאור', 'משתתף', 'סטטוס', 'תאריך מתוזמן'];
     const rows = filteredTasks.map(task => [
-      task.description,
+      task.name,
+      task.description || '',
       task.student_name || '',
       task.status,
       task.scheduled_date || ''
@@ -218,6 +223,7 @@ export default function Tasks() {
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = !searchTerm ||
+      task.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.student_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -395,9 +401,12 @@ export default function Tasks() {
                   </button>
 
                   <div className="flex-1 min-w-0">
-                    <h3 className={`text-base font-medium ${task.status === 'הושלם' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                      {task.description}
+                    <h3 className={`text-base font-bold ${task.status === 'הושלם' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                      {task.name}
                     </h3>
+                    {task.description && (
+                      <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                    )}
                     
                     <div className="flex flex-wrap items-center gap-2 mt-2 text-sm">
                       {task.student_name && (
@@ -456,7 +465,8 @@ export default function Tasks() {
         onImport={handleImport}
         entityName="שיחות"
         columns={[
-          { key: 'description', label: 'תיאור השיחה', required: true, example: 'שיחת היכרות' },
+          { key: 'name', label: 'שם המשימה', required: true, example: 'שיחת היכרות' },
+          { key: 'description', label: 'תיאור נוסף', required: false, example: 'שיחה ראשונית עם המשתתף' },
           { key: 'student_name', label: 'שם משתתף', required: false, example: 'שרה כהן' },
           { key: 'status', label: 'סטטוס', required: false, example: 'ענתה' },
           { key: 'scheduled_date', label: 'תאריך מתוזמן', required: false, example: '2026-02-01' }
@@ -488,14 +498,28 @@ export default function Tasks() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    תיאור השיחה/פגישה *
+                    שם המשימה *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+                    placeholder="למשל: שיחת היכרות, פגישת מעקב..."
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    תיאור נוסף
                   </label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    rows="3"
+                    rows="2"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
-                    required
+                    placeholder="פרטים נוספים..."
                   />
                 </div>
 

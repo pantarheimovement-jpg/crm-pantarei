@@ -45,43 +45,10 @@ Deno.serve(async (req) => {
       throw new Error('Google Drive not connected. Please authorize first.');
     }
 
-    // יצירת תיקיית אב אם לא קיימת
-    const backupFolderName = 'Pantarhei Backups';
-    console.log(`📁 Creating/finding folder: ${backupFolderName}`);
-    
-    // חיפוש תיקייה קיימת
-    let parentFolderId;
-    const searchResponse = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=name='${backupFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      }
-    );
-    const searchResult = await searchResponse.json();
-    
-    if (searchResult.files && searchResult.files.length > 0) {
-      parentFolderId = searchResult.files[0].id;
-      console.log(`✅ Found existing folder: ${parentFolderId}`);
-    } else {
-      // יצירת תיקייה חדשה
-      const createFolderResponse = await fetch(
-        'https://www.googleapis.com/drive/v3/files',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: backupFolderName,
-            mimeType: 'application/vnd.google-apps.folder'
-          })
-        }
-      );
-      const newFolder = await createFolderResponse.json();
-      parentFolderId = newFolder.id;
-      console.log(`✅ Created new folder: ${parentFolderId}`);
-    }
+    // שימוש בתיקייה קיימת
+    const backupFolderName = 'Pantarhei crm Backups';
+    const parentFolderId = '1NrHYzDMs97TZmLlXLkryCDBRVcdWFdL6';
+    console.log(`📁 Using existing folder: ${backupFolderName} (${parentFolderId})`);
 
     // יצירת תיקייה לתאריך הנוכחי
     const dateStr = new Date().toISOString().split('T')[0];

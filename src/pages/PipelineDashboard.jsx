@@ -388,7 +388,7 @@ export default function PipelineDashboard() {
             <p className="text-sm font-medium text-[var(--crm-text)] opacity-70 mb-4">משתתפים רשומים</p>
             <div className="pt-3 border-t border-gray-100 flex items-center gap-2 text-xs flex-wrap">
               <Link to={createPageUrl('Students') + '?status=רשום&date=today'}>
-                <span className="bg-[#9CCFB7] text-white px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-[#8BBFA7] transition-colors">
+                <span className="bg-[#6D436D] text-white px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-[#5D335D] transition-colors">
                   +{statusMetrics.registered.today} היום
                 </span>
               </Link>
@@ -418,7 +418,7 @@ export default function PipelineDashboard() {
             <p className="text-sm font-medium text-[var(--crm-text)] opacity-70 mb-4">לידים חדשים</p>
             <div className="pt-3 border-t border-gray-100 flex items-center gap-2 text-xs flex-wrap">
               <Link to={createPageUrl('Students') + '?status=חדש&date=today'}>
-                <span className="bg-[#9CCFB7] text-white px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-[#8BBFA7] transition-colors">
+                <span className="bg-[#E5C0B0] text-white px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-[#D5B0A0] transition-colors">
                   +{statusMetrics.newLeads.today} היום
                 </span>
               </Link>
@@ -448,7 +448,7 @@ export default function PipelineDashboard() {
             <p className="text-sm font-medium text-[var(--crm-text)] opacity-70 mb-4">שיעורי ניסיון</p>
             <div className="pt-3 border-t border-gray-100 flex items-center gap-2 text-xs flex-wrap">
               <Link to={createPageUrl('Students') + '?status=ניסיון&date=today'}>
-                <span className="bg-[#9CCFB7] text-white px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-[#8BBFA7] transition-colors">
+                <span className="bg-[#297058] text-white px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-[#246048] transition-colors">
                   +{statusMetrics.trial.today} היום
                 </span>
               </Link>
@@ -580,7 +580,7 @@ export default function PipelineDashboard() {
                       </td>
                       <td className="p-4 text-gray-500">
                         {course.newToday > 0 ? (
-                          <span className="text-[#9CCFB7] font-bold">+{course.newToday}</span>
+                          <span className="text-[#6D436D] font-bold">+{course.newToday}</span>
                         ) : '-'}
                       </td>
                       <td className="p-4 text-gray-500">

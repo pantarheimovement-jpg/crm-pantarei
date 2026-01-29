@@ -89,17 +89,12 @@ Deno.serve(async (req) => {
     const encoder = new TextEncoder();
     const jsonBytes = encoder.encode(jsonContent);
     
-    // המרה ל-base64 בחלקים כדי למנוע stack overflow
-    let base64Content = '';
-    const chunkSize = 32768; // 32KB chunks
-    for (let i = 0; i < jsonBytes.length; i += chunkSize) {
-      const chunk = jsonBytes.slice(i, i + chunkSize);
-      base64Content += btoa(String.fromCharCode.apply(null, Array.from(chunk)));
-    }
+    // המרה ל-base64 (Deno native)
+    const base64Content = btoa(String.fromCodePoint(...jsonBytes));
     
     // המרת נושא המייל ל-base64
     const subjectBytes = encoder.encode(`גיבוי שבועי - Pantarhei CRM - ${dateStr}`);
-    const subjectBase64 = btoa(String.fromCharCode.apply(null, Array.from(subjectBytes)));
+    const subjectBase64 = btoa(String.fromCodePoint(...subjectBytes));
     
     const emailContent = [
       'Content-Type: multipart/mixed; boundary="' + boundary + '"',
@@ -136,15 +131,9 @@ Deno.serve(async (req) => {
       '--' + boundary + '--'
     ].join('\r\n');
 
-    // המרה ל-base64url (URL-safe base64) - בחלקים כדי למנוע Latin1 error
+    // המרה ל-base64url (URL-safe base64)
     const emailBytes = encoder.encode(emailContent);
-    let encodedMessage = '';
-    const emailChunkSize = 32768;
-    for (let i = 0; i < emailBytes.length; i += emailChunkSize) {
-      const chunk = emailBytes.slice(i, i + emailChunkSize);
-      encodedMessage += btoa(String.fromCharCode.apply(null, Array.from(chunk)));
-    }
-    encodedMessage = encodedMessage
+    const encodedMessage = btoa(String.fromCodePoint(...emailBytes))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');

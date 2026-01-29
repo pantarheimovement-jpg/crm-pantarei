@@ -3,7 +3,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { student } = await req.json();
+    const { event, data } = await req.json();
+    
+    const student = data;
 
     if (!student || !student.id) {
       return Response.json({ error: 'Student data required' }, { status: 400 });

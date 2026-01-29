@@ -68,8 +68,21 @@ export default function Tasks() {
         );
 
         if (existingStudent) {
+          // עדכון הסטטוס ל"נוצר משיחה" אם צריך
+          const existingCourses = existingStudent.courses || [];
+
+          await base44.entities.Student.update(existingStudent.id, {
+            ...existingStudent,
+            status: 'נוצר משיחה',
+            courses: existingCourses.length > 0 ? [
+              ...existingCourses.slice(0, -1),
+              { ...existingCourses[existingCourses.length - 1], status: 'נוצר משיחה' }
+            ] : existingCourses
+          });
+
           studentId = existingStudent.id;
           studentName = existingStudent.full_name;
+          await loadData();
         } else {
           // יצירת משתתף חדש
           const newStudent = await base44.entities.Student.create({
@@ -79,7 +92,7 @@ export default function Tasks() {
           });
           studentId = newStudent.id;
           studentName = newStudent.full_name;
-          
+
           // רענון רשימת המשתתפים
           await loadData();
         }

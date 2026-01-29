@@ -148,10 +148,29 @@ Deno.serve(async (req) => {
       }
     }
     
-    // חיפוש student קיים
+    // חיפוש student קיים - לפי מייל, טלפון או שם מלא
     console.log(`🔍 Checking if student exists: ${email}`);
-    const existingStudents = await base44.asServiceRole.entities.Student.filter({ email });
-    const existingStudent = existingStudents && existingStudents.length > 0 ? existingStudents[0] : null;
+    let existingStudent = null;
+    
+    // חיפוש לפי מייל
+    if (email) {
+      const byEmail = await base44.asServiceRole.entities.Student.filter({ email });
+      existingStudent = byEmail && byEmail.length > 0 ? byEmail[0] : null;
+    }
+    
+    // אם לא נמצא לפי מייל, נסה לפי טלפון
+    if (!existingStudent && phone) {
+      const byPhone = await base44.asServiceRole.entities.Student.filter({ phone });
+      existingStudent = byPhone && byPhone.length > 0 ? byPhone[0] : null;
+    }
+    
+    // אם לא נמצא לפי מייל או טלפון, נסה לפי שם מלא מדויק
+    if (!existingStudent && full_name) {
+      const allStudents = await base44.asServiceRole.entities.Student.list();
+      existingStudent = allStudents.find(s => 
+        s.full_name.toLowerCase() === full_name.toLowerCase()
+      ) || null;
+    }
     
     // קבלת סטטוסים
     const leadStatuses = await base44.asServiceRole.entities.LeadStatuses.filter({ name: 'ליד חדש' });
@@ -234,10 +253,22 @@ Deno.serve(async (req) => {
         
         student = await base44.asServiceRole.entities.Student.update(existingStudent.id, updateData);
       } else {
-        // אין קורס בפנייה הנוכחית - עדכון רגיל
-        // FIX: Don't downgrade status if just sending a message or no specific course is mentioned
-        console.log(`📝 Updating student without specific course in this lead. Preserving existing status: ${existingStudent.status}`);
-        studentData.status = existingStudent.status; // שמור על הסטטוס הקיים
+        // אין קורס בפנייה הנוכחית - עדכון "ליד חדש" כסטטוס כללי
+        console.log(`📝 Updating student with leadStatus (no specific course): ${leadStatus}`);
+        
+        const existingCourses = existingStudent.courses || [];
+        
+        // אם יש קורסים קיימים, עדכן את האחרון ל"ליד חדש"
+        if (existingCourses.length > 0) {
+          const updatedCourses = [...existingCourses];
+          updatedCourses[updatedCourses.length - 1] = {
+            ...updatedCourses[updatedCourses.length - 1],
+            status: leadStatus
+          };
+          studentData.courses = updatedCourses;
+        }
+        
+        studentData.status = leadStatus;
         student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
       }
     } else {

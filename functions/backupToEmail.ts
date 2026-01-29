@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { encodeBase64 } from 'jsr:@std/encoding@1.0.5/base64';
 
 // פונקציה שמושכת את כל הרשומות עם pagination
 async function fetchAllRecords(base44, entityName) {
@@ -84,17 +85,15 @@ Deno.serve(async (req) => {
 
     // יצירת המייל עם attachment בפורמט RFC 2822
     const boundary = '----=_Part_0_' + Date.now();
-    
-    // המרה ל-base64 תומך עברית - בחלקים קטנים
     const encoder = new TextEncoder();
-    const jsonBytes = encoder.encode(jsonContent);
     
-    // המרה ל-base64 (Deno native)
-    const base64Content = btoa(String.fromCodePoint(...jsonBytes));
+    // המרה ל-base64 תומך UTF-8 עם Deno standard library
+    const jsonBytes = encoder.encode(jsonContent);
+    const base64Content = encodeBase64(jsonBytes);
     
     // המרת נושא המייל ל-base64
     const subjectBytes = encoder.encode(`גיבוי שבועי - Pantarhei CRM - ${dateStr}`);
-    const subjectBase64 = btoa(String.fromCodePoint(...subjectBytes));
+    const subjectBase64 = encodeBase64(subjectBytes);
     
     const emailContent = [
       'Content-Type: multipart/mixed; boundary="' + boundary + '"',
@@ -133,7 +132,7 @@ Deno.serve(async (req) => {
 
     // המרה ל-base64url (URL-safe base64)
     const emailBytes = encoder.encode(emailContent);
-    const encodedMessage = btoa(String.fromCodePoint(...emailBytes))
+    const encodedMessage = encodeBase64(emailBytes)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');

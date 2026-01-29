@@ -526,16 +526,38 @@ export default function Tasks() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">משתתף</label>
-                    <select
-                      value={formData.student_id}
-                      onChange={(e) => setFormData({...formData, student_id: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
-                    >
-                      <option value="">בחר משתתף</option>
-                      {students.map(student => (
-                        <option key={student.id} value={student.id}>{student.full_name}</option>
-                      ))}
-                    </select>
+                    <div className="space-y-2">
+                      <select
+                        value={formData.student_id}
+                        onChange={(e) => {
+                          const selectedStudent = students.find(s => s.id === e.target.value);
+                          setFormData({
+                            ...formData, 
+                            student_id: e.target.value,
+                            student_name: selectedStudent ? selectedStudent.full_name : formData.student_name
+                          });
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+                      >
+                        <option value="">בחר משתתף קיים</option>
+                        {students.map(student => (
+                          <option key={student.id} value={student.id}>{student.full_name}</option>
+                        ))}
+                      </select>
+                      <div className="text-center text-sm text-gray-500">או</div>
+                      <input
+                        type="text"
+                        value={formData.student_id ? '' : formData.student_name}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          student_id: '',
+                          student_name: e.target.value
+                        })}
+                        placeholder="הזן שם משתתף חדש"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+                        disabled={!!formData.student_id}
+                      />
+                    </div>
                   </div>
 
                   <div>

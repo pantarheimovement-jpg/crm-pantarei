@@ -84,13 +84,21 @@ Deno.serve(async (req) => {
 
     // יצירת המייל עם attachment בפורמט RFC 2822
     const boundary = '----=_Part_0_' + Date.now();
-    const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
+    
+    // המרה ל-base64 תומך עברית
+    const encoder = new TextEncoder();
+    const jsonBytes = encoder.encode(jsonContent);
+    const base64Content = btoa(String.fromCharCode(...jsonBytes));
+    
+    // המרת נושא המייל ל-base64
+    const subjectBytes = encoder.encode(`גיבוי שבועי - Pantarhei CRM - ${dateStr}`);
+    const subjectBase64 = btoa(String.fromCharCode(...subjectBytes));
     
     const emailContent = [
       'Content-Type: multipart/mixed; boundary="' + boundary + '"',
       'MIME-Version: 1.0',
       'To: pantarhei.movement@gmail.com',
-      'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(`גיבוי שבועי - Pantarhei CRM - ${dateStr}`))) + '?=',
+      'Subject: =?UTF-8?B?' + subjectBase64 + '?=',
       '',
       '--' + boundary,
       'Content-Type: text/html; charset="UTF-8"',

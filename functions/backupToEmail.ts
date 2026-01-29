@@ -85,14 +85,21 @@ Deno.serve(async (req) => {
     // יצירת המייל עם attachment בפורמט RFC 2822
     const boundary = '----=_Part_0_' + Date.now();
     
-    // המרה ל-base64 תומך עברית
+    // המרה ל-base64 תומך עברית - בחלקים קטנים
     const encoder = new TextEncoder();
     const jsonBytes = encoder.encode(jsonContent);
-    const base64Content = btoa(String.fromCharCode(...jsonBytes));
+    
+    // המרה ל-base64 בחלקים כדי למנוע stack overflow
+    let base64Content = '';
+    const chunkSize = 32768; // 32KB chunks
+    for (let i = 0; i < jsonBytes.length; i += chunkSize) {
+      const chunk = jsonBytes.slice(i, i + chunkSize);
+      base64Content += btoa(String.fromCharCode.apply(null, Array.from(chunk)));
+    }
     
     // המרת נושא המייל ל-base64
     const subjectBytes = encoder.encode(`גיבוי שבועי - Pantarhei CRM - ${dateStr}`);
-    const subjectBase64 = btoa(String.fromCharCode(...subjectBytes));
+    const subjectBase64 = btoa(String.fromCharCode.apply(null, Array.from(subjectBytes)));
     
     const emailContent = [
       'Content-Type: multipart/mixed; boundary="' + boundary + '"',

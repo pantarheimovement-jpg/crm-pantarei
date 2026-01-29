@@ -57,10 +57,42 @@ export default function Tasks() {
 
     setSaving(true);
     try {
-      const selectedStudent = students.find(s => s.id === formData.student_id);
+      let studentId = formData.student_id;
+      let studentName = formData.student_name;
+
+      // אם הוזן שם משתתף חדש (טקסט חופשי) בלי לבחור מהרשימה
+      if (!studentId && studentName && studentName.trim()) {
+        // בדיקה אם המשתתף כבר קיים לפי שם
+        const existingStudent = students.find(s => 
+          s.full_name.toLowerCase() === studentName.trim().toLowerCase()
+        );
+
+        if (existingStudent) {
+          studentId = existingStudent.id;
+          studentName = existingStudent.full_name;
+        } else {
+          // יצירת משתתף חדש
+          const newStudent = await base44.entities.Student.create({
+            full_name: studentName.trim(),
+            phone: '',
+            status: 'נוצר משיחה'
+          });
+          studentId = newStudent.id;
+          studentName = newStudent.full_name;
+          
+          // רענון רשימת המשתתפים
+          await loadData();
+        }
+      } else if (studentId) {
+        // אם נבחר מהרשימה
+        const selectedStudent = students.find(s => s.id === studentId);
+        studentName = selectedStudent ? selectedStudent.full_name : studentName;
+      }
+
       const dataToSave = {
         ...formData,
-        student_name: selectedStudent ? selectedStudent.full_name : ''
+        student_id: studentId,
+        student_name: studentName
       };
 
       if (selectedTask) {

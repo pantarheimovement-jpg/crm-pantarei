@@ -14,6 +14,7 @@ export default function PipelineDashboard() {
   const [students, setStudents] = useState([]);
   const [courses, setCourses] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [introTasks, setIntroTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,14 +47,18 @@ export default function PipelineDashboard() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [studentsData, coursesData, tasksData] = await Promise.all([
+      const [studentsData, coursesData, tasksData, introTasksData] = await Promise.all([
         base44.entities.Student.list('-created_date'),
         base44.entities.Course.list('-created_date'),
-        base44.entities.Task.list('-due_date')
+        base44.entities.Task.list('-due_date'),
+        base44.entities.Task.filter({ description: "שיחת היכרות" }, '-due_date')
       ]);
       setStudents(studentsData || []);
       setCourses(coursesData || []);
       setTasks(tasksData || []);
+      
+      const relevantIntroTasks = (introTasksData || []).filter(t => t.status !== "הושלם");
+      setIntroTasks(relevantIntroTasks);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -344,6 +349,31 @@ export default function PipelineDashboard() {
             </div>
           </div>
         </div>
+
+        {/* התראת שיחות היכרות */}
+        {introTasks.length > 0 && (
+          <div className="bg-red-50 border-r-4 border-red-500 p-4 mb-6 rounded-l-xl flex justify-between items-center shadow-sm">
+            <div>
+              <h3 className="font-bold text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                שיחות היכרות פתוחות ({introTasks.length})
+              </h3>
+              <p className="text-sm text-red-600 mt-1">
+                {introTasks.filter(t => new Date(t.due_date) <= new Date()).length > 0 
+                  ? `⚠️ יש ${introTasks.filter(t => new Date(t.due_date) <= new Date()).length} משימות שעבר תאריך היעד שלהן!`
+                  : 'יש לבצע שיחות היכרות ללידים חדשים'}
+              </p>
+            </div>
+            <Link to={createPageUrl('Tasks')}>
+              <Button
+                className="bg-red-500 text-white hover:bg-red-600"
+                style={{ borderRadius: 'var(--crm-button-radius)' }}
+              >
+                צפה במשימות
+              </Button>
+            </Link>
+          </div>
+        )}
 
         {/* התראות */}
         {alerts.length > 0 && (

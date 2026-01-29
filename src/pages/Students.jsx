@@ -17,6 +17,8 @@ export default function Students() {
   const [showModal, setShowModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [expandedLogs, setExpandedLogs] = useState({});
+  const [loadingLogs, setLoadingLogs] = useState({});
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -288,6 +290,25 @@ export default function Students() {
     setEditingStudent(null);
   };
 
+  const toggleLogs = async (studentId) => {
+    if (expandedLogs[studentId]) {
+      const newLogs = { ...expandedLogs };
+      delete newLogs[studentId];
+      setExpandedLogs(newLogs);
+      return;
+    }
+
+    setLoadingLogs(prev => ({ ...prev, [studentId]: true }));
+    try {
+      const studentTasks = await base44.entities.Task.filter({ student_id: studentId }, '-created_date');
+      setExpandedLogs(prev => ({ ...prev, [studentId]: studentTasks || [] }));
+    } catch (error) {
+      console.error('Error loading task logs:', error);
+    } finally {
+      setLoadingLogs(prev => ({ ...prev, [studentId]: false }));
+    }
+  };
+
   const filteredStudents = students.filter(student => {
     // חיפוש
     const matchesSearch = student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -542,13 +563,65 @@ export default function Students() {
                       <span className="text-xs">({student.total_payments - student.payment_number} נותרו)</span>
                     </div>
                   )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                  </div>
 
-        {/* Students List - Table View */}
+                  {/* כפתור היסטוריית משימות */}
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleLogs(student.id);
+                    }}
+                    className="text-sm text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 underline flex items-center gap-1"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    {loadingLogs[student.id] ? 'טוען...' : expandedLogs[student.id] ? 'סגור היסטוריה' : 'הצג היסטוריית משימות'}
+                  </button>
+
+                  {/* לוג משימות */}
+                  {expandedLogs[student.id] && (
+                    <div className="mt-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                      <h4 className="font-bold text-gray-700 mb-2 text-sm">היסטוריית משימות:</h4>
+                      {expandedLogs[student.id].length === 0 ? (
+                        <p className="text-gray-400 italic text-xs">אין משימות מתועדות</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {expandedLogs[student.id].map(task => (
+                            <Link
+                              key={task.id}
+                              to={createPageUrl('Tasks') + '?task=' + task.id}
+                              className="flex justify-between items-center bg-white p-2 rounded shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                            >
+                              <div className="flex-1">
+                                <span className="text-xs text-gray-500">
+                                  {new Date(task.created_date).toLocaleDateString('he-IL')}
+                                </span>
+                                <p className="text-sm font-medium text-[var(--crm-text)]">{task.description}</p>
+                              </div>
+                              <span
+                                className={`text-xs px-2 py-1 rounded-full ${
+                                  task.status === 'הושלם'
+                                    ? 'bg-green-100 text-green-700'
+                                    : task.status === 'בטיפול'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-yellow-100 text-yellow-700'
+                                }`}
+                              >
+                                {task.status}
+                              </span>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  </div>
+                  </div>
+                  ))}
+                  </div>
+                  )}
+
+                  {/* Students List - Table View */}
         {viewMode === 'table' && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderRadius: 'var(--crm-border-radius)' }}>
             <div className="overflow-x-auto">
@@ -568,6 +641,7 @@ export default function Students() {
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מייל</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">קורסים וסטטוסים</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">תשלומים</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">היסטוריה</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות</th>
                   </tr>
                 </thead>
@@ -628,6 +702,14 @@ export default function Students() {
                           : '-'}
                       </td>
                       <td className="px-4 py-3">
+                        <button
+                          onClick={() => toggleLogs(student.id)}
+                          className="text-sm text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 underline"
+                        >
+                          {loadingLogs[student.id] ? 'טוען...' : expandedLogs[student.id] ? 'סגור' : 'היסטוריה'}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <button
                             onClick={() => openModal(student)}
@@ -644,6 +726,46 @@ export default function Students() {
                         </div>
                       </td>
                     </tr>
+                    {expandedLogs[student.id] && (
+                      <tr>
+                        <td colSpan="8" className="px-4 py-3 bg-gray-50">
+                          <div className="text-sm">
+                            <h4 className="font-bold text-gray-700 mb-2">היסטוריית משימות:</h4>
+                            {expandedLogs[student.id].length === 0 ? (
+                              <p className="text-gray-400 italic text-xs">אין משימות מתועדות</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {expandedLogs[student.id].map(task => (
+                                  <Link
+                                    key={task.id}
+                                    to={createPageUrl('Tasks') + '?task=' + task.id}
+                                    className="flex justify-between items-center bg-white p-2 rounded shadow-sm hover:shadow-md transition-shadow"
+                                  >
+                                    <div>
+                                      <span className="text-xs text-gray-500 mr-2">
+                                        {new Date(task.created_date).toLocaleDateString('he-IL')}
+                                      </span>
+                                      <span className="text-sm font-medium">{task.description}</span>
+                                    </div>
+                                    <span
+                                      className={`text-xs px-2 py-1 rounded-full ${
+                                        task.status === 'הושלם'
+                                          ? 'bg-green-100 text-green-700'
+                                          : task.status === 'בטיפול'
+                                          ? 'bg-blue-100 text-blue-700'
+                                          : 'bg-yellow-100 text-yellow-700'
+                                      }`}
+                                    >
+                                      {task.status}
+                                    </span>
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   ))}
                 </tbody>
               </table>

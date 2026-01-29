@@ -637,66 +637,103 @@ export default function PipelineDashboard() {
             </div>
           </div>
 
-          {/* שיחות מתוזמנות להיום */}
+          {/* שיחות */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col" style={{ borderRadius: 'var(--crm-border-radius)' }}>
             <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
               <div className="flex items-center gap-2">
                 <CheckSquare size={16} className="text-gray-400" />
-                <h2 className="font-bold text-base text-[var(--crm-text)]">שיחות להיום</h2>
+                <h2 className="font-bold text-base text-[var(--crm-text)]">שיחות</h2>
               </div>
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-bold"
-                style={{ backgroundColor: 'var(--crm-accent)', opacity: 0.2, color: 'var(--crm-accent)' }}
+              <Link
+                to={createPageUrl('Tasks')}
+                className="text-xs text-[var(--crm-primary)] hover:underline"
               >
-                {todaysTasks.length}
-              </span>
+                כל השיחות
+              </Link>
             </div>
 
-            <div className="p-4 flex-grow overflow-y-auto max-h-[280px]">
-              {todaysTasks.length > 0 ? (
-                <div className="space-y-3">
-                  {todaysTasks.map(task => (
-                    <div
-                      key={task.id}
-                      className="group p-3 border border-gray-100 rounded-xl hover:shadow-md hover:border-[var(--crm-primary)] transition-all bg-white flex items-start gap-3"
-                    >
-                      <div
-                        className={`mt-1.5 w-4 h-4 rounded-full border-2 flex-shrink-0 transition-colors ${
-                          task.status === 'הושלם' 
-                            ? 'bg-green-500 border-green-500' 
-                            : 'border-gray-300 group-hover:border-[var(--crm-primary)]'
-                        }`}
-                      />
-                      <div className="flex-grow">
-                        <p className={`text-sm font-bold ${task.status === 'הושלם' ? 'text-gray-400 line-through' : 'text-[var(--crm-text)]'}`}>
-                          {task.name}
-                        </p>
-                        {task.student_name && (
-                          <p className="text-xs text-gray-400 mt-1">{task.student_name}</p>
-                        )}
+            <div className="p-4 flex-grow overflow-y-auto max-h-[380px] space-y-4">
+              {/* שיחות להיום */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-gray-600">שיחות להיום</h4>
+                  <Link
+                    to={createPageUrl('Tasks') + '?date=today'}
+                    className="text-xs text-[var(--crm-primary)] hover:underline"
+                  >
+                    צפה
+                  </Link>
+                </div>
+                {todaysTasks.length === 0 ? (
+                  <p className="text-xs text-gray-400">אין שיחות להיום</p>
+                ) : (
+                  <div className="space-y-2">
+                    {todaysTasks.slice(0, 2).map(task => (
+                      <div key={task.id} className="p-2 bg-gray-50 rounded-lg text-xs">
+                        <p className="font-medium text-[var(--crm-text)]">{task.name}</p>
+                        {task.student_name && <p className="text-gray-500">{task.student_name}</p>}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-48 text-gray-400 text-center">
-                  <div className="p-4 bg-gray-50 rounded-full mb-3">
-                    <CheckSquare size={24} className="text-gray-300" />
-                    </div>
-                    <p className="text-sm">אין שיחות מתוזמנות להיום</p>
-                  <p className="text-xs text-gray-400 mt-1">נראה שהכל בשליטה!</p>
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-            <Link to={createPageUrl('Tasks')}>
-              <button
-                className="w-full p-4 text-center text-sm font-medium border-t border-gray-50 hover:bg-gray-50 transition-colors rounded-b-2xl"
-                style={{ color: 'var(--crm-primary)' }}
-              >
-                לכל השיחות ({tasks.length})
-              </button>
-            </Link>
+              {/* שיחות מתוזמנות */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-gray-600">שיחות מתוזמנות</h4>
+                  <Link
+                    to={createPageUrl('Tasks') + '?status=בבדיקה'}
+                    className="text-xs text-[var(--crm-primary)] hover:underline"
+                  >
+                    צפה
+                  </Link>
+                </div>
+                {tasks.filter(t => t.scheduled_date && t.status !== 'הושלם').length === 0 ? (
+                  <p className="text-xs text-gray-400">אין שיחות מתוזמנות</p>
+                ) : (
+                  <div className="space-y-2">
+                    {tasks.filter(t => t.scheduled_date && t.status !== 'הושלם').slice(0, 2).map(task => (
+                      <div key={task.id} className="p-2 bg-gray-50 rounded-lg text-xs flex justify-between">
+                        <span className="font-medium text-[var(--crm-text)]">{task.student_name || task.name}</span>
+                        <span className="text-gray-500">{new Date(task.scheduled_date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' })}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* שיחות היכרות ללידים חדשים */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-gray-600">שיחות היכרות ללידים חדשים</h4>
+                  <Link
+                    to={createPageUrl('Tasks') + '?search=שיחת היכרות'}
+                    className="text-xs text-[var(--crm-primary)] hover:underline"
+                  >
+                    צפה
+                  </Link>
+                </div>
+                {tasks.filter(t => t.name?.includes('שיחת היכרות') && t.status !== 'הושלם' && t.status !== 'אבוד').length === 0 ? (
+                  <p className="text-xs text-gray-400">אין שיחות היכרות</p>
+                ) : (
+                  <div className="space-y-2">
+                    {tasks.filter(t => t.name?.includes('שיחת היכרות') && t.status !== 'הושלם' && t.status !== 'אבוד').slice(0, 3).map(task => (
+                      <div key={task.id} className="p-2 bg-gray-50 rounded-lg text-xs flex justify-between items-center">
+                        <div className="flex-1">
+                          <span className="font-medium text-[var(--crm-text)] block">{task.student_name || 'ללא שם'}</span>
+                          {task.scheduled_date && (
+                            <span className="text-gray-400 text-xs">
+                              {new Date(task.scheduled_date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
         </div>

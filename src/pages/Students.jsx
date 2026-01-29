@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
 import { Users, Plus, Search, Filter, Phone, Mail, Tag, Calendar, Trash2, Edit, X, Loader2, Grid, List } from 'lucide-react';
@@ -647,125 +649,127 @@ export default function Students() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {filteredStudents.map(student => (
-                    <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(student.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedIds([...selectedIds, student.id]);
-                            } else {
-                              setSelectedIds(selectedIds.filter(id => id !== student.id));
-                            }
-                          }}
-                          className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-sm font-medium text-[var(--crm-text)]">{student.full_name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{student.phone}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{student.email}</td>
-                      <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          {student.courses && student.courses.length > 0 ? (
-                            student.courses.map((course, idx) => (
-                              <div key={idx} className="flex items-center gap-2 text-sm">
-                                <span className="font-medium text-[var(--crm-text)]">{course.course_name}</span>
-                                <span
-                                  className="inline-block px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                                  style={{ backgroundColor: getStatusColor(course.status) }}
-                                >
-                                  {course.status}
-                                </span>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="flex items-center gap-2 text-sm">
-                              {student.course_name && (
-                                <>
-                                  <span className="font-medium text-[var(--crm-text)]">{student.course_name}</span>
+                    <React.Fragment key={student.id}>
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(student.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds([...selectedIds, student.id]);
+                              } else {
+                                setSelectedIds(selectedIds.filter(id => id !== student.id));
+                              }
+                            }}
+                            className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium text-[var(--crm-text)]">{student.full_name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{student.phone}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{student.email}</td>
+                        <td className="px-4 py-3">
+                          <div className="space-y-1">
+                            {student.courses && student.courses.length > 0 ? (
+                              student.courses.map((course, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-sm">
+                                  <span className="font-medium text-[var(--crm-text)]">{course.course_name}</span>
                                   <span
                                     className="inline-block px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                                    style={{ backgroundColor: getStatusColor(student.status) }}
+                                    style={{ backgroundColor: getStatusColor(course.status) }}
                                   >
-                                    {student.status}
+                                    {course.status}
                                   </span>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {student.payment_number && student.total_payments 
-                          ? `${student.payment_number}/${student.total_payments} (${student.total_payments - student.payment_number} נותרו)`
-                          : '-'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => toggleLogs(student.id)}
-                          className="text-sm text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 underline"
-                        >
-                          {loadingLogs[student.id] ? 'טוען...' : expandedLogs[student.id] ? 'סגור' : 'היסטוריה'}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => openModal(student)}
-                            className="text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(student.id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {expandedLogs[student.id] && (
-                      <tr>
-                        <td colSpan="8" className="px-4 py-3 bg-gray-50">
-                          <div className="text-sm">
-                            <h4 className="font-bold text-gray-700 mb-2">היסטוריית משימות:</h4>
-                            {expandedLogs[student.id].length === 0 ? (
-                              <p className="text-gray-400 italic text-xs">אין משימות מתועדות</p>
+                                </div>
+                              ))
                             ) : (
-                              <div className="space-y-2">
-                                {expandedLogs[student.id].map(task => (
-                                  <Link
-                                    key={task.id}
-                                    to={createPageUrl('Tasks') + '?task=' + task.id}
-                                    className="flex justify-between items-center bg-white p-2 rounded shadow-sm hover:shadow-md transition-shadow"
-                                  >
-                                    <div>
-                                      <span className="text-xs text-gray-500 mr-2">
-                                        {new Date(task.created_date).toLocaleDateString('he-IL')}
-                                      </span>
-                                      <span className="text-sm font-medium">{task.description}</span>
-                                    </div>
+                              <div className="flex items-center gap-2 text-sm">
+                                {student.course_name && (
+                                  <>
+                                    <span className="font-medium text-[var(--crm-text)]">{student.course_name}</span>
                                     <span
-                                      className={`text-xs px-2 py-1 rounded-full ${
-                                        task.status === 'הושלם'
-                                          ? 'bg-green-100 text-green-700'
-                                          : task.status === 'בטיפול'
-                                          ? 'bg-blue-100 text-blue-700'
-                                          : 'bg-yellow-100 text-yellow-700'
-                                      }`}
+                                      className="inline-block px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                                      style={{ backgroundColor: getStatusColor(student.status) }}
                                     >
-                                      {task.status}
+                                      {student.status}
                                     </span>
-                                  </Link>
-                                ))}
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
                         </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {student.payment_number && student.total_payments 
+                            ? `${student.payment_number}/${student.total_payments} (${student.total_payments - student.payment_number} נותרו)`
+                            : '-'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => toggleLogs(student.id)}
+                            className="text-sm text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 underline"
+                          >
+                            {loadingLogs[student.id] ? 'טוען...' : expandedLogs[student.id] ? 'סגור' : 'היסטוריה'}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openModal(student)}
+                              className="text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(student.id)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
-                    )}
+                      {expandedLogs[student.id] && (
+                        <tr>
+                          <td colSpan="8" className="px-4 py-3 bg-gray-50">
+                            <div className="text-sm">
+                              <h4 className="font-bold text-gray-700 mb-2">היסטוריית משימות:</h4>
+                              {expandedLogs[student.id].length === 0 ? (
+                                <p className="text-gray-400 italic text-xs">אין משימות מתועדות</p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {expandedLogs[student.id].map(task => (
+                                    <Link
+                                      key={task.id}
+                                      to={createPageUrl('Tasks') + '?task=' + task.id}
+                                      className="flex justify-between items-center bg-white p-2 rounded shadow-sm hover:shadow-md transition-shadow"
+                                    >
+                                      <div>
+                                        <span className="text-xs text-gray-500 mr-2">
+                                          {new Date(task.created_date).toLocaleDateString('he-IL')}
+                                        </span>
+                                        <span className="text-sm font-medium">{task.description}</span>
+                                      </div>
+                                      <span
+                                        className={`text-xs px-2 py-1 rounded-full ${
+                                          task.status === 'הושלם'
+                                            ? 'bg-green-100 text-green-700'
+                                            : task.status === 'בטיפול'
+                                            ? 'bg-blue-100 text-blue-700'
+                                            : 'bg-yellow-100 text-yellow-700'
+                                        }`}
+                                      >
+                                        {task.status}
+                                      </span>
+                                    </Link>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>

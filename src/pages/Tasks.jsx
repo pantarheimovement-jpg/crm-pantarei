@@ -8,7 +8,7 @@ import ImportModal from '../components/shared/ImportModal';
 
 export default function Tasks() {
   const [tasks, setTasks] = useState([]);
-  const [organizations, setOrganizations] = useState([]);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -19,12 +19,10 @@ export default function Tasks() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [formData, setFormData] = useState({
     description: '',
-    assigned_to: '',
-    organization_id: '',
-    organization_name: '',
-    status: 'פתוח',
-    due_date: '',
-    priority: 'בינונית'
+    student_id: '',
+    student_name: '',
+    status: 'בבדיקה',
+    scheduled_date: ''
   });
   const [saving, setSaving] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -36,12 +34,12 @@ export default function Tasks() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [tasksData, orgsData] = await Promise.all([
+      const [tasksData, studentsData] = await Promise.all([
         base44.entities.Task.list('-created_date'),
-        base44.entities.Organization.list()
+        base44.entities.Student.list()
       ]);
       setTasks(tasksData || []);
-      setOrganizations(orgsData || []);
+      setStudents(studentsData || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -52,24 +50,24 @@ export default function Tasks() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.description.trim()) {
-      alert('אנא הזיני תיאור משימה');
+      alert('אנא הזיני תיאור');
       return;
     }
 
     setSaving(true);
     try {
-      const selectedOrg = organizations.find(org => org.id === formData.organization_id);
+      const selectedStudent = students.find(s => s.id === formData.student_id);
       const dataToSave = {
         ...formData,
-        organization_name: selectedOrg ? selectedOrg.name : ''
+        student_name: selectedStudent ? selectedStudent.full_name : ''
       };
 
       if (selectedTask) {
         await base44.entities.Task.update(selectedTask.id, dataToSave);
-        alert('המשימה עודכנה בהצלחה!');
+        alert('השיחה עודכנה בהצלחה!');
       } else {
         await base44.entities.Task.create(dataToSave);
-        alert('המשימה נוספה בהצלחה!');
+        alert('השיחה נוספה בהצלחה!');
       }
       setShowAddModal(false);
       setShowEditModal(false);
@@ -78,7 +76,7 @@ export default function Tasks() {
       loadData();
     } catch (error) {
       console.error('Error saving task:', error);
-      alert('שגיאה בשמירת המשימה');
+      alert('שגיאה בשמירת השיחה');
     } finally {
       setSaving(false);
     }
@@ -123,24 +121,22 @@ export default function Tasks() {
 
   const handleToggleStatus = async (task) => {
     try {
-      const newStatus = task.status === 'הושלם' ? 'פתוח' : 'הושלם';
+      const newStatus = task.status === 'הושלם' ? 'בבדיקה' : 'הושלם';
       await base44.entities.Task.update(task.id, { ...task, status: newStatus });
       loadData();
     } catch (error) {
       console.error('Error updating task status:', error);
-      alert('שגיאה בעדכון סטטוס המשימה');
+      alert('שגיאה בעדכון סטטוס');
     }
   };
 
   const resetForm = () => {
     setFormData({
       description: '',
-      assigned_to: '',
-      organization_id: '',
-      organization_name: '',
-      status: 'פתוח',
-      due_date: '',
-      priority: 'בינונית'
+      student_id: '',
+      student_name: '',
+      status: 'בבדיקה',
+      scheduled_date: ''
     });
   };
 
@@ -148,12 +144,10 @@ export default function Tasks() {
     setSelectedTask(task);
     setFormData({
       description: task.description || '',
-      assigned_to: task.assigned_to || '',
-      organization_id: task.organization_id || '',
-      organization_name: task.organization_name || '',
-      status: task.status || 'פתוח',
-      due_date: task.due_date || '',
-      priority: task.priority || 'בינונית'
+      student_id: task.student_id || '',
+      student_name: task.student_name || '',
+      status: task.status || 'בבדיקה',
+      scheduled_date: task.scheduled_date || ''
     });
     setShowEditModal(true);
   };
@@ -169,27 +163,24 @@ export default function Tasks() {
       }
 
       try {
-        // Try to link organization
-        let orgId = '';
-        let orgName = '';
-        if (item.organization_name) {
-          const org = organizations.find(o => o.name.toLowerCase() === item.organization_name.toLowerCase());
-          if (org) {
-            orgId = org.id;
-            orgName = org.name;
+        let studentId = '';
+        let studentName = '';
+        if (item.student_name) {
+          const student = students.find(s => s.full_name.toLowerCase() === item.student_name.toLowerCase());
+          if (student) {
+            studentId = student.id;
+            studentName = student.full_name;
           } else {
-            orgName = item.organization_name;
+            studentName = item.student_name;
           }
         }
 
         await base44.entities.Task.create({
           description: item.description,
-          assigned_to: item.assigned_to || '',
-          organization_id: orgId,
-          organization_name: orgName,
-          status: item.status || 'פתוח',
-          priority: item.priority || 'בינונית',
-          due_date: item.due_date || ''
+          student_id: studentId,
+          student_name: studentName,
+          status: item.status || 'בבדיקה',
+          scheduled_date: item.scheduled_date || ''
         });
         successCount++;
       } catch (error) {
@@ -203,14 +194,12 @@ export default function Tasks() {
   };
 
   const exportToCSV = () => {
-    const headers = ['תיאור', 'מוקצה ל', 'ארגון', 'סטטוס', 'עדיפות', 'תאריך יעד'];
+    const headers = ['תיאור', 'משתתף', 'סטטוס', 'תאריך מתוזמן'];
     const rows = filteredTasks.map(task => [
       task.description,
-      task.assigned_to || '',
-      task.organization_name || '',
+      task.student_name || '',
       task.status,
-      task.priority || '',
-      task.due_date || ''
+      task.scheduled_date || ''
     ]);
 
     const csvContent = [
@@ -221,41 +210,27 @@ export default function Tasks() {
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `tasks_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `calls_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
 
-  const getPriorityColor = (priority) => {
-    const colors = {
-      'נמוכה': 'bg-blue-100 text-blue-800',
-      'בינונית': 'bg-yellow-100 text-yellow-800',
-      'גבוהה': 'bg-red-100 text-red-800'
-    };
-    return colors[priority] || 'bg-gray-100 text-gray-800';
-  };
 
-  const isOverdue = (dueDate) => {
-    if (!dueDate) return false;
-    return new Date(dueDate) < new Date() && dueDate !== '';
-  };
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = !searchTerm ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.assigned_to?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.organization_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      task.student_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
-    const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
 
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesSearch && matchesStatus;
   });
 
   const stats = {
-    open: tasks.filter(t => t.status === 'פתוח').length,
-    inProgress: tasks.filter(t => t.status === 'בטיפול').length,
+    answered: tasks.filter(t => t.status === 'ענתה').length,
+    notAnswered: tasks.filter(t => t.status === 'לא ענתה').length,
     completed: tasks.filter(t => t.status === 'הושלם').length,
-    overdue: tasks.filter(t => t.status !== 'הושלם' && isOverdue(t.due_date)).length
+    scheduled: tasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) >= new Date() && t.status !== 'הושלם').length
   };
 
   return (
@@ -266,8 +241,8 @@ export default function Tasks() {
             <div className="flex items-center gap-3">
               <CheckSquare className="w-8 h-8 text-[#005e6c]" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">משימות</h1>
-                <p className="mt-1 text-sm text-gray-500">{filteredTasks.length} משימות</p>
+                <h1 className="text-3xl font-bold text-gray-900">שיחות ופגישות</h1>
+                <p className="mt-1 text-sm text-gray-500">{filteredTasks.length} שיחות</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -299,7 +274,7 @@ export default function Tasks() {
                 className="px-4 py-2 text-sm font-medium text-white bg-[#005e6c] rounded-lg hover:bg-[#004a54] flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                משימה חדשה
+                שיחה חדשה
               </button>
             </div>
           </div>
@@ -310,20 +285,20 @@ export default function Tasks() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-sm p-4">
-            <p className="text-sm text-gray-600">פתוחות</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.open}</p>
+            <p className="text-sm text-gray-600">ענתה</p>
+            <p className="text-2xl font-bold text-green-600">{stats.answered}</p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
-            <p className="text-sm text-gray-600">בטיפול</p>
-            <p className="text-2xl font-bold text-yellow-600">{stats.inProgress}</p>
+            <p className="text-sm text-gray-600">לא ענתה</p>
+            <p className="text-2xl font-bold text-red-600">{stats.notAnswered}</p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
             <p className="text-sm text-gray-600">הושלמו</p>
-            <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+            <p className="text-2xl font-bold text-blue-600">{stats.completed}</p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
-            <p className="text-sm text-gray-600">באיחור</p>
-            <p className="text-2xl font-bold text-red-600">{stats.overdue}</p>
+            <p className="text-sm text-gray-600">מתוזמנות</p>
+            <p className="text-2xl font-bold text-purple-600">{stats.scheduled}</p>
           </div>
         </div>
 
@@ -360,20 +335,23 @@ export default function Tasks() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
             >
               <option value="all">כל הסטטוסים</option>
-              <option value="פתוח">פתוח</option>
-              <option value="בטיפול">בטיפול</option>
+              <option value="ענתה">ענתה</option>
+              <option value="לא ענתה">לא ענתה</option>
+              <option value="לא רלוונטי">לא רלוונטי</option>
+              <option value="בבדיקה">בבדיקה</option>
               <option value="הושלם">הושלם</option>
+              <option value="אבוד">אבוד</option>
             </select>
 
             <select
-              value={filterPriority}
-              onChange={(e) => setFilterPriority(e.target.value)}
+              value={formData.student_id}
+              onChange={(e) => setFormData({...formData, student_id: e.target.value})}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
             >
-              <option value="all">כל העדיפויות</option>
-              <option value="נמוכה">נמוכה</option>
-              <option value="בינונית">בינונית</option>
-              <option value="גבוהה">גבוהה</option>
+              <option value="">כל המשתתפים</option>
+              {students.map(student => (
+                <option key={student.id} value={student.id}>{student.full_name}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -384,10 +362,10 @@ export default function Tasks() {
             <Loader2 className="w-8 h-8 animate-spin text-[#005e6c]" />
           </div>
         ) : filteredTasks.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-            <CheckSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">לא נמצאו משימות</p>
-          </div>
+        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+          <CheckSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-500">לא נמצאו שיחות</p>
+        </div>
         ) : (
           <div className="space-y-3">
             {filteredTasks.map((task) => (
@@ -422,17 +400,14 @@ export default function Tasks() {
                     </h3>
                     
                     <div className="flex flex-wrap items-center gap-2 mt-2 text-sm">
-                      {task.assigned_to && (
-                        <span className="text-gray-600">מוקצה ל: {task.assigned_to}</span>
+                      {task.student_name && (
+                        <span className="text-gray-600">משתתף: {task.student_name}</span>
                       )}
-                      {task.organization_name && (
-                        <span className="text-gray-600">• {task.organization_name}</span>
-                      )}
-                      {task.due_date && (
-                        <span className={`flex items-center gap-1 ${isOverdue(task.due_date) && task.status !== 'הושלם' ? 'text-red-600' : 'text-gray-600'}`}>
+                      {task.scheduled_date && (
+                        <span className={`flex items-center gap-1 ${new Date(task.scheduled_date) <= new Date() && task.status !== 'הושלם' ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
                           <Calendar className="w-4 h-4" />
-                          {new Date(task.due_date).toLocaleDateString('he-IL')}
-                          {isOverdue(task.due_date) && task.status !== 'הושלם' && (
+                          {new Date(task.scheduled_date).toLocaleDateString('he-IL')}
+                          {new Date(task.scheduled_date) <= new Date() && task.status !== 'הושלם' && (
                             <AlertCircle className="w-4 h-4" />
                           )}
                         </span>
@@ -440,10 +415,13 @@ export default function Tasks() {
                     </div>
 
                     <div className="flex items-center gap-2 mt-2">
-                      <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(task.priority)}`}>
-                        {task.priority}
-                      </span>
-                      <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        task.status === 'ענתה' ? 'bg-green-100 text-green-800' :
+                        task.status === 'לא ענתה' ? 'bg-red-100 text-red-800' :
+                        task.status === 'הושלם' ? 'bg-blue-100 text-blue-800' :
+                        task.status === 'אבוד' ? 'bg-gray-100 text-gray-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
                         {task.status}
                       </span>
                     </div>
@@ -476,14 +454,12 @@ export default function Tasks() {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onImport={handleImport}
-        entityName="משימות"
+        entityName="שיחות"
         columns={[
-          { key: 'description', label: 'תיאור המשימה', required: true, example: 'שיחת מעקב' },
-          { key: 'assigned_to', label: 'מוקצה ל', required: false, example: 'דנה' },
-          { key: 'organization_name', label: 'שם הארגון', required: false, example: 'חברת דוגמה' },
-          { key: 'status', label: 'סטטוס', required: false, example: 'Open' },
-          { key: 'priority', label: 'עדיפות', required: false, example: 'High' },
-          { key: 'due_date', label: 'תאריך יעד', required: false, example: '2023-11-01' }
+          { key: 'description', label: 'תיאור השיחה', required: true, example: 'שיחת היכרות' },
+          { key: 'student_name', label: 'שם משתתף', required: false, example: 'שרה כהן' },
+          { key: 'status', label: 'סטטוס', required: false, example: 'ענתה' },
+          { key: 'scheduled_date', label: 'תאריך מתוזמן', required: false, example: '2026-02-01' }
         ]}
       />
 
@@ -493,7 +469,7 @@ export default function Tasks() {
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h3 className="text-xl font-bold text-gray-900">
-                {selectedTask ? 'ערוך משימה' : 'משימה חדשה'}
+                {selectedTask ? 'ערוך שיחה' : 'שיחה חדשה'}
               </h3>
               <button
                 onClick={() => {
@@ -512,7 +488,7 @@ export default function Tasks() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    תיאור המשימה *
+                    תיאור השיחה/פגישה *
                   </label>
                   <textarea
                     value={formData.description}
@@ -524,14 +500,18 @@ export default function Tasks() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">מוקצה ל</label>
-                    <input
-                      type="text"
-                      value={formData.assigned_to}
-                      onChange={(e) => setFormData({...formData, assigned_to: e.target.value})}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">משתתף</label>
+                    <select
+                      value={formData.student_id}
+                      onChange={(e) => setFormData({...formData, student_id: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
-                    />
+                    >
+                      <option value="">בחר משתתף</option>
+                      {students.map(student => (
+                        <option key={student.id} value={student.id}>{student.full_name}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
@@ -541,47 +521,23 @@ export default function Tasks() {
                       onChange={(e) => setFormData({...formData, status: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
                     >
-                      <option value="פתוח">פתוח</option>
-                      <option value="בטיפול">בטיפול</option>
+                      <option value="בבדיקה">בבדיקה</option>
+                      <option value="ענתה">ענתה</option>
+                      <option value="לא ענתה">לא ענתה</option>
+                      <option value="לא רלוונטי">לא רלוונטי</option>
                       <option value="הושלם">הושלם</option>
+                      <option value="אבוד">אבוד</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">עדיפות</label>
-                    <select
-                      value={formData.priority}
-                      onChange={(e) => setFormData({...formData, priority: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
-                    >
-                      <option value="נמוכה">נמוכה</option>
-                      <option value="בינונית">בינונית</option>
-                      <option value="גבוהה">גבוהה</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">תאריך יעד</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">תאריך מתוזמן</label>
                     <input
                       type="date"
-                      value={formData.due_date}
-                      onChange={(e) => setFormData({...formData, due_date: e.target.value})}
+                      value={formData.scheduled_date}
+                      onChange={(e) => setFormData({...formData, scheduled_date: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
                     />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ארגון (אופציונלי)</label>
-                    <select
-                      value={formData.organization_id}
-                      onChange={(e) => setFormData({...formData, organization_id: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
-                    >
-                      <option value="">בחר ארגון</option>
-                      {organizations.map(org => (
-                        <option key={org.id} value={org.id}>{org.name}</option>
-                      ))}
-                    </select>
                   </div>
                 </div>
               </div>

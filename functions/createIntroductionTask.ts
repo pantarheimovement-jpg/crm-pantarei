@@ -9,16 +9,15 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Student data required' }, { status: 400 });
     }
 
-    // חישוב תאריך יעד - יומיים קדימה
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 2);
+    // חישוב תאריך מתוזמן - יומיים קדימה
+    const scheduledDate = new Date();
+    scheduledDate.setDate(scheduledDate.getDate() + 2);
 
-    // יצירת המשימה
+    // יצירת השיחה
     const task = await base44.asServiceRole.entities.Task.create({
       description: "שיחת היכרות",
-      status: "פתוח",
-      priority: "גבוהה",
-      due_date: dueDate.toISOString().split('T')[0],
+      status: "בבדיקה",
+      scheduled_date: scheduledDate.toISOString().split('T')[0],
       student_id: student.id,
       student_name: student.full_name
     });

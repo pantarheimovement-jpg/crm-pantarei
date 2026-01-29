@@ -50,14 +50,14 @@ export default function PipelineDashboard() {
       const [studentsData, coursesData, tasksData, introTasksData] = await Promise.all([
         base44.entities.Student.list('-created_date'),
         base44.entities.Course.list('-created_date'),
-        base44.entities.Task.list('-due_date'),
-        base44.entities.Task.filter({ description: "שיחת היכרות" }, '-due_date')
+        base44.entities.Task.list('-scheduled_date'),
+        base44.entities.Task.filter({ description: "שיחת היכרות" }, '-scheduled_date')
       ]);
       setStudents(studentsData || []);
       setCourses(coursesData || []);
       setTasks(tasksData || []);
       
-      const relevantIntroTasks = (introTasksData || []).filter(t => t.status !== "הושלם");
+      const relevantIntroTasks = (introTasksData || []).filter(t => t.status !== "הושלם" && t.status !== "אבוד");
       setIntroTasks(relevantIntroTasks);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -176,8 +176,8 @@ export default function PipelineDashboard() {
   const todaysTasks = useMemo(() => {
     const todayStr = new Date().toDateString();
     return tasks.filter(t => {
-      if (!t.due_date) return false;
-      return new Date(t.due_date).toDateString() === todayStr;
+      if (!t.scheduled_date) return false;
+      return new Date(t.scheduled_date).toDateString() === todayStr && t.status !== 'הושלם' && t.status !== 'אבוד';
     });
   }, [tasks]);
 
@@ -359,8 +359,8 @@ export default function PipelineDashboard() {
                 שיחות היכרות פתוחות ({introTasks.length})
               </h3>
               <p className="text-sm text-red-600 mt-1">
-                {introTasks.filter(t => new Date(t.due_date) <= new Date()).length > 0 
-                  ? `⚠️ יש ${introTasks.filter(t => new Date(t.due_date) <= new Date()).length} משימות שעבר תאריך היעד שלהן!`
+                {introTasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) <= new Date()).length > 0 
+                  ? `⚠️ יש ${introTasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) <= new Date()).length} שיחות שעבר התאריך המתוזמן!`
                   : 'יש לבצע שיחות היכרות ללידים חדשים'}
               </p>
             </div>
@@ -636,12 +636,12 @@ export default function PipelineDashboard() {
             </div>
           </div>
 
-          {/* משימות להיום */}
+          {/* שיחות מתוזמנות להיום */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col" style={{ borderRadius: 'var(--crm-border-radius)' }}>
             <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
               <div className="flex items-center gap-2">
                 <CheckSquare size={16} className="text-gray-400" />
-                <h2 className="font-bold text-base text-[var(--crm-text)]">משימות להיום</h2>
+                <h2 className="font-bold text-base text-[var(--crm-text)]">שיחות להיום</h2>
               </div>
               <span
                 className="text-xs px-2 py-0.5 rounded-full font-bold"
@@ -670,8 +670,8 @@ export default function PipelineDashboard() {
                         <p className={`text-sm font-medium ${task.status === 'הושלם' ? 'text-gray-400 line-through' : 'text-[var(--crm-text)]'}`}>
                           {task.description}
                         </p>
-                        {task.organization_name && (
-                          <p className="text-xs text-gray-400 mt-1">{task.organization_name}</p>
+                        {task.student_name && (
+                          <p className="text-xs text-gray-400 mt-1">{task.student_name}</p>
                         )}
                       </div>
                     </div>
@@ -681,8 +681,8 @@ export default function PipelineDashboard() {
                 <div className="flex flex-col items-center justify-center h-48 text-gray-400 text-center">
                   <div className="p-4 bg-gray-50 rounded-full mb-3">
                     <CheckSquare size={24} className="text-gray-300" />
-                  </div>
-                  <p className="text-sm">אין משימות פתוחות להיום</p>
+                    </div>
+                    <p className="text-sm">אין שיחות מתוזמנות להיום</p>
                   <p className="text-xs text-gray-400 mt-1">נראה שהכל בשליטה!</p>
                 </div>
               )}
@@ -693,7 +693,7 @@ export default function PipelineDashboard() {
                 className="w-full p-4 text-center text-sm font-medium border-t border-gray-50 hover:bg-gray-50 transition-colors rounded-b-2xl"
                 style={{ color: 'var(--crm-primary)' }}
               >
-                לכל המשימות ({tasks.length})
+                לכל השיחות ({tasks.length})
               </button>
             </Link>
           </div>

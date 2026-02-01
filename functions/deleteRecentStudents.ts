@@ -9,20 +9,24 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const { date } = await req.json();
+    const { minutes } = await req.json();
     
-    // אם לא צוין תאריך, משתמשים בתאריך של היום
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    // אם לא צוין, ברירת מחדל 30 דקות
+    const minutesAgo = minutes || 30;
     
-    console.log(`🔍 מחפש משתתפים שנוצרו בתאריך: ${targetDate}`);
+    const now = new Date();
+    const cutoffTime = new Date(now.getTime() - minutesAgo * 60 * 1000);
+    
+    console.log(`🔍 מחפש משתתפים שנוצרו ב-${minutesAgo} דקות האחרונות`);
+    console.log(`⏰ זמן גבול: ${cutoffTime.toISOString()}`);
 
     // מושך את כל המשתתפים
     const allStudents = await base44.asServiceRole.entities.Student.list();
     
-    // מסנן רק את אלו שנוצרו בתאריך המבוקש
+    // מסנן רק את אלו שנוצרו בזמן האחרון
     const studentsToDelete = allStudents.filter(student => {
-      const createdDate = student.created_date?.split('T')[0];
-      return createdDate === targetDate;
+      const createdDate = new Date(student.created_date);
+      return createdDate >= cutoffTime;
     });
 
     console.log(`📋 נמצאו ${studentsToDelete.length} משתתפים למחיקה`);
@@ -30,7 +34,7 @@ Deno.serve(async (req) => {
     if (studentsToDelete.length === 0) {
       return Response.json({
         success: true,
-        message: `לא נמצאו משתתפים שנוצרו בתאריך ${targetDate}`,
+        message: `לא נמצאו משתתפים שנוצרו ב-${minutesAgo} דקות האחרונות`,
         deleted_count: 0,
         deleted_names: []
       });
@@ -56,7 +60,7 @@ Deno.serve(async (req) => {
       message: `נמחקו ${deletedCount} משתתפים בהצלחה`,
       deleted_count: deletedCount,
       deleted_names: deletedNames,
-      target_date: targetDate
+      minutes_ago: minutesAgo
     });
 
   } catch (error) {

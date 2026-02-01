@@ -66,17 +66,31 @@ export default function ImportStudents({ onImportComplete }) {
       };
 
       const parseDate = (dateStr) => {
-      if (!dateStr) return null;
-      // תמיכה בפורמט dd/mm/yyyy או dd.mm.yyyy
-      const parts = dateStr.split(/[\/\-\.]/);
-      if (parts.length === 3) {
-      let day = parseInt(parts[0], 10);
-      let month = parseInt(parts[1], 10) - 1; // JS months are 0-11
-      let year = parseInt(parts[2], 10);
-      if (year < 100) year += 2000; // תמיכה בשנה דו-ספרתית
-      return new Date(year, month, day);
-      }
-      return new Date(dateStr); // fallback
+        if (!dateStr) return null;
+
+        // טיפול בפורמט "HH.MM dd/mm/yyyy" או "dd/mm/yyyy HH:MM"
+        let cleanDate = dateStr.trim();
+
+        // אם יש שעה, הסר אותה
+        if (cleanDate.includes(' ')) {
+          const parts = cleanDate.split(' ');
+          // מצא את החלק שנראה כמו תאריך (מכיל /)
+          cleanDate = parts.find(p => p.includes('/')) || parts[parts.length - 1];
+        }
+
+        // פרסינג של dd/mm/yyyy
+        const dateParts = cleanDate.split(/[\/\-\.]/);
+        if (dateParts.length === 3) {
+          let day = parseInt(dateParts[0], 10);
+          let month = parseInt(dateParts[1], 10) - 1; // JS months are 0-11
+          let year = parseInt(dateParts[2], 10);
+          if (year < 100) year += 2000;
+
+          const parsed = new Date(year, month, day);
+          if (!isNaN(parsed)) return parsed;
+        }
+
+        return new Date(dateStr); // fallback
       };
 
       const parseHtmlTable = (htmlContent) => {
@@ -100,7 +114,7 @@ export default function ImportStudents({ onImportComplete }) {
         if (h.includes('טלפון') || h.includes('phone') || h.includes('נייד')) headerMap.phone = i;
         if (h.includes('מייל') || h.includes('email') || h.includes('דוא"ל')) headerMap.email = i;
         if (h.includes('קורס') || h.includes('סדנא') || h.includes('מוצר') || h.includes('תיאור')) headerMap.course = i;
-        if (h.includes('תאריך') || h.includes('date')) headerMap.date = i;
+        if (h.includes('תאריך חיובם') || h.includes('תאריך') || h.includes('date')) headerMap.date = i;
       });
     }
     

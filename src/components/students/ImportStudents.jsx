@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Check, AlertCircle, Loader2, History, Link2, Plus, X } from "lucide-react";
+import { Upload, FileText, Check, AlertCircle, Loader2, History, Link2, Plus, X, Calendar } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
   Dialog,
@@ -62,10 +62,24 @@ export default function ImportStudents({ onImportComplete }) {
       }
       
       return false;
-    });
-  };
+      });
+      };
 
-  const parseHtmlTable = (htmlContent) => {
+      const parseDate = (dateStr) => {
+      if (!dateStr) return null;
+      // תמיכה בפורמט dd/mm/yyyy או dd.mm.yyyy
+      const parts = dateStr.split(/[\/\-\.]/);
+      if (parts.length === 3) {
+      let day = parseInt(parts[0], 10);
+      let month = parseInt(parts[1], 10) - 1; // JS months are 0-11
+      let year = parseInt(parts[2], 10);
+      if (year < 100) year += 2000; // תמיכה בשנה דו-ספרתית
+      return new Date(year, month, day);
+      }
+      return new Date(dateStr); // fallback
+      };
+
+      const parseHtmlTable = (htmlContent) => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
     const rows = Array.from(doc.querySelectorAll('tr'));
@@ -79,11 +93,14 @@ export default function ImportStudents({ onImportComplete }) {
     if (headerRow) {
       const headers = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim().toLowerCase());
       headers.forEach((h, i) => {
-        if (h.includes('שם') || h.includes('name')) headerMap.full_name = i;
+        // זיהוי מדויק של "שם הלקוח" - לא "שם הכרטיס"
+        if (h === 'שם הלקוח' || h === 'שם לקוח') headerMap.full_name = i;
+        else if (h.includes('שם') && !h.includes('כרטיס') && !h.includes('סליקה') && !h.includes('קורס') && headerMap.full_name === undefined) headerMap.full_name = i;
+        
         if (h.includes('טלפון') || h.includes('phone') || h.includes('נייד')) headerMap.phone = i;
         if (h.includes('מייל') || h.includes('email') || h.includes('דוא"ל')) headerMap.email = i;
-        if (h.includes('קורס') || h.includes('סדנא') || h.includes('מוצר')) headerMap.course = i;
-        if (h.includes('סטטוס') || h.includes('status')) headerMap.status = i;
+        if (h.includes('קורס') || h.includes('סדנא') || h.includes('מוצר') || h.includes('תיאור')) headerMap.course = i;
+        if (h.includes('תאריך') || h.includes('date')) headerMap.date = i;
       });
     }
     

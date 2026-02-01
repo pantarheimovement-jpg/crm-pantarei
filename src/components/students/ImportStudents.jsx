@@ -178,15 +178,25 @@ export default function ImportStudents({ onImportComplete }) {
           if (start) start.setHours(0, 0, 0, 0);
           if (end) end.setHours(23, 59, 59, 999);
 
+          const beforeFilter = students.length;
           students = students.filter(s => {
-            if (!s.parsedDate || isNaN(s.parsedDate)) return true; // שמור אם אין תאריך
-            if (start && s.parsedDate < start) return false;
-            if (end && s.parsedDate > end) return false;
+            if (!s.parsedDate || isNaN(s.parsedDate)) {
+              console.log('תאריך לא תקין:', s.rawDate);
+              return false; // דלג על רשומות ללא תאריך תקין
+            }
+
+            const studentDate = new Date(s.parsedDate);
+            studentDate.setHours(0, 0, 0, 0);
+
+            if (start && studentDate < start) return false;
+            if (end && studentDate > end) return false;
             return true;
           });
 
+          console.log(`סונן ${beforeFilter} -> ${students.length} משתתפים`);
+
           if (students.length === 0) {
-            throw new Error("לא נמצאו משתתפים בטווח התאריכים שנבחר");
+            throw new Error(`לא נמצאו משתתפים בטווח התאריכים שנבחר (מתוך ${beforeFilter} רשומות בקובץ)`);
           }
         }
         // ---------------------------

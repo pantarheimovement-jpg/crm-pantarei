@@ -248,7 +248,7 @@ export default function ImportStudents({ onImportComplete }) {
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
           <input
             type="file"
-            accept=".html,.htm,.pdf,.xlsx,.xls,.csv"
+            accept=".html,.htm,.pdf,.xlsx,.xls,.csv,text/html,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
             onChange={handleFileUpload}
             className="hidden"
             id="student-upload"

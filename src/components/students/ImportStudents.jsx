@@ -23,6 +23,10 @@ export default function ImportStudents({ onImportComplete }) {
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   
+  // Date filters
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  
   // State for unmatched students dialog
   const [unmatchedStudents, setUnmatchedStudents] = useState([]);
   const [showMatchDialog, setShowMatchDialog] = useState(false);
@@ -95,10 +99,18 @@ export default function ImportStudents({ onImportComplete }) {
       const phone = headerMap.phone !== undefined ? getText(headerMap.phone) : getText(1);
       const email = headerMap.email !== undefined ? getText(headerMap.email) : getText(2);
       const course = headerMap.course !== undefined ? getText(headerMap.course) : "";
-      const status = headerMap.status !== undefined ? getText(headerMap.status) : "";
+      const rawDate = headerMap.date !== undefined ? getText(headerMap.date) : "";
       
-      if (full_name && (phone || email)) {
-        students.push({ full_name, phone, email, course, status });
+      // ולידציה: וודא ששם המשתתף אינו "סליקת אשראי" או טקסט לא רלוונטי
+      if (full_name && full_name !== "סליקת אשראי" && !full_name.includes('כרטיס') && (phone || email)) {
+        students.push({ 
+          full_name, 
+          phone, 
+          email, 
+          course, 
+          rawDate,
+          parsedDate: parseDate(rawDate) 
+        });
       }
     });
     
@@ -125,7 +137,29 @@ export default function ImportStudents({ onImportComplete }) {
         if (students.length === 0) {
           throw new Error("לא נמצאו נתונים בטבלה");
         }
-        
+
+        // --- סינון לפי תאריכים ---
+        if (startDate || endDate) {
+          const start = startDate ? new Date(startDate) : null;
+          const end = endDate ? new Date(endDate) : null;
+
+          // איפוס שעות להשוואה הוגנת
+          if (start) start.setHours(0, 0, 0, 0);
+          if (end) end.setHours(23, 59, 59, 999);
+
+          students = students.filter(s => {
+            if (!s.parsedDate || isNaN(s.parsedDate)) return true; // שמור אם אין תאריך
+            if (start && s.parsedDate < start) return false;
+            if (end && s.parsedDate > end) return false;
+            return true;
+          });
+
+          if (students.length === 0) {
+            throw new Error("לא נמצאו משתתפים בטווח התאריכים שנבחר");
+          }
+        }
+        // ---------------------------
+
         setIsUploading(false);
         setIsProcessing(true);
       } else {
@@ -259,7 +293,7 @@ export default function ImportStudents({ onImportComplete }) {
           full_name: student.full_name?.trim(),
           phone: student.phone || "",
           email: student.email || "",
-          status: student.status || "ליד חדש",
+          status: "רשום", // משתתפים ששילמו דרך Summit
           interest_area: student.course || ""
         };
 
@@ -303,6 +337,39 @@ export default function ImportStudents({ onImportComplete }) {
         <p className="text-gray-600 text-sm">
           העלה קובץ HTML, PDF או Excel והמערכת תייבא את המשתתפים אוטומטית.
         </p>
+
+        {/* סינון לפי תאריכים */}
+        <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Calendar className="w-4 h-4 inline ml-1" />
+              מתאריך
+            </label>
+            <input 
+              type="date" 
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Calendar className="w-4 h-4 inline ml-1" />
+              עד תאריך
+            </label>
+            <input 
+              type="date" 
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+          {(startDate || endDate) && (
+            <div className="col-span-2 text-sm text-blue-700 bg-blue-100 p-2 rounded">
+              ✓ יבוא רק משתתפים מ-{startDate || '...'} עד {endDate || '...'}
+            </div>
+          )}
+        </div>
 
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
           <input

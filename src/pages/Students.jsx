@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
-import { Users, Plus, Search, Filter, Phone, Mail, Tag, Calendar, Trash2, Edit, X, Loader2, Grid, List } from 'lucide-react';
+import { Users, Plus, Search, Filter, Phone, Mail, Tag, Calendar, Trash2, Edit, X, Loader2, Grid, List, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import ImportStudents from '../components/students/ImportStudents';
 
 export default function Students() {
   const { systemTexts, leadStatuses } = useSystemSettings();
@@ -21,6 +22,7 @@ export default function Students() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [expandedLogs, setExpandedLogs] = useState({});
   const [loadingLogs, setLoadingLogs] = useState({});
+  const [showImportCard, setShowImportCard] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -70,6 +72,11 @@ export default function Students() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadData = () => {
+    loadStudents();
+    loadCourses();
   };
 
   const loadCourses = async () => {
@@ -393,6 +400,15 @@ export default function Students() {
               </Button>
             )}
             <Button
+              onClick={() => setShowImportCard(!showImportCard)}
+              variant="outline"
+              className={showImportCard ? 'bg-blue-50 border-blue-300 text-blue-700' : ''}
+              style={{ borderRadius: 'var(--crm-button-radius)' }}
+            >
+              <Upload className="w-5 h-5 mr-2" />
+              ייבוא קובץ
+            </Button>
+            <Button
               onClick={() => openModal()}
               className="bg-[var(--crm-action)] text-[var(--crm-text)] hover:bg-[var(--crm-action)]/90"
               style={{ borderRadius: 'var(--crm-button-radius)' }}
@@ -402,6 +418,13 @@ export default function Students() {
             </Button>
           </div>
         </div>
+
+        {/* Import Card */}
+        {showImportCard && (
+          <div className="mb-6">
+            <ImportStudents onImportComplete={loadData} />
+          </div>
+        )}
 
         {/* Quick Filter Tabs */}
         <div className="flex gap-2 bg-white p-1 rounded-full shadow-sm mb-6" style={{ borderRadius: 'var(--crm-button-radius)' }}>

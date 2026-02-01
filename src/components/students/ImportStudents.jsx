@@ -61,6 +61,50 @@ export default function ImportStudents({ onImportComplete }) {
     });
   };
 
+  const parseHtmlTable = (htmlContent) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+    const rows = Array.from(doc.querySelectorAll('tr'));
+    
+    if (rows.length === 0) return [];
+    
+    // זיהוי headers
+    let headerMap = {};
+    const headerRow = rows.find(r => r.querySelectorAll('th').length > 0);
+    
+    if (headerRow) {
+      const headers = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim().toLowerCase());
+      headers.forEach((h, i) => {
+        if (h.includes('שם') || h.includes('name')) headerMap.full_name = i;
+        if (h.includes('טלפון') || h.includes('phone') || h.includes('נייד')) headerMap.phone = i;
+        if (h.includes('מייל') || h.includes('email') || h.includes('דוא"ל')) headerMap.email = i;
+        if (h.includes('קורס') || h.includes('סדנא') || h.includes('מוצר')) headerMap.course = i;
+        if (h.includes('סטטוס') || h.includes('status')) headerMap.status = i;
+      });
+    }
+    
+    // חילוץ נתונים מכל שורה
+    const students = [];
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      if (cells.length === 0) return;
+      
+      const getText = (idx) => cells[idx]?.textContent?.trim() || "";
+      
+      const full_name = headerMap.full_name !== undefined ? getText(headerMap.full_name) : getText(0);
+      const phone = headerMap.phone !== undefined ? getText(headerMap.phone) : getText(1);
+      const email = headerMap.email !== undefined ? getText(headerMap.email) : getText(2);
+      const course = headerMap.course !== undefined ? getText(headerMap.course) : "";
+      const status = headerMap.status !== undefined ? getText(headerMap.status) : "";
+      
+      if (full_name && (phone || email)) {
+        students.push({ full_name, phone, email, course, status });
+      }
+    });
+    
+    return students;
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -71,44 +115,59 @@ export default function ImportStudents({ onImportComplete }) {
     setPendingFileName(file.name);
 
     try {
-      // העלאת הקובץ
-      const uploadResult = await base44.integrations.Core.UploadFile({ file });
-      const file_url = uploadResult.file_url;
+      let students = [];
       
-      setIsUploading(false);
-      setIsProcessing(true);
+      // בדיקה אם זה HTML - parsing מקומי
+      if (file.type === "text/html" || file.name.endsWith(".html") || file.name.endsWith(".htm")) {
+        const text = await file.text();
+        students = parseHtmlTable(text);
+        
+        if (students.length === 0) {
+          throw new Error("לא נמצאו נתונים בטבלה");
+        }
+        
+        setIsUploading(false);
+        setIsProcessing(true);
+      } else {
+        // PDF/Excel/CSV - שליחה ל-API
+        const uploadResult = await base44.integrations.Core.UploadFile({ file });
+        const file_url = uploadResult.file_url;
+        
+        setIsUploading(false);
+        setIsProcessing(true);
 
-      // חילוץ נתונים מהקובץ
-      const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
-        file_url,
-        json_schema: {
-          type: "object",
-          properties: {
-            students: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  full_name: { type: "string", description: "שם מלא של המשתתף" },
-                  phone: { type: "string", description: "מספר טלפון" },
-                  email: { type: "string", description: "כתובת מייל" },
-                  course: { type: "string", description: "שם הקורס או תחום עניין" },
-                  status: { type: "string", description: "סטטוס - ליד חדש, רשום, וכו'" }
+        // חילוץ נתונים מהקובץ
+        const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
+          file_url,
+          json_schema: {
+            type: "object",
+            properties: {
+              students: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    full_name: { type: "string", description: "שם מלא של המשתתף" },
+                    phone: { type: "string", description: "מספר טלפון" },
+                    email: { type: "string", description: "כתובת מייל" },
+                    course: { type: "string", description: "שם הקורס או תחום עניין" },
+                    status: { type: "string", description: "סטטוס - ליד חדש, רשום, וכו'" }
+                  }
                 }
               }
             }
           }
+        });
+
+        if (extractResult.status === "error") {
+          throw new Error(extractResult.details || "שגיאה בחילוץ נתונים");
         }
-      });
 
-      if (extractResult.status === "error") {
-        throw new Error(extractResult.details || "שגיאה בחילוץ נתונים");
-      }
-
-      const students = extractResult.output?.students || [];
-      
-      if (students.length === 0) {
-        throw new Error("לא נמצאו משתתפים בקובץ");
+        students = extractResult.output?.students || [];
+        
+        if (students.length === 0) {
+          throw new Error("לא נמצאו משתתפים בקובץ");
+        }
       }
 
       // טען את כל המשתתפים הקיימים

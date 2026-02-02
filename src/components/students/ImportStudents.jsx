@@ -17,27 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function ImportStudents({ onImportComplete }) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [results, setResults] = useState(null);
-  const [error, setError] = useState(null);
-  
-  // Date filters
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  
-  // State for unmatched students dialog
-  const [unmatchedStudents, setUnmatchedStudents] = useState([]);
-  const [showMatchDialog, setShowMatchDialog] = useState(false);
-  const [existingStudents, setExistingStudents] = useState([]);
-  const [studentMatches, setStudentMatches] = useState({});
-  const [pendingFileName, setPendingFileName] = useState("");
+// ============================================
+// HELPER FUNCTIONS (Outside Component)
+// ============================================
 
-  const normalizePhone = (phone) => {
-    if (!phone) return "";
-    return phone.replace(/\D/g, '');
-  };
+const normalizePhone = (phone) => {
+  if (!phone) return "";
+  return phone.replace(/\D/g, '');
+};
 
   const checkDuplicate = (student, existingList) => {
     const normalizedPhone = normalizePhone(student.phone);

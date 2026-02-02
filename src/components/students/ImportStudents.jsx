@@ -257,6 +257,9 @@ export default function ImportStudents({ onImportComplete }) {
     const file = e.target.files[0];
     if (!file) return;
 
+    console.log("🟢 ========== START FILE UPLOAD ==========");
+    console.log(`📁 File: ${file.name}, Type: ${file.type}`);
+
     setIsUploading(true);
     setError(null);
     setResults(null);
@@ -267,51 +270,21 @@ export default function ImportStudents({ onImportComplete }) {
       
       // בדיקה אם זה HTML - parsing מקומי
       if (file.type === "text/html" || file.name.endsWith(".html") || file.name.endsWith(".htm")) {
+        console.log("🔵 Processing as HTML file");
         const text = await file.text();
         students = parseHtmlTable(text);
         
         if (students.length === 0) {
-          throw new Error("לא נמצאו נתונים בטבלה");
+          throw new Error("לא נמצאו נתונים תקינים בטבלה - בדוק את הקונסול לפרטים");
         }
 
+        console.log(`✅ Extracted ${students.length} students before filtering`);
+
         // --- סינון לפי תאריכים ---
-        if (startDate || endDate) {
-          const start = startDate ? new Date(startDate) : null;
-          const end = endDate ? new Date(endDate) : null;
+        students = filterStudentsByDate(students, startDate, endDate);
 
-          // איפוס שעות להשוואה הוגנת
-          if (start) start.setHours(0, 0, 0, 0);
-          if (end) end.setHours(23, 59, 59, 999);
-
-          const beforeFilter = students.length;
-          console.log(`🎯 Filtering ${beforeFilter} students by date range: ${startDate} to ${endDate}`);
-
-          students = students.filter(s => {
-            if (!s.parsedDate || isNaN(s.parsedDate)) {
-              console.log(`❌ Invalid date for ${s.full_name}: "${s.rawDate}"`);
-              return false; // דלג על רשומות ללא תאריך תקין
-            }
-
-            const studentDate = new Date(s.parsedDate);
-            studentDate.setHours(0, 0, 0, 0);
-
-            if (start && studentDate < start) {
-              console.log(`⏭️ ${s.full_name}: ${studentDate.toLocaleDateString()} < ${start.toLocaleDateString()} - SKIP`);
-              return false;
-            }
-            if (end && studentDate > end) {
-              console.log(`⏭️ ${s.full_name}: ${studentDate.toLocaleDateString()} > ${end.toLocaleDateString()} - SKIP`);
-              return false;
-            }
-            console.log(`✅ ${s.full_name}: ${studentDate.toLocaleDateString()} - INCLUDE`);
-            return true;
-          });
-
-          console.log(`סונן ${beforeFilter} -> ${students.length} משתתפים`);
-
-          if (students.length === 0) {
-            throw new Error(`לא נמצאו משתתפים בטווח התאריכים שנבחר (מתוך ${beforeFilter} רשומות בקובץ)`);
-          }
+        if (students.length === 0) {
+          throw new Error(`לא נמצאו משתתפים בטווח התאריכים שנבחר`);
         }
         // ---------------------------
 

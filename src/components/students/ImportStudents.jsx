@@ -67,20 +67,38 @@ const parseDate = (dateStr) => {
 // פונקציה עצמאית לפרסור טבלת HTML
 const parseHtmlTable = (htmlContent) => {
   console.log("🔵 ========== START parseHtmlTable ==========");
+  console.log(`📄 HTML Content length: ${htmlContent.length} characters`);
+  console.log(`📄 HTML Preview (first 500 chars):`, htmlContent.substring(0, 500));
+  
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlContent, 'text/html');
   const rows = Array.from(doc.querySelectorAll('tr'));
 
-  console.log(`🔵 Found ${rows.length} total rows`);
+  console.log(`🔵 Found ${rows.length} total rows in <tr> tags`);
 
   if (rows.length === 0) {
-    console.log("🔴 No rows found!");
+    console.log("🔴 No rows found! Trying to find any table structure...");
+    const tables = doc.querySelectorAll('table');
+    console.log(`   Found ${tables.length} <table> elements`);
+    const allTds = doc.querySelectorAll('td');
+    console.log(`   Found ${allTds.length} <td> elements total`);
     return [];
   }
+
+  // הדפסה של 3 השורות הראשונות לדיבוג
+  console.log("📋 First 3 rows structure:");
+  rows.slice(0, 3).forEach((row, idx) => {
+    const thCount = row.querySelectorAll('th').length;
+    const tdCount = row.querySelectorAll('td').length;
+    const firstCell = row.querySelector('th, td')?.textContent?.trim().substring(0, 50) || 'empty';
+    console.log(`   Row ${idx}: ${thCount} <th>, ${tdCount} <td> - First cell: "${firstCell}"`);
+  });
 
   // זיהוי headers
   let headerMap = {};
   const headerRow = rows.find(r => r.querySelectorAll('th').length > 0);
+
+  console.log(`🔍 Header row search: ${headerRow ? 'FOUND' : 'NOT FOUND'}`);
 
   if (headerRow) {
     const headers = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim().toLowerCase());

@@ -142,20 +142,23 @@ export default function ImportStudents({ onImportComplete }) {
       const email = headerMap.email !== undefined ? getText(headerMap.email) : getText(2);
       const course = headerMap.course !== undefined ? getText(headerMap.course) : "";
       const rawDate = headerMap.date !== undefined ? getText(headerMap.date) : "";
-      
+
       // ולידציה משופרת: וודא ששם המשתתף אינו "סליקת אשראי" או טקסט לא רלוונטי
       if (full_name && 
           full_name !== "סליקת אשראי" && 
           !full_name.includes('כרטיס') && 
           !full_name.includes('שם הכרטיס') &&
           (phone || email)) {
+        const parsedDate = parseDate(rawDate);
+        console.log(`📅 Student: ${full_name}, Raw date: "${rawDate}", Parsed: ${parsedDate}`);
+
         students.push({ 
           full_name, 
           phone, 
           email, 
           course, 
           rawDate,
-          parsedDate: parseDate(rawDate) 
+          parsedDate 
         });
       }
     });

@@ -234,18 +234,15 @@ export default function ImportStudents({ onImportComplete }) {
     const normalizedPhone = normalizePhone(student.phone);
     
     return existingList.find(existing => {
-      // בדיקת מייל זהה
       if (student.email && existing.email && 
           student.email.toLowerCase() === existing.email.toLowerCase()) {
         return true;
       }
       
-      // בדיקת טלפון זהה
       if (normalizedPhone && normalizePhone(existing.phone) === normalizedPhone) {
         return true;
       }
       
-      // בדיקת שם דומה מאוד (>90% דמיון)
       if (student.full_name && existing.full_name) {
         const name1 = student.full_name.toLowerCase().trim();
         const name2 = existing.full_name.toLowerCase().trim();
@@ -253,119 +250,7 @@ export default function ImportStudents({ onImportComplete }) {
       }
       
       return false;
-      });
-      };
-
-      const parseDate = (dateStr) => {
-        if (!dateStr) {
-          console.log('⚠️ Empty date string');
-          return null;
-        }
-
-        console.log(`🔄 Parsing date: "${dateStr}"`);
-
-        // טיפול בפורמט "HH.MM dd/mm/yyyy" או "dd/mm/yyyy HH:MM"
-        let cleanDate = dateStr.trim();
-
-        // אם יש שעה, הסר אותה
-        if (cleanDate.includes(' ')) {
-          const parts = cleanDate.split(' ');
-          console.log(`   Split parts:`, parts);
-          // מצא את החלק שנראה כמו תאריך (מכיל /)
-          cleanDate = parts.find(p => p.includes('/')) || parts[parts.length - 1];
-          console.log(`   Clean date after removing time: "${cleanDate}"`);
-        }
-
-        // פרסינג של dd/mm/yyyy
-        const dateParts = cleanDate.split(/[\/\-\.]/);
-        console.log(`   Date parts:`, dateParts);
-
-        if (dateParts.length === 3) {
-          let day = parseInt(dateParts[0], 10);
-          let month = parseInt(dateParts[1], 10) - 1; // JS months are 0-11
-          let year = parseInt(dateParts[2], 10);
-          if (year < 100) year += 2000;
-
-          const parsed = new Date(year, month, day);
-          console.log(`   ✅ Parsed result: ${parsed} (valid: ${!isNaN(parsed)})`);
-          if (!isNaN(parsed)) return parsed;
-        }
-
-        console.log(`   ⚠️ Fallback to Date constructor`);
-        return new Date(dateStr); // fallback
-      };
-
-      const parseHtmlTable = (htmlContent) => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlContent, 'text/html');
-        const rows = Array.from(doc.querySelectorAll('tr'));
-
-        if (rows.length === 0) return [];
-
-        // זיהוי headers
-        let headerMap = {};
-        const headerRow = rows.find(r => r.querySelectorAll('th').length > 0);
-
-        if (headerRow) {
-          const headers = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim().toLowerCase());
-          console.log('🔍 Detected headers:', JSON.stringify(headers)); // לדיבוג
-
-          headers.forEach((h, i) => {
-            // --- תיקון קריטי: תמיכה ב-"לקוחה", "לקוח", "משתתף" ---
-            if (h === 'לקוחה' || h === 'לקוח' || h === 'משתתף' || h === 'שם הלקוח' || h === 'שם לקוח') {
-              headerMap.full_name = i;
-              console.log(`✅ Found name column at index ${i}: "${h}"`);
-            }
-            else if (h.includes('שם') && !h.includes('כרטיס') && !h.includes('סליקה') && !h.includes('קורס') && headerMap.full_name === undefined) {
-              headerMap.full_name = i;
-              console.log(`✅ Found name column (generic) at index ${i}: "${h}"`);
-            }
-            // ---------------------------------------------------------
-
-            if (h.includes('טלפון') || h.includes('phone') || h.includes('נייד')) headerMap.phone = i;
-            if (h.includes('מייל') || h.includes('email') || h.includes('דוא"ל')) headerMap.email = i;
-            if (h.includes('קורס') || h.includes('סדנא') || h.includes('מוצר') || h.includes('תיאור')) headerMap.course = i;
-            if (h.includes('תאריך חיובם') || h.includes('תאריך') || h.includes('date')) headerMap.date = i;
-          });
-
-          console.log('📊 Header mapping:', JSON.stringify(headerMap));
-        }
-    
-    // חילוץ נתונים מכל שורה
-    const students = [];
-    rows.forEach(row => {
-      const cells = row.querySelectorAll('td');
-      if (cells.length === 0) return;
-      
-      const getText = (idx) => cells[idx]?.textContent?.trim() || "";
-      
-      const full_name = headerMap.full_name !== undefined ? getText(headerMap.full_name) : getText(0);
-      const phone = headerMap.phone !== undefined ? getText(headerMap.phone) : getText(1);
-      const email = headerMap.email !== undefined ? getText(headerMap.email) : getText(2);
-      const course = headerMap.course !== undefined ? getText(headerMap.course) : "";
-      const rawDate = headerMap.date !== undefined ? getText(headerMap.date) : "";
-
-      // ולידציה משופרת: וודא ששם המשתתף אינו "סליקת אשראי" או טקסט לא רלוונטי
-      if (full_name && 
-          full_name !== "סליקת אשראי" && 
-          !full_name.includes('כרטיס') && 
-          !full_name.includes('שם הכרטיס') &&
-          (phone || email)) {
-        const parsedDate = parseDate(rawDate);
-        console.log(`📅 Student: ${full_name}, Raw date: "${rawDate}", Parsed: ${parsedDate}`);
-
-        students.push({ 
-          full_name, 
-          phone, 
-          email, 
-          course, 
-          rawDate,
-          parsedDate 
-        });
-      }
     });
-    
-    return students;
   };
 
   const handleFileUpload = async (e) => {

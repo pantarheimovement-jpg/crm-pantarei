@@ -117,7 +117,7 @@ export default function ImportStudents({ onImportComplete }) {
 
         if (headerRow) {
           const headers = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim().toLowerCase());
-          console.log('🔍 Detected headers:', headers); // לדיבוג
+          console.log('🔍 Detected headers:', JSON.stringify(headers)); // לדיבוג
 
           headers.forEach((h, i) => {
             // --- תיקון קריטי: תמיכה ב-"לקוחה", "לקוח", "משתתף" ---
@@ -137,7 +137,7 @@ export default function ImportStudents({ onImportComplete }) {
             if (h.includes('תאריך חיובם') || h.includes('תאריך') || h.includes('date')) headerMap.date = i;
           });
 
-          console.log('📊 Header mapping:', headerMap);
+          console.log('📊 Header mapping:', JSON.stringify(headerMap));
         }
     
     // חילוץ נתונים מכל שורה

@@ -289,16 +289,28 @@ export default function ImportStudents({ onImportComplete }) {
       
       // בדיקה אם זה HTML - parsing מקומי
       if (file.type === "text/html" || file.name.endsWith(".html") || file.name.endsWith(".htm")) {
-        console.log("🔵 Processing as HTML file");
-        console.log(`🔵 File type: ${file.type}, File name: ${file.name}`);
-        const text = await file.text();
-        console.log(`🔵 HTML file loaded, text length: ${text.length}`);
-        console.log(`🔵 Calling parseHtmlTable...`);
-        students = parseHtmlTable(text);
-        console.log(`🔵 parseHtmlTable returned ${students.length} students`);
+        console.log("🔵 Processing HTML file via backend function");
+        
+        // העלה את הקובץ תחילה
+        const uploadResult = await base44.integrations.Core.UploadFile({ file });
+        const file_url = uploadResult.file_url;
+        console.log("📤 File uploaded:", file_url);
+        
+        setIsUploading(false);
+        setIsProcessing(true);
+        
+        // קרא לפונקציית הפרסינג
+        const parseResult = await base44.functions.invoke('parseHtmlFile', { file_url });
+        console.log("✅ Parse result:", parseResult);
+        
+        if (!parseResult.success) {
+          throw new Error(parseResult.error || "שגיאה בפרסור הקובץ");
+        }
+        
+        students = parseResult.students || [];
         
         if (students.length === 0) {
-          throw new Error("לא נמצאו נתונים תקינים בטבלה - בדוק את הקונסול לפרטים");
+          throw new Error("לא נמצאו נתונים תקינים בטבלה - בדוק את הלוגים בפונקציה");
         }
 
         console.log(`✅ Extracted ${students.length} students before filtering`);
@@ -310,9 +322,6 @@ export default function ImportStudents({ onImportComplete }) {
           throw new Error(`לא נמצאו משתתפים בטווח התאריכים שנבחר`);
         }
         // ---------------------------
-
-        setIsUploading(false);
-        setIsProcessing(true);
       } else {
         console.log("🔵 Processing as non-HTML file (PDF/Excel/CSV) via API");
         // PDF/Excel/CSV - שליחה ל-API

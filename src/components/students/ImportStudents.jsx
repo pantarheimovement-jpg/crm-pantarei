@@ -335,9 +335,11 @@ export default function ImportStudents({ onImportComplete }) {
         }
       }
 
+      console.log("🔍 Checking for duplicates...");
       // טען את כל המשתתפים הקיימים
       const allStudents = await base44.entities.Student.list();
       setExistingStudents(allStudents);
+      console.log(`📊 Found ${allStudents.length} existing students in database`);
 
       // בדוק אילו משתתפים כבר קיימים
       const duplicates = [];
@@ -349,14 +351,19 @@ export default function ImportStudents({ onImportComplete }) {
         const duplicate = checkDuplicate(student, allStudents);
 
         if (duplicate) {
+          console.log(`🔶 Duplicate found: ${student.full_name}`);
           duplicates.push({ ...student, existingStudent: duplicate });
         } else {
+          console.log(`✅ New student: ${student.full_name}`);
           newStudents.push(student);
         }
       }
 
+      console.log(`📊 Summary: ${newStudents.length} new, ${duplicates.length} duplicates`);
+
       // אם יש דופליקטים, הצג דיאלוג
       if (duplicates.length > 0) {
+        console.log("🔶 Showing duplicate dialog");
         setUnmatchedStudents(duplicates);
         setStudentMatches({});
         setShowMatchDialog(true);
@@ -364,16 +371,19 @@ export default function ImportStudents({ onImportComplete }) {
         // שמור את המשתתפים החדשים לעיבוד מאוחר יותר
         setResults({ newStudents, duplicates, fileName: file.name });
       } else {
+        console.log("✅ No duplicates, processing all students");
         // עבד את כל המשתתפים ישירות
         await processStudents(newStudents, [], file.name);
       }
 
     } catch (err) {
+      console.error("🔴 ERROR in handleFileUpload:", err);
       setError(err.message || "שגיאה בעיבוד הקובץ");
       setIsUploading(false);
       setIsProcessing(false);
     }
 
+    console.log("🟢 ========== END FILE UPLOAD ==========");
     e.target.value = "";
   };
 

@@ -66,7 +66,12 @@ export default function ImportStudents({ onImportComplete }) {
       };
 
       const parseDate = (dateStr) => {
-        if (!dateStr) return null;
+        if (!dateStr) {
+          console.log('⚠️ Empty date string');
+          return null;
+        }
+
+        console.log(`🔄 Parsing date: "${dateStr}"`);
 
         // טיפול בפורמט "HH.MM dd/mm/yyyy" או "dd/mm/yyyy HH:MM"
         let cleanDate = dateStr.trim();
@@ -74,12 +79,16 @@ export default function ImportStudents({ onImportComplete }) {
         // אם יש שעה, הסר אותה
         if (cleanDate.includes(' ')) {
           const parts = cleanDate.split(' ');
+          console.log(`   Split parts:`, parts);
           // מצא את החלק שנראה כמו תאריך (מכיל /)
           cleanDate = parts.find(p => p.includes('/')) || parts[parts.length - 1];
+          console.log(`   Clean date after removing time: "${cleanDate}"`);
         }
 
         // פרסינג של dd/mm/yyyy
         const dateParts = cleanDate.split(/[\/\-\.]/);
+        console.log(`   Date parts:`, dateParts);
+
         if (dateParts.length === 3) {
           let day = parseInt(dateParts[0], 10);
           let month = parseInt(dateParts[1], 10) - 1; // JS months are 0-11
@@ -87,9 +96,11 @@ export default function ImportStudents({ onImportComplete }) {
           if (year < 100) year += 2000;
 
           const parsed = new Date(year, month, day);
+          console.log(`   ✅ Parsed result: ${parsed} (valid: ${!isNaN(parsed)})`);
           if (!isNaN(parsed)) return parsed;
         }
 
+        console.log(`   ⚠️ Fallback to Date constructor`);
         return new Date(dateStr); // fallback
       };
 
@@ -197,17 +208,26 @@ export default function ImportStudents({ onImportComplete }) {
           if (end) end.setHours(23, 59, 59, 999);
 
           const beforeFilter = students.length;
+          console.log(`🎯 Filtering ${beforeFilter} students by date range: ${startDate} to ${endDate}`);
+
           students = students.filter(s => {
             if (!s.parsedDate || isNaN(s.parsedDate)) {
-              console.log('תאריך לא תקין:', s.rawDate);
+              console.log(`❌ Invalid date for ${s.full_name}: "${s.rawDate}"`);
               return false; // דלג על רשומות ללא תאריך תקין
             }
 
             const studentDate = new Date(s.parsedDate);
             studentDate.setHours(0, 0, 0, 0);
 
-            if (start && studentDate < start) return false;
-            if (end && studentDate > end) return false;
+            if (start && studentDate < start) {
+              console.log(`⏭️ ${s.full_name}: ${studentDate.toLocaleDateString()} < ${start.toLocaleDateString()} - SKIP`);
+              return false;
+            }
+            if (end && studentDate > end) {
+              console.log(`⏭️ ${s.full_name}: ${studentDate.toLocaleDateString()} > ${end.toLocaleDateString()} - SKIP`);
+              return false;
+            }
+            console.log(`✅ ${s.full_name}: ${studentDate.toLocaleDateString()} - INCLUDE`);
             return true;
           });
 

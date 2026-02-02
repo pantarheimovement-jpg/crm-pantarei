@@ -65,13 +65,20 @@ const parseHtmlTable = (htmlContent) => {
   }
 
   // הדפסה של 5 השורות הראשונות לדיבוג
-  console.log("📋 First 5 rows structure:");
+  console.log("📋 First 5 rows FULL CONTENT:");
   rows.slice(0, 5).forEach((row, idx) => {
     const thCount = row.querySelectorAll('th').length;
     const tdCount = row.querySelectorAll('td').length;
-    const cells = Array.from(row.querySelectorAll('th, td')).map(c => c.textContent?.trim().substring(0, 30));
-    console.log(`   Row ${idx}: ${thCount} <th>, ${tdCount} <td>`);
-    console.log(`      Cells: ${JSON.stringify(cells)}`);
+    const thCells = Array.from(row.querySelectorAll('th')).map(c => c.textContent?.trim());
+    const tdCells = Array.from(row.querySelectorAll('td')).map(c => c.textContent?.trim());
+    console.log(`\n   ====== Row ${idx} ======`);
+    console.log(`   Structure: ${thCount} <th>, ${tdCount} <td>`);
+    if (thCells.length > 0) {
+      console.log(`   TH cells:`, JSON.stringify(thCells));
+    }
+    if (tdCells.length > 0) {
+      console.log(`   TD cells (first 100 chars each):`, JSON.stringify(tdCells.map(c => c.substring(0, 100))));
+    }
   });
 
   // זיהוי headers

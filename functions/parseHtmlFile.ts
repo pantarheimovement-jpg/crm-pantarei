@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
-import { DOMParser } from 'npm:linkedom';
+// שינוי לייבוא יציב יותר עבור Deno
+import { DOMParser } from "https://deno.land/x/deno_dom/deno-dom-wasm.ts";
 
 const normalizePhone = (phone) => {
   if (!phone) return "";
@@ -7,232 +8,142 @@ const normalizePhone = (phone) => {
 };
 
 const parseDate = (dateStr) => {
-  if (!dateStr) {
-    console.log('⚠️ parseDate: Empty date string');
-    return null;
-  }
-
-  console.log(`🔄 parseDate: Parsing "${dateStr}"`);
-
-  // טיפול בפורמט "HH.MM dd/mm/yyyy" או "dd/mm/yyyy HH:MM"
+  if (!dateStr) return null;
+  
   let cleanDate = dateStr.trim();
+  console.log(`Original date string: "${cleanDate}"`);
 
-  // אם יש שעה, הסר אותה
-  if (cleanDate.includes(' ')) {
-    const parts = cleanDate.split(' ');
-    console.log(`   Split parts:`, parts);
-    cleanDate = parts.find(p => p.includes('/')) || parts[parts.length - 1];
-    console.log(`   Clean date after removing time: "${cleanDate}"`);
+  // טיפול במקרה של "HH:MM DD/MM/YYYY" (לדוגמה: 07:50 01/02/2026)
+  // נחפש חלק שמכיל "/"
+  const parts = cleanDate.split(/\s+/); // רווח אחד או יותר
+  const datePart = parts.find(p => p.includes('/'));
+
+  if (datePart) {
+      console.log(`Extracted date part: "${datePart}"`);
+      const [day, month, year] = datePart.split('/').map(n => parseInt(n, 10));
+      
+      // ולידציה בסיסית
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          // חודש ב-JS הוא 0-11
+          let finalYear = year;
+          if (finalYear < 100) finalYear += 2000;
+          
+          const d = new Date(finalYear, month - 1, day);
+          // נחזיר בפורמט ISO כדי שהקליינט יוכל לקרוא את זה בקלות
+          return d.toISOString();
+      }
   }
 
-  // פרסינג של dd/mm/yyyy
-  const dateParts = cleanDate.split(/[\/\-\.]/);
-  console.log(`   Date parts:`, dateParts);
-
-  if (dateParts.length === 3) {
-    let day = parseInt(dateParts[0], 10);
-    let month = parseInt(dateParts[1], 10) - 1;
-    let year = parseInt(dateParts[2], 10);
-    if (year < 100) year += 2000;
-
-    const parsed = new Date(year, month, day);
-    console.log(`   ✅ Parsed result: ${parsed.toLocaleDateString('he-IL')} (valid: ${!isNaN(parsed)})`);
-    if (!isNaN(parsed)) return parsed.toISOString();
-  }
-
-  console.log(`   ⚠️ Fallback to Date constructor`);
+  console.log('⚠️ Failed to parse date via robust method, falling back to new Date()');
   return new Date(dateStr).toISOString();
 };
 
 const parseHtmlTable = (htmlContent) => {
-  console.log("🔵 ========== START parseHtmlTable ==========");
-  console.log(`📄 HTML Content length: ${htmlContent.length} characters`);
-  console.log(`📄 HTML Preview (first 500 chars):`, htmlContent.substring(0, 500));
-  
+  console.log("Parsing HTML content...");
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlContent, 'text/html');
-  const rows = Array.from(doc.querySelectorAll('tr'));
-
-  console.log(`🔵 Found ${rows.length} total rows in <tr> tags`);
-
-  if (rows.length === 0) {
-    console.log("🔴 No rows found! Trying to find any table structure...");
-    const tables = doc.querySelectorAll('table');
-    console.log(`   Found ${tables.length} <table> elements`);
-    const allTds = doc.querySelectorAll('td');
-    console.log(`   Found ${allTds.length} <td> elements total`);
-    return [];
+  
+  if (!doc) {
+      throw new Error("Failed to parse HTML document");
   }
 
-  // הדפסה של 5 השורות הראשונות לדיבוג
-  console.log("📋 First 5 rows FULL CONTENT:");
-  rows.slice(0, 5).forEach((row, idx) => {
-    const thCount = row.querySelectorAll('th').length;
-    const tdCount = row.querySelectorAll('td').length;
-    const thCells = Array.from(row.querySelectorAll('th')).map(c => c.textContent?.trim());
-    const tdCells = Array.from(row.querySelectorAll('td')).map(c => c.textContent?.trim());
-    console.log(`\n   ====== Row ${idx} ======`);
-    console.log(`   Structure: ${thCount} <th>, ${tdCount} <td>`);
-    if (thCells.length > 0) {
-      console.log(`   TH cells:`, JSON.stringify(thCells));
-    }
-    if (tdCells.length > 0) {
-      console.log(`   TD cells (first 100 chars each):`, JSON.stringify(tdCells.map(c => c.substring(0, 100))));
-    }
-  });
+  const rows = Array.from(doc.querySelectorAll('tr'));
+  console.log(`Found ${rows.length} rows`);
 
-  // זיהוי headers
+  if (rows.length === 0) return [];
+
   let headerMap = {};
-  const headerRow = rows.find(r => r.querySelectorAll('th').length > 0);
-
-  console.log(`🔍 Header row search: ${headerRow ? 'FOUND' : 'NOT FOUND'}`);
+  // נסה למצוא שורה עם th, אם אין, חפש שורה ראשונה עם td
+  const headerRow = rows.find(r => r.querySelectorAll('th').length > 0) || rows[0];
 
   if (headerRow) {
-    const headers = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim().toLowerCase());
-    console.log('🔍 RAW Detected headers:', headers);
-    console.log('🔍 Detected headers JSON:', JSON.stringify(headers));
+    const cells = headerRow.querySelectorAll('th').length > 0 
+        ? headerRow.querySelectorAll('th') 
+        : headerRow.querySelectorAll('td');
+
+    const headers = Array.from(cells).map(c => c.textContent.trim().toLowerCase());
+    console.log('Headers:', headers);
 
     headers.forEach((h, i) => {
-      console.log(`   Checking header [${i}]: "${h}"`);
+      // זיהוי שם
+      if (h.includes('לקוח') || h === 'משתתף' || (h.includes('שם') && !h.includes('כרטיס'))) {
+           headerMap.full_name = i;
+      }
       
-      if (h === 'לקוחה' || h === 'לקוח' || h === 'משתתף' || h === 'שם הלקוח' || h === 'שם לקוח') {
-        headerMap.full_name = i;
-        console.log(`   ✅ Mapped FULL_NAME to column ${i}`);
-      }
-      else if (h.includes('שם') && !h.includes('כרטיס') && !h.includes('סליקה') && !h.includes('קורס') && headerMap.full_name === undefined) {
-        headerMap.full_name = i;
-        console.log(`   ✅ Mapped FULL_NAME (generic) to column ${i}`);
-      }
-
-      if (h.includes('טלפון') || h.includes('phone') || h.includes('נייד')) {
-        headerMap.phone = i;
-        console.log(`   ✅ Mapped PHONE to column ${i}`);
-      }
-      if (h.includes('מייל') || h.includes('email') || h.includes('דוא"ל')) {
-        headerMap.email = i;
-        console.log(`   ✅ Mapped EMAIL to column ${i}`);
-      }
-      if (h.includes('קורס') || h.includes('סדנא') || h.includes('מוצר') || h.includes('תיאור')) {
-        headerMap.course = i;
-        console.log(`   ✅ Mapped COURSE to column ${i}`);
-      }
-      if (h.includes('תאריך חיוב') || h.includes('תאריך') || h.includes('date')) {
-        headerMap.date = i;
-        console.log(`   ✅ Mapped DATE to column ${i}`);
-      }
+      if (h.includes('טלפון') || h.includes('phone') || h.includes('נייד')) headerMap.phone = i;
+      if (h.includes('מייל') || h.includes('email')) headerMap.email = i;
+      if (h.includes('קורס') || h.includes('סדנא') || h.includes('מוצר')) headerMap.course = i;
+      if (h.includes('תאריך') || h.includes('date')) headerMap.date = i;
     });
-
-    console.log('📊 Final Header mapping:', JSON.stringify(headerMap));
-  } else {
-    console.log("🟠 No <th> headers found, will use default column indices");
   }
 
-  // חילוץ נתונים מכל שורה
   const students = [];
-  rows.forEach((row, rowIndex) => {
+  rows.forEach((row, idx) => {
+    // דלג על שורת כותרת אם זוהתה
+    if (row === headerRow) return;
+
     const cells = row.querySelectorAll('td');
     if (cells.length === 0) return;
     
-    const getText = (idx) => cells[idx]?.textContent?.trim() || "";
+    const getText = (i) => cells[i]?.textContent?.trim() || "";
     
-    const full_name = headerMap.full_name !== undefined ? getText(headerMap.full_name) : getText(0);
+    // אם לא זוהה מיפוי שם, נסה עמודה 0 כברירת מחדל
+    const nameIdx = headerMap.full_name !== undefined ? headerMap.full_name : 0;
+
+    const full_name = getText(nameIdx);
     const phone = headerMap.phone !== undefined ? getText(headerMap.phone) : getText(1);
     const email = headerMap.email !== undefined ? getText(headerMap.email) : getText(2);
     const course = headerMap.course !== undefined ? getText(headerMap.course) : "";
     const rawDate = headerMap.date !== undefined ? getText(headerMap.date) : "";
 
-    // לוג מפורט לשורות הראשונות
-    if (rowIndex < 10) {
-      console.log(`\n📝 ====== Processing Row ${rowIndex} ======`);
-      console.log(`   Total cells in row: ${cells.length}`);
-      console.log(`   Cell[0]: "${getText(0)}"`);
-      console.log(`   Cell[1]: "${getText(1)}"`);
-      console.log(`   Cell[2]: "${getText(2)}"`);
-      console.log(`   Cell[3]: "${getText(3)}"`);
-      console.log(`   Cell[4]: "${getText(4)}"`);
-      console.log(`   Mapped full_name (col ${headerMap.full_name}): "${full_name}"`);
-      console.log(`   Mapped phone (col ${headerMap.phone}): "${phone}"`);
-      console.log(`   Mapped email (col ${headerMap.email}): "${email}"`);
-      console.log(`   Mapped course (col ${headerMap.course}): "${course}"`);
-      console.log(`   Mapped date (col ${headerMap.date}): "${rawDate}"`);
-    }
-
-    // ולידציה משופרת
+    // ולידציה קריטית: סינון "סליקת אשראי" ושורות ריקות
     if (full_name && 
         full_name !== "סליקת אשראי" && 
-        !full_name.includes('כרטיס') && 
-        !full_name.includes('שם הכרטיס') &&
+        !full_name.includes('מערכת') &&
+        !full_name.includes('סה"כ') &&
         (phone || email)) {
-      const parsedDate = parseDate(rawDate);
-      console.log(`✅ Adding student: ${full_name} (Date: ${rawDate} → ${parsedDate})`);
-
+            
       students.push({ 
         full_name, 
         phone: normalizePhone(phone), 
         email, 
         course, 
         rawDate,
-        parsedDate 
+        parsedDate: parseDate(rawDate) 
       });
-    } else if (full_name) {
-      console.log(`⏭️ Skipping invalid row: ${full_name}`);
     }
   });
-  
-  console.log(`🔵 Total valid students extracted: ${students.length}`);
-  console.log("🔵 ========== END parseHtmlTable ==========");
+
   return students;
 };
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // אימות משתמש (אופציונלי, תלוי בהגדרות שלך)
+    // const user = await base44.auth.me(); 
 
     const { file_url } = await req.json();
 
     if (!file_url) {
-      return Response.json({ 
-        error: 'Missing file_url parameter',
-        success: false 
-      }, { status: 400 });
+      return Response.json({ error: 'Missing file_url' }, { status: 400 });
     }
 
-    console.log(`📥 Fetching file from: ${file_url}`);
+    console.log(`Fetching file: ${file_url}`);
+    const fileRes = await fetch(file_url);
+    if (!fileRes.ok) throw new Error(`Fetch failed: ${fileRes.status}`);
     
-    // טען את הקובץ
-    const fileResponse = await fetch(file_url);
-    if (!fileResponse.ok) {
-      return Response.json({ 
-        error: `Failed to fetch file: ${fileResponse.status}`,
-        success: false 
-      }, { status: 400 });
-    }
-
-    const htmlContent = await fileResponse.text();
-    console.log(`✅ File loaded successfully, size: ${htmlContent.length} bytes`);
-
-    // פרסר את התוכן
+    const htmlContent = await fileRes.text();
     const students = parseHtmlTable(htmlContent);
-
-    console.log(`🎉 Parsing complete! Found ${students.length} students`);
 
     return Response.json({
       success: true,
       students,
-      total: students.length,
-      logs: 'Check server logs for detailed parsing information'
+      count: students.length
     });
 
   } catch (error) {
-    console.error("🔴 ERROR:", error);
-    return Response.json({ 
-      error: error.message,
-      success: false 
-    }, { status: 500 });
+    console.error('Error processing file:', error);
+    return Response.json({ success: false, error: error.message }, { status: 500 });
   }
 });

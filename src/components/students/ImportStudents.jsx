@@ -298,9 +298,13 @@ export default function ImportStudents({ onImportComplete }) {
         
         setIsUploading(false);
         setIsProcessing(true);
-        
-        // קרא לפונקציית הפרסינג
-        const parseResult = await base44.functions.invoke('parseHtmlFile', { file_url });
+
+        // קרא לפונקציית הפרסינג עם התאריכים
+        const parseResult = await base44.functions.invoke('parseHtmlFile', { 
+          file_url,
+          startDate,
+          endDate
+        });
         console.log("✅ Parse result:", parseResult);
         
         if (!parseResult.success) {

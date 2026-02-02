@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
-import { Users, Plus, Search, Filter, Phone, Mail, Tag, Calendar, Trash2, Edit, X, Loader2, Grid, List } from 'lucide-react';
+import { Users, Plus, Search, Filter, Phone, Mail, Tag, Calendar, Trash2, Edit, X, Loader2, Grid, List, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import ImportStudents from '../components/students/ImportStudents';
 
 export default function Students() {
   const { systemTexts, leadStatuses } = useSystemSettings();
@@ -21,6 +22,7 @@ export default function Students() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [expandedLogs, setExpandedLogs] = useState({});
   const [loadingLogs, setLoadingLogs] = useState({});
+  const [showImportModal, setShowImportModal] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -392,6 +394,15 @@ export default function Students() {
                 מחק {selectedIds.length}
               </Button>
             )}
+            <Button
+              onClick={() => setShowImportModal(true)}
+              variant="outline"
+              className="border-[var(--crm-primary)] text-[var(--crm-primary)] hover:bg-[var(--crm-primary)]/10"
+              style={{ borderRadius: 'var(--crm-button-radius)' }}
+            >
+              <Upload className="w-5 h-5 mr-2" />
+              ייבוא מ-Summit
+            </Button>
             <Button
               onClick={() => openModal()}
               className="bg-[var(--crm-action)] text-[var(--crm-text)] hover:bg-[var(--crm-action)]/90"
@@ -969,6 +980,28 @@ export default function Students() {
                   ביטול
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-[var(--crm-text)]">ייבוא משתתפים</h2>
+              <button onClick={() => setShowImportModal(false)}>
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <ImportStudents 
+                onImportComplete={() => {
+                  loadStudents();
+                  setShowImportModal(false);
+                }}
+              />
             </div>
           </div>
         </div>

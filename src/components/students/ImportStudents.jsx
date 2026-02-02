@@ -84,6 +84,7 @@ const parseHtmlTable = (htmlContent) => {
 
   if (headerRow) {
     const headers = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim().toLowerCase());
+    console.log('🔍 RAW Detected headers (before JSON):', headers);
     console.log('🔍 Detected headers:', JSON.stringify(headers));
 
     headers.forEach((h, i) => {

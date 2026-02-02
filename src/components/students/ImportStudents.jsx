@@ -48,12 +48,13 @@ export default function ImportStudents({ onImportComplete }) {
       setIsProcessing(true);
       
       console.log("🔄 Calling parseHtmlFile function...");
-      const parseResult = await base44.functions.invoke('parseHtmlFile', {
+      const response = await base44.functions.invoke('parseHtmlFile', {
         file_url,
         startDate: startDate || null,
         endDate: endDate || null
       });
       
+      const parseResult = response.data;
       console.log("📊 Parse result:", parseResult);
       
       if (!parseResult.success) {

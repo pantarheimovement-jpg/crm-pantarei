@@ -290,8 +290,12 @@ export default function ImportStudents({ onImportComplete }) {
       // בדיקה אם זה HTML - parsing מקומי
       if (file.type === "text/html" || file.name.endsWith(".html") || file.name.endsWith(".htm")) {
         console.log("🔵 Processing as HTML file");
+        console.log(`🔵 File type: ${file.type}, File name: ${file.name}`);
         const text = await file.text();
+        console.log(`🔵 HTML file loaded, text length: ${text.length}`);
+        console.log(`🔵 Calling parseHtmlTable...`);
         students = parseHtmlTable(text);
+        console.log(`🔵 parseHtmlTable returned ${students.length} students`);
         
         if (students.length === 0) {
           throw new Error("לא נמצאו נתונים תקינים בטבלה - בדוק את הקונסול לפרטים");

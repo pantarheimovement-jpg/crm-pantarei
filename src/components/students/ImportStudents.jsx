@@ -94,29 +94,40 @@ export default function ImportStudents({ onImportComplete }) {
       };
 
       const parseHtmlTable = (htmlContent) => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlContent, 'text/html');
-    const rows = Array.from(doc.querySelectorAll('tr'));
-    
-    if (rows.length === 0) return [];
-    
-    // זיהוי headers
-    let headerMap = {};
-    const headerRow = rows.find(r => r.querySelectorAll('th').length > 0);
-    
-    if (headerRow) {
-      const headers = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim().toLowerCase());
-      headers.forEach((h, i) => {
-        // זיהוי מדויק של "שם הלקוח" - לא "שם הכרטיס"
-        if (h === 'שם הלקוח' || h === 'שם לקוח') headerMap.full_name = i;
-        else if (h.includes('שם') && !h.includes('כרטיס') && !h.includes('סליקה') && !h.includes('קורס') && headerMap.full_name === undefined) headerMap.full_name = i;
-        
-        if (h.includes('טלפון') || h.includes('phone') || h.includes('נייד')) headerMap.phone = i;
-        if (h.includes('מייל') || h.includes('email') || h.includes('דוא"ל')) headerMap.email = i;
-        if (h.includes('קורס') || h.includes('סדנא') || h.includes('מוצר') || h.includes('תיאור')) headerMap.course = i;
-        if (h.includes('תאריך חיובם') || h.includes('תאריך') || h.includes('date')) headerMap.date = i;
-      });
-    }
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlContent, 'text/html');
+        const rows = Array.from(doc.querySelectorAll('tr'));
+
+        if (rows.length === 0) return [];
+
+        // זיהוי headers
+        let headerMap = {};
+        const headerRow = rows.find(r => r.querySelectorAll('th').length > 0);
+
+        if (headerRow) {
+          const headers = Array.from(headerRow.querySelectorAll('th')).map(th => th.textContent.trim().toLowerCase());
+          console.log('🔍 Detected headers:', headers); // לדיבוג
+
+          headers.forEach((h, i) => {
+            // --- תיקון קריטי: תמיכה ב-"לקוחה", "לקוח", "משתתף" ---
+            if (h === 'לקוחה' || h === 'לקוח' || h === 'משתתף' || h === 'שם הלקוח' || h === 'שם לקוח') {
+              headerMap.full_name = i;
+              console.log(`✅ Found name column at index ${i}: "${h}"`);
+            }
+            else if (h.includes('שם') && !h.includes('כרטיס') && !h.includes('סליקה') && !h.includes('קורס') && headerMap.full_name === undefined) {
+              headerMap.full_name = i;
+              console.log(`✅ Found name column (generic) at index ${i}: "${h}"`);
+            }
+            // ---------------------------------------------------------
+
+            if (h.includes('טלפון') || h.includes('phone') || h.includes('נייד')) headerMap.phone = i;
+            if (h.includes('מייל') || h.includes('email') || h.includes('דוא"ל')) headerMap.email = i;
+            if (h.includes('קורס') || h.includes('סדנא') || h.includes('מוצר') || h.includes('תיאור')) headerMap.course = i;
+            if (h.includes('תאריך חיובם') || h.includes('תאריך') || h.includes('date')) headerMap.date = i;
+          });
+
+          console.log('📊 Header mapping:', headerMap);
+        }
     
     // חילוץ נתונים מכל שורה
     const students = [];
@@ -132,8 +143,12 @@ export default function ImportStudents({ onImportComplete }) {
       const course = headerMap.course !== undefined ? getText(headerMap.course) : "";
       const rawDate = headerMap.date !== undefined ? getText(headerMap.date) : "";
       
-      // ולידציה: וודא ששם המשתתף אינו "סליקת אשראי" או טקסט לא רלוונטי
-      if (full_name && full_name !== "סליקת אשראי" && !full_name.includes('כרטיס') && (phone || email)) {
+      // ולידציה משופרת: וודא ששם המשתתף אינו "סליקת אשראי" או טקסט לא רלוונטי
+      if (full_name && 
+          full_name !== "סליקת אשראי" && 
+          !full_name.includes('כרטיס') && 
+          !full_name.includes('שם הכרטיס') &&
+          (phone || email)) {
         students.push({ 
           full_name, 
           phone, 

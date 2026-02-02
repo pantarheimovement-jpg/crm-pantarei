@@ -141,9 +141,20 @@ const parseHtmlTable = (htmlContent) => {
     const course = headerMap.course !== undefined ? getText(headerMap.course) : "";
     const rawDate = headerMap.date !== undefined ? getText(headerMap.date) : "";
 
-    // לוג לשורות הראשונות
-    if (rowIndex < 5) {
-      console.log(`📝 Row ${rowIndex} data:`, { full_name, phone, email, course, rawDate });
+    // לוג מפורט לשורות הראשונות
+    if (rowIndex < 10) {
+      console.log(`\n📝 ====== Processing Row ${rowIndex} ======`);
+      console.log(`   Total cells in row: ${cells.length}`);
+      console.log(`   Cell[0]: "${getText(0)}"`);
+      console.log(`   Cell[1]: "${getText(1)}"`);
+      console.log(`   Cell[2]: "${getText(2)}"`);
+      console.log(`   Cell[3]: "${getText(3)}"`);
+      console.log(`   Cell[4]: "${getText(4)}"`);
+      console.log(`   Mapped full_name (col ${headerMap.full_name}): "${full_name}"`);
+      console.log(`   Mapped phone (col ${headerMap.phone}): "${phone}"`);
+      console.log(`   Mapped email (col ${headerMap.email}): "${email}"`);
+      console.log(`   Mapped course (col ${headerMap.course}): "${course}"`);
+      console.log(`   Mapped date (col ${headerMap.date}): "${rawDate}"`);
     }
 
     // ולידציה משופרת

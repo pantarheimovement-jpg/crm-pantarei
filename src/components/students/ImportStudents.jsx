@@ -291,9 +291,11 @@ export default function ImportStudents({ onImportComplete }) {
         setIsUploading(false);
         setIsProcessing(true);
       } else {
+        console.log("🔵 Processing as non-HTML file (PDF/Excel/CSV) via API");
         // PDF/Excel/CSV - שליחה ל-API
         const uploadResult = await base44.integrations.Core.UploadFile({ file });
         const file_url = uploadResult.file_url;
+        console.log("📤 File uploaded, extracting data...");
         
         setIsUploading(false);
         setIsProcessing(true);
@@ -326,6 +328,7 @@ export default function ImportStudents({ onImportComplete }) {
         }
 
         students = extractResult.output?.students || [];
+        console.log(`✅ Extracted ${students.length} students from API`);
         
         if (students.length === 0) {
           throw new Error("לא נמצאו משתתפים בקובץ");

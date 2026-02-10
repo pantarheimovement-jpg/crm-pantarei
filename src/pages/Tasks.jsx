@@ -637,7 +637,7 @@ export default function Tasks() {
                       
                       {formData.student_id && (
                         <Link 
-                          to={createPageUrl('Students', `student_id=${formData.student_id}`)}
+                          to={createPageUrl('Students') + `?student_id=${formData.student_id}`}
                           target="_blank"
                           className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center"
                         >

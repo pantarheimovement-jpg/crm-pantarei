@@ -399,7 +399,7 @@ export default function PipelineDashboard() {
         )}
 
         {/* כרטיסי מדדים */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           
           {/* רשומים */}
           <div
@@ -456,36 +456,6 @@ export default function PipelineDashboard() {
               <Link to={createPageUrl('Students') + '?status=חדש&date=week'}>
                 <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-gray-200 transition-colors">
                   +{statusMetrics.newLeads.week} השבוע
-                </span>
-              </Link>
-            </div>
-          </div>
-
-          {/* ניסיונות */}
-          <div
-            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
-            style={{ borderRadius: 'var(--crm-border-radius)' }}
-          >
-            <div className="flex justify-between items-start mb-3">
-              <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-action)' }}>
-                <Sparkles size={24} style={{ color: 'white' }} />
-              </div>
-            </div>
-            <Link to={createPageUrl('Students') + '?status=ניסיון'}>
-              <h3 className="text-3xl font-bold mb-1 text-[var(--crm-text)] cursor-pointer hover:text-[var(--crm-action)] transition-colors">
-                {statusMetrics.trial.count}
-              </h3>
-            </Link>
-            <p className="text-sm font-medium text-[var(--crm-text)] opacity-70 mb-4">שיעורי ניסיון</p>
-            <div className="pt-3 border-t border-gray-100 flex items-center gap-2 text-xs flex-wrap">
-              <Link to={createPageUrl('Students') + '?status=ניסיון&date=today'}>
-                <span className="bg-[#297058] text-white px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-[#246048] transition-colors">
-                  +{statusMetrics.trial.today} היום
-                </span>
-              </Link>
-              <Link to={createPageUrl('Students') + '?status=ניסיון&date=week'}>
-                <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md font-medium cursor-pointer hover:bg-gray-200 transition-colors">
-                  +{statusMetrics.trial.week} השבוע
                 </span>
               </Link>
             </div>

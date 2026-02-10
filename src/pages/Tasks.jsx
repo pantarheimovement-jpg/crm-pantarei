@@ -38,6 +38,8 @@ export default function Tasks() {
     lead_source: 'ידני',
     notes: ''
   });
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [viewingStudent, setViewingStudent] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -196,6 +198,23 @@ export default function Tasks() {
       status: 'ממתין',
       scheduled_date: ''
     });
+  };
+
+  const openStudentCard = async (studentId) => {
+    try {
+      const allStudents = await base44.entities.Student.list();
+      const student = allStudents.find(s => s.id === studentId);
+      if (student) {
+        setViewingStudent(student);
+        setShowStudentModal(true);
+      }
+    } catch (error) {
+      console.error('Error loading student:', error);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    return '#6D436D';
   };
 
   const handleCreateNewStudent = async () => {
@@ -636,13 +655,14 @@ export default function Tasks() {
                       </select>
                       
                       {formData.student_id && (
-                        <Link 
-                          to={createPageUrl('Students') + `?student_id=${formData.student_id}`}
-                          target="_blank"
+                        <button
+                          type="button"
+                          onClick={() => openStudentCard(formData.student_id)}
                           className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center"
+                          title="צפה בכרטיס משתתף"
                         >
                           <ExternalLink className="w-5 h-5 text-gray-600" />
-                        </Link>
+                        </button>
                       )}
                       
                       <button
@@ -827,6 +847,121 @@ export default function Tasks() {
                   className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50"
                 >
                   ביטול
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student View Modal */}
+      {showStudentModal && viewingStudent && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900">
+                כרטיס משתתף: {viewingStudent.full_name}
+              </h2>
+              <button onClick={() => { setShowStudentModal(false); setViewingStudent(null); }}>
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <label className="text-xs font-medium text-gray-500">שם מלא</label>
+                  <p className="text-lg font-semibold text-gray-900">{viewingStudent.full_name}</p>
+                </div>
+                
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <label className="text-xs font-medium text-gray-500">סטטוס</label>
+                  <p>
+                    <span className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
+                          style={{ backgroundColor: getStatusColor(viewingStudent.status) }}>
+                      {viewingStudent.status}
+                    </span>
+                  </p>
+                </div>
+                
+                {viewingStudent.phone && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-xs font-medium text-gray-500">טלפון</label>
+                    <p className="text-gray-900 flex items-center gap-2">
+                      <Phone className="w-4 h-4" />
+                      <a href={`tel:${viewingStudent.phone}`} className="hover:underline">
+                        {viewingStudent.phone}
+                      </a>
+                    </p>
+                  </div>
+                )}
+                
+                {viewingStudent.email && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-xs font-medium text-gray-500">מייל</label>
+                    <p className="text-gray-900 flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      <a href={`mailto:${viewingStudent.email}`} className="hover:underline text-sm">
+                        {viewingStudent.email}
+                      </a>
+                    </p>
+                  </div>
+                )}
+                
+                {viewingStudent.course_name && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-xs font-medium text-gray-500">קורס</label>
+                    <p className="text-gray-900">{viewingStudent.course_name}</p>
+                  </div>
+                )}
+                
+                {viewingStudent.lead_source && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-xs font-medium text-gray-500">מקור ליד</label>
+                    <p className="text-gray-900">{viewingStudent.lead_source}</p>
+                  </div>
+                )}
+                
+                {viewingStudent.courses && viewingStudent.courses.length > 0 && (
+                  <div className="md:col-span-2 bg-gray-50 p-4 rounded-lg">
+                    <label className="text-xs font-medium text-gray-500 mb-2 block">קורסים</label>
+                    <div className="space-y-2">
+                      {viewingStudent.courses.map((course, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-white p-3 rounded-lg">
+                          <span className="font-medium">{course.course_name}</span>
+                          <span className="px-3 py-1 rounded-full text-xs font-medium text-white"
+                                style={{ backgroundColor: getStatusColor(course.status) }}>
+                            {course.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {viewingStudent.notes && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <label className="text-xs font-medium text-gray-500">הערות</label>
+                  <p className="text-gray-900 whitespace-pre-wrap">{viewingStudent.notes}</p>
+                </div>
+              )}
+              
+              <div className="flex gap-3 pt-4 border-t">
+                <Link
+                  to={createPageUrl('Students') + `?student_id=${viewingStudent.id}`}
+                  className="flex-1"
+                >
+                  <button className="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2">
+                    <Edit className="w-4 h-4" />
+                    עריכה מלאה בדף משתתפים
+                  </button>
+                </Link>
+                <button
+                  onClick={() => { setShowStudentModal(false); setViewingStudent(null); }}
+                  className="flex-1 bg-[#005e6c] text-white py-2 rounded-lg hover:bg-[#004a54] font-semibold"
+                >
+                  חזרה למשימה
                 </button>
               </div>
             </div>

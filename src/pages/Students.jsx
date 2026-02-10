@@ -53,7 +53,14 @@ export default function Students() {
     const urlSearch = urlParams.get('search');
     
     if (urlStatus) {
-      setStatusFilter(urlStatus);
+      // מיפוי מסטטוסים מיוחדים
+      if (urlStatus === 'חדש' || urlStatus === 'ליד חדש') {
+        setStatusFilter('leads');
+      } else if (urlStatus === 'רשום') {
+        setStatusFilter('registered');
+      } else {
+        setStatusFilter(urlStatus);
+      }
     }
     if (urlCourse) {
       setCourseFilter(urlCourse);

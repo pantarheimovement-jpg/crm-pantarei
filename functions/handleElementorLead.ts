@@ -231,7 +231,7 @@ Deno.serve(async (req) => {
     // יצירת משימת שיחת היכרות
     // ========================================
     let taskCreated = false;
-    const isNewLead = student.status === 'חדש' || student.status === 'ליד חדש';
+    const isNewLead = (student.status === 'חדש' || student.status === 'ליד חדש') && isNewStudent;
     
     if (isNewLead) {
       console.log('📞 Creating introduction task...');

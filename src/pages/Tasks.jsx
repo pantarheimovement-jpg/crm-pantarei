@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { 
   CheckSquare, Plus, Search, Edit2, Trash2, Calendar,
-  X, Loader2, CheckCircle, Circle, Download, AlertCircle, Upload
+  X, Loader2, CheckCircle, Circle, Download, AlertCircle, Upload, ExternalLink, Check
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import ImportModal from '../components/shared/ImportModal';
 
 export default function Tasks() {
@@ -22,11 +24,20 @@ export default function Tasks() {
     description: '',
     student_id: '',
     student_name: '',
-    status: 'בבדיקה',
+    status: 'ממתין',
     scheduled_date: ''
   });
   const [saving, setSaving] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
+  const [newStudentData, setNewStudentData] = useState({
+    full_name: '',
+    phone: '',
+    email: '',
+    interest_area: '',
+    lead_source: 'ידני',
+    notes: ''
+  });
 
   useEffect(() => {
     loadData();
@@ -182,9 +193,42 @@ export default function Tasks() {
       description: '',
       student_id: '',
       student_name: '',
-      status: 'בבדיקה',
+      status: 'ממתין',
       scheduled_date: ''
     });
+  };
+
+  const handleCreateNewStudent = async () => {
+    if (!newStudentData.full_name || !newStudentData.phone) {
+      alert('נא למלא שם וטלפון');
+      return;
+    }
+    
+    try {
+      const newStudent = await base44.entities.Student.create({
+        full_name: newStudentData.full_name,
+        phone: newStudentData.phone,
+        email: newStudentData.email || '',
+        interest_area: newStudentData.interest_area || '',
+        lead_source: newStudentData.lead_source,
+        notes: newStudentData.notes || '',
+        status: 'ליד חדש'
+      });
+      
+      setFormData({
+        ...formData,
+        student_id: newStudent.id,
+        student_name: newStudent.full_name
+      });
+      
+      await loadData();
+      setShowCreateStudentModal(false);
+      setNewStudentData({ full_name: '', phone: '', email: '', interest_area: '', lead_source: 'ידני', notes: '' });
+      alert('משתתף נוצר בהצלחה');
+    } catch (error) {
+      console.error('Error creating student:', error);
+      alert('שגיאה ביצירת משתתף');
+    }
   };
 
   const openEditModal = (task) => {
@@ -386,6 +430,7 @@ export default function Tasks() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
             >
               <option value="all">כל הסטטוסים</option>
+              <option value="ממתין">ממתין</option>
               <option value="ענתה">ענתה</option>
               <option value="לא ענתה">לא ענתה</option>
               <option value="לא רלוונטי">לא רלוונטי</option>
@@ -571,7 +616,7 @@ export default function Tasks() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">משתתף</label>
-                    <div className="space-y-2">
+                    <div className="flex gap-2">
                       <select
                         value={formData.student_id}
                         onChange={(e) => {
@@ -579,29 +624,35 @@ export default function Tasks() {
                           setFormData({
                             ...formData, 
                             student_id: e.target.value,
-                            student_name: selectedStudent ? selectedStudent.full_name : formData.student_name
+                            student_name: selectedStudent ? selectedStudent.full_name : ''
                           });
                         }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
                       >
-                        <option value="">בחר משתתף קיים</option>
+                        <option value="">בחר משתתף</option>
                         {students.map(student => (
                           <option key={student.id} value={student.id}>{student.full_name}</option>
                         ))}
                       </select>
-                      <div className="text-center text-sm text-gray-500">או</div>
-                      <input
-                        type="text"
-                        value={formData.student_id ? '' : formData.student_name}
-                        onChange={(e) => setFormData({
-                          ...formData, 
-                          student_id: '',
-                          student_name: e.target.value
-                        })}
-                        placeholder="הזן שם משתתף חדש"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
-                        disabled={!!formData.student_id}
-                      />
+                      
+                      {formData.student_id && (
+                        <Link 
+                          to={createPageUrl('Students', `student_id=${formData.student_id}`)}
+                          target="_blank"
+                          className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center"
+                        >
+                          <ExternalLink className="w-5 h-5 text-gray-600" />
+                        </Link>
+                      )}
+                      
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateStudentModal(true)}
+                        className="px-4 py-2 border border-[#005e6c] text-[#005e6c] rounded-lg hover:bg-[#005e6c]/10 flex items-center gap-2 whitespace-nowrap"
+                      >
+                        <Plus className="w-4 h-4" />
+                        חדש
+                      </button>
                     </div>
                   </div>
 
@@ -612,6 +663,7 @@ export default function Tasks() {
                       onChange={(e) => setFormData({...formData, status: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
                     >
+                      <option value="ממתין">ממתין</option>
                       <option value="בבדיקה">בבדיקה</option>
                       <option value="ענתה">ענתה</option>
                       <option value="לא ענתה">לא ענתה</option>
@@ -665,6 +717,119 @@ export default function Tasks() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Student Modal */}
+      {showCreateStudentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-lg">
+              <h3 className="text-xl font-bold text-gray-900">הוספת משתתף חדש</h3>
+              <button
+                onClick={() => {
+                  setShowCreateStudentModal(false);
+                  setNewStudentData({ full_name: '', phone: '', email: '', interest_area: '', lead_source: 'ידני', notes: '' });
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">שם מלא *</label>
+                <input
+                  type="text"
+                  value={newStudentData.full_name}
+                  onChange={(e) => setNewStudentData({...newStudentData, full_name: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+                  placeholder="שם מלא"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">טלפון *</label>
+                <input
+                  type="tel"
+                  value={newStudentData.phone}
+                  onChange={(e) => setNewStudentData({...newStudentData, phone: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+                  placeholder="050-1234567"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">אימייל</label>
+                <input
+                  type="email"
+                  value={newStudentData.email}
+                  onChange={(e) => setNewStudentData({...newStudentData, email: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+                  placeholder="email@example.com"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">קורס מעניין</label>
+                <input
+                  type="text"
+                  value={newStudentData.interest_area}
+                  onChange={(e) => setNewStudentData({...newStudentData, interest_area: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+                  placeholder="תחום עניין"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">מקור ליד</label>
+                <select
+                  value={newStudentData.lead_source}
+                  onChange={(e) => setNewStudentData({...newStudentData, lead_source: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+                >
+                  <option value="ידני">ידני</option>
+                  <option value="פייסבוק">פייסבוק</option>
+                  <option value="אינסטגרם">אינסטגרם</option>
+                  <option value="המלצה">המלצה</option>
+                  <option value="אתר">אתר</option>
+                  <option value="אחר">אחר</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">הערות</label>
+                <textarea
+                  value={newStudentData.notes}
+                  onChange={(e) => setNewStudentData({...newStudentData, notes: e.target.value})}
+                  rows="2"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+                  placeholder="הערות נוספות..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleCreateNewStudent}
+                  className="flex-1 bg-[#005e6c] text-white py-3 rounded-lg font-semibold hover:bg-[#004a54] flex items-center justify-center gap-2"
+                >
+                  <Check className="w-5 h-5" />
+                  צור והשתמש
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateStudentModal(false);
+                    setNewStudentData({ full_name: '', phone: '', email: '', interest_area: '', lead_source: 'ידני', notes: '' });
+                  }}
+                  className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50"
+                >
+                  ביטול
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

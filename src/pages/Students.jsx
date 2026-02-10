@@ -70,6 +70,19 @@ export default function Students() {
     }
   }, [window.location.search]);
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const studentId = urlParams.get('student_id');
+    
+    if (studentId && students.length > 0) {
+      const student = students.find(s => s.id === studentId);
+      if (student) {
+        openModal(student);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [students]);
+
   const loadStudents = async () => {
     try {
       const data = await base44.entities.Student.list('-created_date');

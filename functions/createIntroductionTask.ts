@@ -11,17 +11,28 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Student data required' }, { status: 400 });
     }
 
-    // בדיקה אם זה עדכון - נבדוק אם הסטטוס השתנה ל"חדש" או "ליד חדש"
+    // בדיקה שהסטטוס הוא בדיוק "חדש" או "ליד חדש" בלבד
+    const isNewLead = student.status === 'חדש' || student.status === 'ליד חדש';
+    
+    // אם הסטטוס לא "ליד חדש" - לא יוצרים משימה (כולל רשום, נרשם וכו')
+    if (!isNewLead) {
+      console.log(`⏭️ Skipping introduction task - status is "${student.status}", not a new lead`);
+      return Response.json({ 
+        success: true, 
+        message: 'No task needed - status is not new lead'
+      });
+    }
+    
+    // בדיקה אם זה עדכון - נבדוק שהסטטוס השתנה
     if (event.type === 'update' && old_data) {
-      const isNewLead = student.status === 'חדש' || student.status === 'ליד חדש';
       const wasNewLead = old_data.status === 'חדש' || old_data.status === 'ליד חדש';
       
-      // אם הסטטוס לא השתנה ל"ליד חדש", לא צריך ליצור משימה
-      if (!isNewLead || wasNewLead) {
-        console.log(`⏭️ Skipping introduction task - status unchanged or not a new lead`);
+      // אם כבר היה ליד חדש, לא צריך ליצור משימה נוספת
+      if (wasNewLead) {
+        console.log(`⏭️ Skipping introduction task - was already a new lead`);
         return Response.json({ 
           success: true, 
-          message: 'No task needed - status not changed to new lead'
+          message: 'No task needed - was already a new lead'
         });
       }
     }
@@ -53,7 +64,7 @@ Deno.serve(async (req) => {
     const task = await base44.asServiceRole.entities.Task.create({
       name: "שיחת היכרות",
       description: `שיחת היכרות עם ${student.full_name}`,
-      status: "בבדיקה",
+      status: "ממתין",
       scheduled_date: scheduledDate.toISOString().split('T')[0],
       student_id: student.id,
       student_name: student.full_name

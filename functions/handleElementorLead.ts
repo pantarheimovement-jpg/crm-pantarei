@@ -129,10 +129,9 @@ Deno.serve(async (req) => {
     }
     
     if (!existingStudent && full_name) {
-      const allStudents = await base44.asServiceRole.entities.Student.list();
-      existingStudent = allStudents.find(s => 
-        s.full_name.toLowerCase() === full_name.toLowerCase()
-      ) || null;
+      // FIX: Using filter instead of list() to prevent CPU timeout
+      const byName = await base44.asServiceRole.entities.Student.filter({ full_name });
+      existingStudent = byName && byName.length > 0 ? byName[0] : null;
     }
     
     // קבלת סטטוסים

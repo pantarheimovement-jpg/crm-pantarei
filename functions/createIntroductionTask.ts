@@ -53,17 +53,21 @@ Deno.serve(async (req) => {
     }
 
     // בדיקה אם כבר יש משימת היכרות פתוחה למשתתף הזה
+    console.log(`🔍 Checking for existing tasks...`);
+    
     const existingTasks = await base44.asServiceRole.entities.Task.filter({
       student_id: student.id,
       name: "שיחת היכרות"
     });
 
+    console.log(`📋 Found ${existingTasks.length} existing "שיחת היכרות" tasks`);
+    
     const openTask = existingTasks.find(t => 
       t.status !== "הושלם" && t.status !== "אבוד"
     );
 
     if (openTask) {
-      console.log(`⏭️ Introduction task already exists for ${student.full_name} (Task ID: ${openTask.id})`);
+      console.log(`⏭️ SKIPPING - Introduction task already exists (Task ID: ${openTask.id}, Status: ${openTask.status})`);
       return Response.json({ 
         success: true, 
         message: 'Introduction task already exists',
@@ -71,11 +75,17 @@ Deno.serve(async (req) => {
       });
     }
 
+    console.log(`✅ No existing open tasks - creating new task`);
+
     // חישוב תאריך מתוזמן - יומיים קדימה
     const scheduledDate = new Date();
     scheduledDate.setDate(scheduledDate.getDate() + 2);
+    
+    console.log(`📅 Scheduled date: ${scheduledDate.toISOString().split('T')[0]}`);
 
     // יצירת השיחה
+    console.log(`🔨 Creating task with status: "ממתין"`);
+    
     const task = await base44.asServiceRole.entities.Task.create({
       name: "שיחת היכרות",
       description: `שיחת היכרות עם ${student.full_name}`,
@@ -85,7 +95,10 @@ Deno.serve(async (req) => {
       student_name: student.full_name
     });
 
-    console.log(`✅ Created introduction task for ${student.full_name} (ID: ${task.id})`);
+    console.log(`✅ Task created successfully!`);
+    console.log(`   Task ID: ${task.id}`);
+    console.log(`   Status: ${task.status}`);
+    console.log(`   Scheduled: ${task.scheduled_date}`);
 
     return Response.json({ 
       success: true, 

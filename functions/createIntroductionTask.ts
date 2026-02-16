@@ -1,27 +1,42 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
+  console.log('=== 🎯 createIntroductionTask STARTED ===');
+  
   try {
     const base44 = createClientFromRequest(req);
     const { event, data, old_data } = await req.json();
     
+    console.log('📦 Event Type:', event?.type);
+    console.log('📦 Student Data:', JSON.stringify(data, null, 2));
+    console.log('📦 Old Data:', JSON.stringify(old_data, null, 2));
+    
     const student = data;
 
     if (!student || !student.id) {
+      console.log('❌ No student ID provided');
       return Response.json({ error: 'Student data required' }, { status: 400 });
     }
 
+    console.log(`👤 Student: ${student.full_name} (ID: ${student.id})`);
+    console.log(`📊 Status: "${student.status}"`);
+    
     // בדיקה שהסטטוס הוא בדיוק "חדש" או "ליד חדש" בלבד
     const isNewLead = student.status === 'חדש' || student.status === 'ליד חדש';
     
+    console.log(`🔍 Is New Lead? ${isNewLead} (status === "חדש" || status === "ליד חדש")`);
+    
     // אם הסטטוס לא "ליד חדש" - לא יוצרים משימה (כולל רשום, נרשם וכו')
     if (!isNewLead) {
-      console.log(`⏭️ Skipping introduction task - status is "${student.status}", not a new lead`);
+      console.log(`⏭️ SKIPPING - status is "${student.status}", not a new lead`);
       return Response.json({ 
         success: true, 
         message: 'No task needed - status is not new lead'
       });
     }
+    
+    console.log(`✅ Status is new lead - will check for existing tasks`);
+    console.log(`📅 Current Date: ${new Date().toISOString()}`);
     
     // בדיקה אם זה עדכון - נבדוק שהסטטוס השתנה
     if (event.type === 'update' && old_data) {

@@ -107,7 +107,9 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error creating introduction task:', error);
+    console.error('=== ❌ ERROR in createIntroductionTask ===');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
     return Response.json({ 
       success: false, 
       error: error.message 

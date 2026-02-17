@@ -45,6 +45,19 @@ export default function Tasks() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const taskId = urlParams.get('task_id');
+    
+    if (taskId && tasks.length > 0) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        openEditModal(task);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [tasks]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -504,7 +517,7 @@ export default function Tasks() {
                     )}
                   </button>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 group/task relative">
                     <h3 className={`text-base font-bold ${task.status === 'הושלם' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                       {task.name}
                     </h3>
@@ -514,7 +527,19 @@ export default function Tasks() {
                     
                     <div className="flex flex-wrap items-center gap-2 mt-2 text-sm">
                       {task.student_name && (
-                        <span className="text-gray-600">משתתף: {task.student_name}</span>
+                        <>
+                          {(() => {
+                            const student = students.find(s => s.id === task.student_id);
+                            return student?.phone ? (
+                              <span className="text-gray-600 flex items-center gap-1">
+                                <Phone className="w-4 h-4" />
+                                {student.phone}
+                              </span>
+                            ) : (
+                              <span className="text-gray-600">משתתף: {task.student_name}</span>
+                            );
+                          })()}
+                        </>
                       )}
                       {task.scheduled_date && (
                         <span className={`flex items-center gap-1 ${new Date(task.scheduled_date) <= new Date() && task.status !== 'הושלם' ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
@@ -526,6 +551,39 @@ export default function Tasks() {
                         </span>
                       )}
                     </div>
+
+                    {/* Tooltip on hover */}
+                    {task.student_id && (() => {
+                      const student = students.find(s => s.id === task.student_id);
+                      return student ? (
+                        <div className="absolute right-0 top-0 mt-12 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 w-64 opacity-0 invisible group-hover/task:opacity-100 group-hover/task:visible transition-all duration-200">
+                          <div className="space-y-2 text-xs">
+                            <div className="font-bold text-gray-900">{student.full_name}</div>
+                            {student.phone && (
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Phone className="w-3 h-3" />
+                                {student.phone}
+                              </div>
+                            )}
+                            {student.email && (
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Mail className="w-3 h-3" />
+                                {student.email}
+                              </div>
+                            )}
+                            {student.course_name && (
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Tag className="w-3 h-3" />
+                                {student.course_name}
+                              </div>
+                            )}
+                            <div className="pt-2 border-t border-gray-100 text-gray-400">
+                              נוצר: {new Date(task.created_date).toLocaleDateString('he-IL')}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
 
                     <div className="flex items-center gap-2 mt-2">
                       <span className={`px-2 py-1 rounded-full text-xs ${

@@ -689,16 +689,24 @@ export default function PipelineDashboard() {
                 ) : (
                   <div className="space-y-2">
                     {tasks.filter(t => t.name?.includes('שיחת היכרות') && t.status !== 'הושלם' && t.status !== 'אבוד').slice(0, 3).map(task => (
-                      <div key={task.id} className="p-2 bg-gray-50 rounded-lg text-xs flex justify-between items-center">
-                        <div className="flex-1">
-                          <span className="font-medium text-[var(--crm-text)] block">{task.student_name || 'ללא שם'}</span>
-                          {task.scheduled_date && (
-                            <span className="text-gray-400 text-xs">
-                              {new Date(task.scheduled_date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' })}
+                      <Link 
+                        key={task.id}
+                        to={createPageUrl('Tasks') + '?task_id=' + task.id}
+                        className="block"
+                      >
+                        <div className="p-2 bg-gray-50 rounded-lg text-xs flex justify-between items-center hover:bg-gray-100 transition-colors cursor-pointer">
+                          <div className="flex-1">
+                            <span className="font-medium text-[var(--crm-text)] block hover:text-[var(--crm-primary)] transition-colors">
+                              {task.student_name || 'ללא שם'}
                             </span>
-                          )}
+                            {task.scheduled_date && (
+                              <span className="text-gray-400 text-xs">
+                                {new Date(task.scheduled_date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' })}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 )}

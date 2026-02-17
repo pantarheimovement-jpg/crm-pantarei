@@ -53,8 +53,8 @@ import Interactions from './pages/Interactions';
 import NewsletterManager from './pages/NewsletterManager';
 import PipelineDashboard from './pages/PipelineDashboard';
 import Students from './pages/Students';
-import WhatsAppTest from './pages/WhatsAppTest';
 import Tasks from './pages/Tasks';
+import WhatsAppTest from './pages/WhatsAppTest';
 import __Layout from './Layout.jsx';
 
 
@@ -65,8 +65,8 @@ export const PAGES = {
     "NewsletterManager": NewsletterManager,
     "PipelineDashboard": PipelineDashboard,
     "Students": Students,
-    "WhatsAppTest": WhatsAppTest,
     "Tasks": Tasks,
+    "WhatsAppTest": WhatsAppTest,
 }
 
 export const pagesConfig = {

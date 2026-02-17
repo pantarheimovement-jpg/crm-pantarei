@@ -48,6 +48,7 @@ export default function Tasks() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const taskId = urlParams.get('task_id');
+    const highlightId = urlParams.get('highlight');
     
     if (taskId && tasks.length > 0) {
       const task = tasks.find(t => t.id === taskId);
@@ -55,6 +56,20 @@ export default function Tasks() {
         openEditModal(task);
         window.history.replaceState({}, '', window.location.pathname);
       }
+    }
+    
+    if (highlightId && tasks.length > 0) {
+      setTimeout(() => {
+        const element = document.getElementById('task-' + highlightId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-4', 'ring-[#005e6c]', 'ring-opacity-50');
+          setTimeout(() => {
+            element.classList.remove('ring-4', 'ring-[#005e6c]', 'ring-opacity-50');
+          }, 2000);
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      }, 100);
     }
   }, [tasks]);
 
@@ -492,7 +507,7 @@ export default function Tasks() {
         ) : (
           <div className="space-y-3">
             {filteredTasks.map((task) => (
-              <div key={task.id} className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
+              <div key={task.id} id={'task-' + task.id} className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
                   <input
                     type="checkbox"

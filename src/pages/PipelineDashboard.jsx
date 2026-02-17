@@ -639,7 +639,11 @@ export default function PipelineDashboard() {
                 ) : (
                   <div className="space-y-2">
                     {todaysTasks.slice(0, 2).map(task => (
-                      <div key={task.id} className="p-2 bg-gray-50 rounded-lg text-xs">
+                      <div 
+                        key={task.id} 
+                        onClick={() => window.location.href = createPageUrl('Tasks') + '?highlight=' + task.id}
+                        className="p-2 bg-gray-50 rounded-lg text-xs hover:bg-gray-100 transition-colors cursor-pointer"
+                      >
                         <p className="font-medium text-[var(--crm-text)]">{task.name}</p>
                         {task.student_name && <p className="text-gray-500">{task.student_name}</p>}
                       </div>
@@ -664,7 +668,11 @@ export default function PipelineDashboard() {
                 ) : (
                   <div className="space-y-2">
                     {tasks.filter(t => t.scheduled_date && t.status !== 'הושלם').slice(0, 2).map(task => (
-                      <div key={task.id} className="p-2 bg-gray-50 rounded-lg text-xs flex justify-between">
+                      <div 
+                        key={task.id} 
+                        onClick={() => window.location.href = createPageUrl('Tasks') + '?highlight=' + task.id}
+                        className="p-2 bg-gray-50 rounded-lg text-xs flex justify-between hover:bg-gray-100 transition-colors cursor-pointer"
+                      >
                         <span className="font-medium text-[var(--crm-text)]">{task.student_name || task.name}</span>
                         <span className="text-gray-500">{new Date(task.scheduled_date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' })}</span>
                       </div>
@@ -691,7 +699,7 @@ export default function PipelineDashboard() {
                     {tasks.filter(t => t.name?.includes('שיחת היכרות') && t.status !== 'הושלם' && t.status !== 'אבוד').slice(0, 3).map(task => (
                       <div 
                         key={task.id}
-                        onClick={() => window.location.href = createPageUrl('Tasks') + '?task_id=' + task.id}
+                        onClick={() => window.location.href = createPageUrl('Tasks') + '?highlight=' + task.id}
                         className="p-2 bg-gray-50 rounded-lg text-xs flex justify-between items-center hover:bg-gray-100 transition-colors cursor-pointer"
                       >
                         <div className="flex-1">

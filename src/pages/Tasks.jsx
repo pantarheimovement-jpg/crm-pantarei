@@ -527,13 +527,15 @@ export default function Tasks() {
                   >
                     {task.status === 'הושלם' ? (
                       <CheckCircle className="w-6 h-6 text-green-600" />
+                    ) : task.status === 'לא רלוונטי' || task.status === 'אבוד' ? (
+                      <XCircle className="w-6 h-6 text-red-600" />
                     ) : (
                       <Circle className="w-6 h-6 text-gray-400 hover:text-gray-600" />
                     )}
                   </button>
 
                   <div className="flex-1 min-w-0 group/task relative">
-                    <h3 className={`text-base font-bold ${task.status === 'הושלם' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                    <h3 className={`text-base font-bold ${task.status === 'הושלם' || task.status === 'לא רלוונטי' || task.status === 'אבוד' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                       {task.name}
                     </h3>
                     {task.description && (

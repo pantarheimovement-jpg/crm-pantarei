@@ -2011,37 +2011,40 @@ export default function NewsletterManager() {
                 </div>
 
                 {(sendChannel === 'email' || sendChannel === 'both') && (
-                  <div className="border-b border-gray-200">
-                    <div className="flex gap-4">
+                  <div className="bg-gray-50/50 p-1 rounded-full mb-6">
+                    <div className="flex gap-2">
                       <button
                         onClick={() => setDesignMode('template')}
-                        className={`px-4 py-3 font-medium flex items-center gap-2 ${
+                        className={`px-4 py-3 font-medium flex items-center gap-2 rounded-full transition-all flex-1 justify-center ${
                           designMode === 'template'
-                            ? 'border-b-2 border-blue-500 text-blue-600'
-                            : 'text-gray-500 hover:text-gray-700'
+                            ? 'bg-[var(--crm-action)] text-[var(--crm-text)]'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                         }`}
+                        style={{ borderRadius: designMode === 'template' ? 'var(--crm-button-radius)' : undefined }}
                       >
                         <Layout className="w-5 h-5" />
                         {t('תבנית מהירה', 'Quick Template')}
                       </button>
                       <button
                         onClick={() => setDesignMode('html')}
-                        className={`px-4 py-3 font-medium flex items-center gap-2 ${
+                        className={`px-4 py-3 font-medium flex items-center gap-2 rounded-full transition-all flex-1 justify-center ${
                           designMode === 'html'
-                            ? 'border-b-2 border-blue-500 text-blue-600'
-                            : 'text-gray-500 hover:text-gray-700'
+                            ? 'bg-[var(--crm-action)] text-[var(--crm-text)]'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                         }`}
+                        style={{ borderRadius: designMode === 'html' ? 'var(--crm-button-radius)' : undefined }}
                       >
                         <FileCode className="w-5 h-5" />
                         {t('HTML מתקדם', 'Advanced HTML')}
                       </button>
                       <button
                         onClick={() => setDesignMode('free')}
-                        className={`px-4 py-3 font-medium flex items-center gap-2 ${
+                        className={`px-4 py-3 font-medium flex items-center gap-2 rounded-full transition-all flex-1 justify-center ${
                           designMode === 'free'
-                            ? 'border-b-2 border-blue-500 text-blue-600'
-                            : 'text-gray-500 hover:text-gray-700'
+                            ? 'bg-[var(--crm-action)] text-[var(--crm-text)]'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                         }`}
+                        style={{ borderRadius: designMode === 'free' ? 'var(--crm-button-radius)' : undefined }}
                       >
                         <Edit3 className="w-5 h-5" />
                         {t('עורך חופשי', 'Free Editor')}

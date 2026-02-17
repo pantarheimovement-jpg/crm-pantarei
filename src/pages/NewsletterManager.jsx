@@ -1230,87 +1230,107 @@ export default function NewsletterManager() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {t('ניהול ניוזלטר', 'Newsletter Management')}
-          </h1>
-          <p className="text-gray-600">
-            {t('נהלי את רשימת התפוצה ושלחי ניוזלטרים באימייל ובוואטסאפ', 'Manage your mailing list and send newsletters via email and WhatsApp')}
-          </p>
-          <p className="text-sm text-blue-600 mt-2">
-            {t(`המנויים מחולקים אוטומטית לקבוצות של ${SUBSCRIBERS_PER_GROUP} מנויים`, `Subscribers are automatically divided into groups of ${SUBSCRIBERS_PER_GROUP} members`)}
-          </p>
+    <div className="min-h-screen bg-[var(--crm-bg)] p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <Mail className="w-8 h-8 text-[var(--crm-primary)]" />
+            <div>
+              <h1 className="text-3xl font-bold text-[var(--crm-text)]" style={{ fontFamily: 'var(--font-headings)' }}>
+                {t('ניהול ניוזלטר', 'Newsletter Management')}
+              </h1>
+              <p className="text-sm text-[var(--crm-text)] opacity-70">
+                {t('נהלי את רשימת התפוצה ושלחי ניוזלטרים באימייל ובוואטסאפ', 'Manage your mailing list and send newsletters via email and WhatsApp')}
+              </p>
+            </div>
+          </div>
         </div>
 
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg shadow p-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600">{t('ניוזלטרים שנשלחו', 'Newsletters Sent')}</p>
-                <p className="text-3xl font-bold text-purple-900 mt-2">{newsletterStats.totalNewslettersSent}</p>
+                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">{t('ניוזלטרים שנשלחו', 'Newsletters Sent')}</p>
+                <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{newsletterStats.totalNewslettersSent}</p>
               </div>
-              <Mail className="w-12 h-12 text-purple-400" />
+              <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-accent)' }}>
+                <Mail size={24} style={{ color: 'white' }} />
+              </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg shadow p-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-indigo-600">{t('סה"כ מיילים ששלחתי', 'Total Emails Sent')}</p>
-                <p className="text-3xl font-bold text-indigo-900 mt-2">{newsletterStats.totalEmailsSent.toLocaleString()}</p>
+                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">{t('סה"כ מיילים ששלחתי', 'Total Emails Sent')}</p>
+                <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{newsletterStats.totalEmailsSent.toLocaleString()}</p>
               </div>
-              <Send className="w-12 h-12 text-indigo-400" />
+              <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-primary)' }}>
+                <Send size={24} style={{ color: 'white' }} />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow mb-8">
-          <div className="border-b border-gray-200">
-            <div className="flex overflow-x-auto">
+        {/* Info Note */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+          <p className="text-sm text-[var(--crm-text)] opacity-70">
+            💡 {t(`המנויים מחולקים אוטומטית לקבוצות של ${SUBSCRIBERS_PER_GROUP} מנויים`, `Subscribers are automatically divided into groups of ${SUBSCRIBERS_PER_GROUP} members`)}
+          </p>
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+          <div className="border-b border-gray-100">
+            <div className="flex overflow-x-auto p-1 bg-gray-50/50">
               <button
                 onClick={() => setActiveTab('subscribers')}
-                className={`px-6 py-4 font-medium whitespace-nowrap ${
+                className={`px-6 py-3 font-medium whitespace-nowrap rounded-full transition-all ${
                   activeTab === 'subscribers'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-[var(--crm-action)] text-[var(--crm-text)]'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
+                style={{ borderRadius: activeTab === 'subscribers' ? 'var(--crm-button-radius)' : undefined }}
               >
-                <Users className="w-5 h-5 inline-block mr-2" />
+                <Users className="w-5 h-5 inline-block ml-2" />
                 {t('רשימת מנויים', 'Subscribers')}
               </button>
               <button
                 onClick={() => setActiveTab('send')}
-                className={`px-6 py-4 font-medium whitespace-nowrap ${
+                className={`px-6 py-3 font-medium whitespace-nowrap rounded-full transition-all ${
                   activeTab === 'send'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-[var(--crm-action)] text-[var(--crm-text)]'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
+                style={{ borderRadius: activeTab === 'send' ? 'var(--crm-button-radius)' : undefined }}
               >
-                <Send className="w-5 h-5 inline-block mr-2" />
+                <Send className="w-5 h-5 inline-block ml-2" />
                 {t('שליחת ניוזלטר', 'Send Newsletter')}
               </button>
               <button
                 onClick={() => setActiveTab('import')}
-                className={`px-6 py-4 font-medium whitespace-nowrap ${
+                className={`px-6 py-3 font-medium whitespace-nowrap rounded-full transition-all ${
                   activeTab === 'import'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-[var(--crm-action)] text-[var(--crm-text)]'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
+                style={{ borderRadius: activeTab === 'import' ? 'var(--crm-button-radius)' : undefined }}
               >
-                <Upload className="w-5 h-5 inline-block mr-2" />
+                <Upload className="w-5 h-5 inline-block ml-2" />
                 {t('ייבוא', 'Import')}
               </button>
               <button
                 onClick={() => setActiveTab('logs')}
-                className={`px-6 py-4 font-medium whitespace-nowrap ${
+                className={`px-6 py-3 font-medium whitespace-nowrap rounded-full transition-all ${
                   activeTab === 'logs'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-[var(--crm-action)] text-[var(--crm-text)]'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
+                style={{ borderRadius: activeTab === 'logs' ? 'var(--crm-button-radius)' : undefined }}
               >
-                <Calendar className="w-5 h-5 inline-block mr-2" />
+                <Calendar className="w-5 h-5 inline-block ml-2" />
                 {t('היסטוריה', 'History')}
               </button>
             </div>
@@ -1319,14 +1339,15 @@ export default function NewsletterManager() {
           <div className="p-6">
             {activeTab === 'subscribers' && (
               <div className="space-y-6">
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-200">
+                <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm" style={{ borderRadius: 'var(--crm-border-radius)' }}>
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-lg text-gray-900">
+                    <h3 className="font-bold text-lg text-[var(--crm-text)]">
                       {t('סטטיסטיקת קבוצות', 'Group Statistics')}
                     </h3>
                     <button
                       onClick={() => setShowAddGroup(true)}
-                      className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center gap-1"
+                      className="bg-[var(--crm-action)] text-[var(--crm-text)] px-4 py-2 text-sm font-semibold hover:bg-[var(--crm-action)]/90 flex items-center gap-2"
+                      style={{ borderRadius: 'var(--crm-button-radius)' }}
                     >
                       <Plus className="w-4 h-4" />
                       {t('הוסף קבוצה', 'Add Group')}
@@ -1339,20 +1360,21 @@ export default function NewsletterManager() {
                       </p>
                     ) : (
                       activeGroups.map(group => (
-                        <div key={group} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
-                          <div className="text-2xl font-bold text-blue-600">
+                        <div key={group} className="bg-gray-50 rounded-xl p-4 border border-gray-100" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+                          <div className="text-2xl font-bold text-[var(--crm-primary)]">
                             {getGroupSubscriberCount(group)}
                           </div>
-                          <div className="text-sm text-gray-600">{group}</div>
+                          <div className="text-sm text-[var(--crm-text)] opacity-70">{group}</div>
                           <div className="mt-2 bg-gray-200 rounded-full h-2">
                             <div
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              className="h-2 rounded-full transition-all duration-300"
                               style={{
+                                backgroundColor: 'var(--crm-primary)',
                                 width: `${Math.min(100, (getGroupSubscriberCount(group) / SUBSCRIBERS_PER_GROUP) * 100)}%`
                               }}
                             />
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-[var(--crm-text)] opacity-60 mt-1">
                             {Math.round((getGroupSubscriberCount(group) / SUBSCRIBERS_PER_GROUP) * 100)}% {t('מלא', 'full')}
                           </div>
                         </div>
@@ -1421,7 +1443,8 @@ export default function NewsletterManager() {
                     {selectedIds.length > 0 && (
                       <button
                         onClick={handleBulkDelete}
-                        className="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 flex items-center gap-2"
+                        className="border-red-500 text-red-500 bg-white border px-4 py-2 font-semibold hover:bg-red-50 flex items-center gap-2"
+                        style={{ borderRadius: 'var(--crm-button-radius)' }}
                       >
                         <Trash2 className="w-5 h-5" />
                         {t('מחק', 'Delete')} {selectedIds.length}
@@ -1429,10 +1452,11 @@ export default function NewsletterManager() {
                     )}
                     <button
                       onClick={() => setShowAddSubscriber(true)}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 flex items-center gap-2"
+                      className="bg-[var(--crm-action)] text-[var(--crm-text)] px-4 py-2 font-semibold hover:bg-[var(--crm-action)]/90 flex items-center gap-2"
+                      style={{ borderRadius: 'var(--crm-button-radius)' }}
                     >
                       <Plus className="w-5 h-5" />
-                      {t('הוסף מנוי (יתווסף אוטומטית לקבוצה פנויה)', 'Add Subscriber (will be auto-assigned to available group)')}
+                      {t('הוסף מנוי', 'Add Subscriber')}
                     </button>
                   </div>
                 </div>
@@ -1801,7 +1825,7 @@ export default function NewsletterManager() {
                     {t('לא נמצאו מנויים', 'No subscribers found')}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto bg-white rounded-lg shadow">
+                  <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-100" style={{ borderRadius: 'var(--crm-border-radius)' }}>
                     <table className="w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
@@ -1928,48 +1952,60 @@ export default function NewsletterManager() {
 
             {activeTab === 'send' && (
               <div className="space-y-6 max-w-4xl">
-                <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-gray-200 rounded-lg p-6">
-                  <h3 className="font-semibold text-lg text-gray-900 mb-4">
+                <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+                  <h3 className="font-semibold text-lg text-[var(--crm-text)] mb-4">
                     {t('בחרי ערוץ שליחה', 'Choose Send Channel')}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button
                       onClick={() => setSendChannel('email')}
-                      className={`p-4 rounded-lg border-2 transition-all ${
+                      className={`p-4 rounded-xl border-2 transition-all ${
                         sendChannel === 'email'
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'bg-[var(--crm-primary)] bg-opacity-10'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
                       }`}
+                      style={{ 
+                        borderRadius: 'var(--crm-border-radius)',
+                        borderColor: sendChannel === 'email' ? 'var(--crm-primary)' : undefined
+                      }}
                     >
-                      <Mail className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                      <p className="font-medium text-gray-900">{t('אימייל בלבד', 'Email Only')}</p>
+                      <Mail className="w-8 h-8 mx-auto mb-2" style={{ color: sendChannel === 'email' ? 'var(--crm-primary)' : '#9CA3AF' }} />
+                      <p className="font-medium text-[var(--crm-text)]">{t('אימייל בלבד', 'Email Only')}</p>
                     </button>
                     
                     <button
                       onClick={() => setSendChannel('whatsapp')}
-                      className={`p-4 rounded-lg border-2 transition-all ${
+                      className={`p-4 rounded-xl border-2 transition-all ${
                         sendChannel === 'whatsapp'
-                          ? 'border-green-600 bg-green-50'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'bg-[var(--crm-accent)] bg-opacity-10'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
                       }`}
+                      style={{ 
+                        borderRadius: 'var(--crm-border-radius)',
+                        borderColor: sendChannel === 'whatsapp' ? 'var(--crm-accent)' : undefined
+                      }}
                     >
-                      <MessageCircle className="w-8 h-8 mx-auto mb-2 text-green-600" />
-                      <p className="font-medium text-gray-900">{t('וואטסאפ בלבד', 'WhatsApp Only')}</p>
+                      <MessageCircle className="w-8 h-8 mx-auto mb-2" style={{ color: sendChannel === 'whatsapp' ? 'var(--crm-accent)' : '#9CA3AF' }} />
+                      <p className="font-medium text-[var(--crm-text)]">{t('וואטסאפ בלבד', 'WhatsApp Only')}</p>
                     </button>
                     
                     <button
                       onClick={() => setSendChannel('both')}
-                      className={`p-4 rounded-lg border-2 transition-all ${
+                      className={`p-4 rounded-xl border-2 transition-all ${
                         sendChannel === 'both'
-                          ? 'border-purple-600 bg-purple-50'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'bg-[var(--crm-primary)] bg-opacity-10'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
                       }`}
+                      style={{ 
+                        borderRadius: 'var(--crm-border-radius)',
+                        borderColor: sendChannel === 'both' ? 'var(--crm-primary)' : undefined
+                      }}
                     >
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <Mail className="w-6 h-6 text-blue-600" />
-                        <MessageCircle className="w-6 h-6 text-green-600" />
+                        <Mail className="w-6 h-6" style={{ color: sendChannel === 'both' ? 'var(--crm-primary)' : '#9CA3AF' }} />
+                        <MessageCircle className="w-6 h-6" style={{ color: sendChannel === 'both' ? 'var(--crm-accent)' : '#9CA3AF' }} />
                       </div>
-                      <p className="font-medium text-gray-900">{t('שניהם', 'Both')}</p>
+                      <p className="font-medium text-[var(--crm-text)]">{t('שניהם', 'Both')}</p>
                     </button>
                   </div>
                 </div>
@@ -2505,7 +2541,8 @@ export default function NewsletterManager() {
                     ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) ||
                     ((sendChannel === 'whatsapp' || sendChannel === 'both') && !whatsappMessage.trim())
                   }
-                  className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-[var(--crm-primary)] text-white py-3 font-semibold hover:bg-[var(--crm-primary)]/90 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  style={{ borderRadius: 'var(--crm-button-radius)' }}
                 >
                   {sending ? (
                     <>

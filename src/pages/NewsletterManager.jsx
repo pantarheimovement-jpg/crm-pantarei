@@ -1825,50 +1825,50 @@ export default function NewsletterManager() {
                     {t('לא נמצאו מנויים', 'No subscribers found')}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-100" style={{ borderRadius: 'var(--crm-border-radius)' }}>
-                    <table className="w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                  <div className="overflow-x-auto bg-white rounded-2xl shadow-sm border border-gray-100" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+                    <table className="w-full">
+                      <thead className="bg-gray-50/50 border-b border-gray-100">
                         <tr>
                           <th className="px-4 py-3 text-center w-12">
                             <input
                               type="checkbox"
                               checked={selectedIds.length === filteredSubscribers.length && filteredSubscribers.length > 0}
                               onChange={toggleSelectAll}
-                              className="w-5 h-5 text-blue-600 border-gray-300 rounded"
+                              className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
                             />
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '180px' }}>
+                          <th className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider" style={{ minWidth: '180px' }}>
                             {t('מייל', 'Email')}
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '120px' }}>
+                          <th className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider" style={{ minWidth: '120px' }}>
                             {t('וואטסאפ', 'WhatsApp')}
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '100px' }}>
+                          <th className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider" style={{ minWidth: '100px' }}>
                             {t('שם', 'Name')}
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '120px' }}>
+                          <th className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider" style={{ minWidth: '120px' }}>
                             {t('תפקיד', 'Job Title')}
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '100px' }}>
+                          <th className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider" style={{ minWidth: '100px' }}>
                             {t('חברה', 'Company')}
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '150px' }}>
+                          <th className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider" style={{ minWidth: '150px' }}>
                             {t('הערות', 'Notes')}
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '120px' }}>
+                          <th className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider" style={{ minWidth: '120px' }}>
                             {t('קבוצה', 'Group')}
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '80px' }}>
+                          <th className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider" style={{ minWidth: '80px' }}>
                             {t('סטטוס', 'Status')}
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '100px' }}>
+                          <th className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider" style={{ minWidth: '100px' }}>
                             {t('פעולות', 'Actions')}
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="divide-y divide-gray-50">
                         {filteredSubscribers.map((sub) => (
-                          <tr key={sub.id} className="hover:bg-gray-50">
+                          <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
                             <td className="px-4 py-4 text-center">
                               <input
                                 type="checkbox"
@@ -1880,16 +1880,16 @@ export default function NewsletterManager() {
                                     setSelectedIds(selectedIds.filter(id => id !== sub.id));
                                   }
                                 }}
-                                className="w-5 h-5 text-blue-600 border-gray-300 rounded"
+                                className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
                               />
                             </td>
-                            <td className="px-4 py-4 text-sm text-gray-900" style={{ wordBreak: 'break-all' }}>
+                            <td className="px-4 py-4 text-sm text-[var(--crm-text)] font-medium" style={{ wordBreak: 'break-all' }}>
                               {sub.email || '-'}
                             </td>
-                            <td className="px-4 py-4 text-sm text-gray-900" style={{ wordBreak: 'break-all' }}>
+                            <td className="px-4 py-4 text-sm text-[var(--crm-text)]" style={{ wordBreak: 'break-all' }}>
                               {sub.whatsapp || '-'}
                             </td>
-                            <td className="px-4 py-4 text-sm text-gray-900">
+                            <td className="px-4 py-4 text-sm text-[var(--crm-text)] font-medium">
                               {sub.name || '-'}
                             </td>
                             <td className="px-4 py-4 text-sm text-gray-500">
@@ -1905,7 +1905,11 @@ export default function NewsletterManager() {
                               <select
                                 value={sub.group}
                                 onChange={(e) => handleUpdateSubscriberGroup(sub.id, e.target.value)}
-                                className="w-full px-2 py-1 text-xs rounded-lg bg-blue-100 text-blue-800 border border-blue-200 focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-3 py-1.5 text-xs font-medium rounded-full text-white border-0 focus:ring-2 focus:ring-[var(--crm-primary)]"
+                                style={{ 
+                                  backgroundColor: 'var(--crm-primary)',
+                                  borderRadius: 'var(--crm-button-radius)'
+                                }}
                               >
                                 {activeGroups.map(group => (
                                   <option key={group} value={group}>{group}</option>
@@ -1914,11 +1918,11 @@ export default function NewsletterManager() {
                             </td>
                             <td className="px-4 py-4 text-sm">
                               {sub.subscribed ? (
-                                <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 whitespace-nowrap">
+                                <span className="px-3 py-1 text-xs font-medium rounded-full text-white whitespace-nowrap" style={{ backgroundColor: 'var(--crm-accent)' }}>
                                   {t('פעיל', 'Active')}
                                 </span>
                               ) : (
-                                <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 whitespace-nowrap">
+                                <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-600 whitespace-nowrap">
                                   {t('לא פעיל', 'Inactive')}
                                 </span>
                               )}
@@ -1927,17 +1931,17 @@ export default function NewsletterManager() {
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => handleEditSubscriber(sub)}
-                                  className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded transition-colors"
+                                  className="text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 p-2 hover:bg-[var(--crm-primary)]/10 rounded-lg transition-colors"
                                   title={t('ערוך', 'Edit')}
                                 >
-                                  <Edit3 className="w-5 h-5" />
+                                  <Edit3 className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => deleteSubscriber(sub.id)}
-                                  className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded transition-colors"
+                                  className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors"
                                   title={t('מחק', 'Delete')}
                                 >
-                                  <Trash2 className="w-5 h-5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
                             </td>

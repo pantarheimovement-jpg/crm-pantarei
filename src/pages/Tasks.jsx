@@ -421,21 +421,49 @@ export default function Tasks() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <p className="text-sm text-gray-600">ענתה</p>
-            <p className="text-2xl font-bold text-green-600">{stats.answered}</p>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">ענתה</p>
+                <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{stats.answered}</p>
+              </div>
+              <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-accent)' }}>
+                <CheckCircle size={24} style={{ color: 'white' }} />
+              </div>
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <p className="text-sm text-gray-600">לא ענתה</p>
-            <p className="text-2xl font-bold text-red-600">{stats.notAnswered}</p>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">לא ענתה</p>
+                <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{stats.notAnswered}</p>
+              </div>
+              <div className="p-3 rounded-xl" style={{ backgroundColor: '#ef4444' }}>
+                <AlertCircle size={24} style={{ color: 'white' }} />
+              </div>
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <p className="text-sm text-gray-600">הושלמו</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.completed}</p>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">הושלמו</p>
+                <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{stats.completed}</p>
+              </div>
+              <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-primary)' }}>
+                <CheckSquare size={24} style={{ color: 'white' }} />
+              </div>
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <p className="text-sm text-gray-600">מתוזמנות</p>
-            <p className="text-2xl font-bold text-purple-600">{stats.scheduled}</p>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">מתוזמנות</p>
+                <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{stats.scheduled}</p>
+              </div>
+              <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-action)' }}>
+                <Calendar size={24} style={{ color: 'var(--crm-text)' }} />
+              </div>
+            </div>
           </div>
         </div>
 

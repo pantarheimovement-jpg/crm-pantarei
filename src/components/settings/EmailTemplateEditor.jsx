@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X } from 'lucide-react';
+import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown } from 'lucide-react';
 
-const DEFAULT_TEMPLATE_SECTIONS = {
+// A "block" can be: text, image, video, button
+const DEFAULT_BLOCK = () => ({ id: Date.now() + Math.random(), type: 'text', title: '', content: '', button_text: '', button_url: '', image_url: '', video_url: '', video_thumbnail_url: '' });
+
+const DEFAULT_SECTIONS = {
   logo_url: '',
   header_title: 'ניוזלטר מפנטהרי',
   greeting: 'שלום {{name}},',
   intro_text: 'ברוכים הבאים לניוזלטר שלנו.',
   blocks: [
-    { id: 1, type: 'text', title: 'כותרת לבלוק', content: 'כתבי כאן את תוכן הבלוק שלך...', button_text: '', button_url: '' },
+    { id: 1, type: 'text', title: 'כותרת לבלוק', content: 'כתבי כאן את תוכן הבלוק שלך...', button_text: '', button_url: '', image_url: '', video_url: '', video_thumbnail_url: '' },
   ],
-  image_url: '',
-  video_thumbnail_url: '',
-  video_url: '',
   contact_phone: '',
   contact_email: '',
   contact_address: '',
@@ -30,27 +30,36 @@ function buildHtmlFromSections(s, generalSettings) {
   const systemName = generalSettings?.system_name || 'Pantarhei';
   const logoUrl = s.logo_url || generalSettings?.logo_url || '';
 
-  const blocksHtml = (s.blocks || []).map(block => `
+  const blocksHtml = (s.blocks || []).map(block => {
+    if (block.type === 'image') {
+      return block.image_url ? `
+    <div class="content" style="text-align:center;">
+      <img src="${block.image_url}" alt="תמונה" style="width:100%;max-width:500px;border-radius:12px;">
+    </div>` : '';
+    }
+    if (block.type === 'video') {
+      return (block.video_url && block.video_thumbnail_url) ? `
+    <div class="content" style="text-align:center;">
+      <a href="${block.video_url}" target="_blank">
+        <img src="${block.video_thumbnail_url}" alt="צפה בסרטון" style="border-radius:12px;width:100%;max-width:500px;">
+      </a>
+      <p style="font-size:14px;color:#555;margin-top:10px;">▶ לחצו לצפייה בסרטון</p>
+    </div>` : '';
+    }
+    if (block.type === 'button') {
+      return (block.button_text && block.button_url) ? `
+    <div class="content" style="text-align:center;padding:20px;">
+      <a href="${block.button_url}" class="button">${block.button_text}</a>
+    </div>` : '';
+    }
+    // text block
+    return `
     <div class="content">
       ${block.title ? `<h2 class="section-title">${block.title}</h2>` : ''}
-      <p>${(block.content || '').replace(/\n/g, '<br>')}</p>
+      ${block.content ? `<p>${block.content.replace(/\n/g, '<br>')}</p>` : ''}
       ${block.button_text && block.button_url ? `<p style="text-align:center;"><a href="${block.button_url}" class="button">${block.button_text}</a></p>` : ''}
-    </div>`).join('\n');
-
-  const imageHtml = s.image_url ? `
-    <div class="content">
-      <p style="text-align:center;"><img src="${s.image_url}" alt="תמונה" style="width:100%;max-width:500px;border-radius:12px;"></p>
-    </div>` : '';
-
-  const videoHtml = s.video_url && s.video_thumbnail_url ? `
-    <div class="content">
-      <div class="video-container">
-        <a href="${s.video_url}" target="_blank">
-          <img src="${s.video_thumbnail_url}" alt="צפה בסרטון" style="border-radius:12px;">
-        </a>
-        <p style="font-size:14px;color:#555;margin-top:10px;">לחצו על התמונה לצפייה בסרטון</p>
-      </div>
-    </div>` : '';
+    </div>`;
+  }).join('\n');
 
   const socialHtml = (s.social_whatsapp || s.social_facebook || s.social_instagram || s.social_youtube) ? `
     <div class="social-icons">
@@ -67,21 +76,20 @@ function buildHtmlFromSections(s, generalSettings) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&family=Amatic+SC:wght@400;700&display=swap');
-:root{--crm-bg:#FDF8F0;--crm-primary:#6D436D;--crm-accent:#D29486;--crm-action:#FAD980;--crm-text:#5E4B35;--crm-border-radius:12px;--crm-button-radius:50px;--font-headings:"Amatic SC",cursive;--font-body:"Rubik",sans-serif;}
-body{font-family:var(--font-body);color:var(--crm-text);background-color:var(--crm-bg);margin:0;padding:0;direction:rtl;text-align:right;}
-.container{max-width:600px;margin:20px auto;background:#fff;border-radius:var(--crm-border-radius);overflow:hidden;box-shadow:0 4px 8px rgba(0,0,0,0.05);}
+:root{--crm-bg:#FDF8F0;--crm-primary:#6D436D;--crm-accent:#D29486;--crm-action:#FAD980;--crm-text:#5E4B35;}
+body{font-family:"Rubik",sans-serif;color:var(--crm-text);background-color:var(--crm-bg);margin:0;padding:0;direction:rtl;text-align:right;}
+.container{max-width:600px;margin:20px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 8px rgba(0,0,0,0.05);}
 .header{background-color:var(--crm-primary);padding:20px;text-align:center;color:#fff;}
-.header h1{font-family:var(--font-headings);font-size:32px;margin:0;color:#fff;}
-.header img{max-width:150px;margin-bottom:10px;border-radius:var(--crm-border-radius);}
+.header h1{font-family:"Amatic SC",cursive;font-size:32px;margin:0;color:#fff;}
+.header img{max-width:150px;margin-bottom:10px;border-radius:12px;}
 .content{padding:20px 30px;line-height:1.6;}
-.section-title{font-family:var(--font-headings);font-size:28px;color:var(--crm-primary);margin-top:20px;margin-bottom:10px;text-align:center;}
-.button{display:inline-block;background-color:var(--crm-action);color:var(--crm-text)!important;padding:12px 25px;border-radius:var(--crm-button-radius);font-weight:bold;text-decoration:none;margin:15px 0;}
+.section-title{font-family:"Amatic SC",cursive;font-size:28px;color:var(--crm-primary);margin-top:20px;margin-bottom:10px;text-align:center;}
+.button{display:inline-block;background-color:var(--crm-action);color:var(--crm-text)!important;padding:12px 25px;border-radius:50px;font-weight:bold;text-decoration:none;margin:15px 0;}
 .social-icons{text-align:center;padding:20px;background-color:var(--crm-bg);}
 .social-icons a{display:inline-block;margin:0 8px;}
-.social-icons img{width:28px;height:28px;display:inline-block;}
+.social-icons img{width:28px;height:28px;}
 .contact-info{text-align:center;padding:20px 30px;font-size:14px;color:var(--crm-text);}
 .contact-info p{margin:5px 0;}
-.video-container{text-align:center;margin:15px 0;}
 .footer{text-align:center;padding:20px;font-size:12px;color:#888;background-color:#f0f0f0;}
 .footer a{color:#888;text-decoration:underline;}
 @media(max-width:600px){.container{margin:0;border-radius:0;}.content{padding:15px;}}
@@ -93,16 +101,11 @@ body{font-family:var(--font-body);color:var(--crm-text);background-color:var(--c
     ${logoUrl ? `<img src="${logoUrl}" alt="לוגו" width="150">` : ''}
     <h1>${s.header_title || ''}</h1>
   </div>
-
   <div class="content">
     <p>${s.greeting || ''}</p>
     <p>${(s.intro_text || '').replace(/\n/g, '<br>')}</p>
   </div>
-
   ${blocksHtml}
-  ${imageHtml}
-  ${videoHtml}
-
   <div class="contact-info">
     <h2 class="section-title">צרו קשר</h2>
     ${phone ? `<p>טלפון: ${phone}</p>` : ''}
@@ -110,9 +113,7 @@ body{font-family:var(--font-body);color:var(--crm-text);background-color:var(--c
     ${address ? `<p>כתובת: ${address}</p>` : ''}
     ${s.contact_extra ? `<p style="font-size:12px;margin-top:10px;">${s.contact_extra}</p>` : ''}
   </div>
-
   ${socialHtml}
-
   <div class="footer">
     <p>נשלח על ידי ${systemName}</p>
     <p><a href="{{unsubscribe_link}}">להסרה מהרשימה</a></p>
@@ -126,7 +127,7 @@ export default function EmailTemplateEditor() {
   const [templates, setTemplates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [sections, setSections] = useState(() => {
-    try { const s = localStorage.getItem('emailTemplate_sections'); return s ? JSON.parse(s) : DEFAULT_TEMPLATE_SECTIONS; } catch { return DEFAULT_TEMPLATE_SECTIONS; }
+    try { const s = localStorage.getItem('emailTemplate_sections'); return s ? JSON.parse(s) : DEFAULT_SECTIONS; } catch { return DEFAULT_SECTIONS; }
   });
   const [templateName, setTemplateName] = useState(() => localStorage.getItem('emailTemplate_name') || '');
   const [templateSubject, setTemplateSubject] = useState(() => localStorage.getItem('emailTemplate_subject') || '');
@@ -137,16 +138,9 @@ export default function EmailTemplateEditor() {
   const [creatingNew, setCreatingNew] = useState(false);
   const [savedIndicator, setSavedIndicator] = useState(false);
 
-  // Auto-save to localStorage whenever data changes
-  useEffect(() => {
-    localStorage.setItem('emailTemplate_sections', JSON.stringify(sections));
-  }, [sections]);
-  useEffect(() => {
-    localStorage.setItem('emailTemplate_name', templateName);
-  }, [templateName]);
-  useEffect(() => {
-    localStorage.setItem('emailTemplate_subject', templateSubject);
-  }, [templateSubject]);
+  useEffect(() => { localStorage.setItem('emailTemplate_sections', JSON.stringify(sections)); }, [sections]);
+  useEffect(() => { localStorage.setItem('emailTemplate_name', templateName); }, [templateName]);
+  useEffect(() => { localStorage.setItem('emailTemplate_subject', templateSubject); }, [templateSubject]);
 
   useEffect(() => {
     loadTemplates();
@@ -156,7 +150,6 @@ export default function EmailTemplateEditor() {
   const loadTemplates = async () => {
     const data = await base44.entities.EmailTemplate.list();
     setTemplates(data || []);
-    // Don't auto-load template - keep whatever is in localStorage/state
   };
 
   const loadGeneralSettings = async () => {
@@ -168,13 +161,8 @@ export default function EmailTemplateEditor() {
     setSelectedId(template.id);
     setTemplateName(template.name || '');
     setTemplateSubject(template.subject || '');
-    setSections({ ...DEFAULT_TEMPLATE_SECTIONS });
+    setSections({ ...DEFAULT_SECTIONS });
     setCreatingNew(false);
-  };
-
-  const extractSectionsFromHtml = (html) => {
-    // Return defaults if can't parse
-    return { ...DEFAULT_TEMPLATE_SECTIONS };
   };
 
   const handleSave = async () => {
@@ -202,36 +190,50 @@ export default function EmailTemplateEditor() {
     if (!confirm('האם למחוק תבנית זו?')) return;
     await base44.entities.EmailTemplate.delete(id);
     setSelectedId(null);
-    setSections({ ...DEFAULT_TEMPLATE_SECTIONS });
+    setSections({ ...DEFAULT_SECTIONS });
     setTemplateName(''); setTemplateSubject('');
     await loadTemplates();
   };
 
-  const handleUploadImage = async (e, field, blockIndex = null) => {
+  const handleUploadImage = async (e, blockIdx, field) => {
     const file = e.target.files[0];
     if (!file) return;
-    setUploadingField(field + (blockIndex !== null ? blockIndex : ''));
+    const key = `${field}_${blockIdx}`;
+    setUploadingField(key);
     try {
       const uploaded = await base44.integrations.Core.UploadFile({ file });
-      if (blockIndex !== null) {
-        const newBlocks = [...sections.blocks];
-        newBlocks[blockIndex] = { ...newBlocks[blockIndex], [field]: uploaded.file_url };
-        setSections({ ...sections, blocks: newBlocks });
+      if (blockIdx === 'logo') {
+        setSections({ ...sections, logo_url: uploaded.file_url });
       } else {
-        setSections({ ...sections, [field]: uploaded.file_url });
+        updateBlock(blockIdx, field, uploaded.file_url);
       }
     } finally {
       setUploadingField(null);
     }
   };
 
-  const addBlock = () => {
-    const newBlock = { id: Date.now(), type: 'text', title: 'כותרת חדשה', content: 'טקסט...', button_text: '', button_url: '' };
-    setSections({ ...sections, blocks: [...sections.blocks, newBlock] });
+  const addBlock = (type = 'text', afterIdx = null) => {
+    const newBlock = { ...DEFAULT_BLOCK(), type };
+    const newBlocks = [...sections.blocks];
+    if (afterIdx !== null) {
+      newBlocks.splice(afterIdx + 1, 0, newBlock);
+    } else {
+      newBlocks.push(newBlock);
+    }
+    setSections({ ...sections, blocks: newBlocks });
   };
 
   const removeBlock = (idx) => {
+    if (!confirm('למחוק בלוק זה?')) return;
     setSections({ ...sections, blocks: sections.blocks.filter((_, i) => i !== idx) });
+  };
+
+  const moveBlock = (idx, dir) => {
+    const newBlocks = [...sections.blocks];
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= newBlocks.length) return;
+    [newBlocks[idx], newBlocks[swapIdx]] = [newBlocks[swapIdx], newBlocks[idx]];
+    setSections({ ...sections, blocks: newBlocks });
   };
 
   const updateBlock = (idx, field, val) => {
@@ -245,23 +247,23 @@ export default function EmailTemplateEditor() {
     setSelectedId(null);
     setTemplateName('תבנית חדשה');
     setTemplateSubject('');
-    setSections({ ...DEFAULT_TEMPLATE_SECTIONS });
+    setSections({ ...DEFAULT_SECTIONS });
   };
 
   const previewHtml = buildHtmlFromSections(sections, generalSettings);
+
+  const BLOCK_TYPES = [
+    { type: 'text', icon: '📝', label: 'טקסט' },
+    { type: 'image', icon: '🖼️', label: 'תמונה' },
+    { type: 'video', icon: '🎬', label: 'סרטון' },
+    { type: 'button', icon: '🔘', label: 'כפתור' },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Template selector */}
       <div className="flex flex-wrap gap-3 items-center">
-        <select
-          value={selectedId || ''}
-          onChange={(e) => {
-            const t = templates.find(t => t.id === e.target.value);
-            if (t) loadTemplate(t);
-          }}
-          className="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 rounded-lg"
-        >
+        <select value={selectedId || ''} onChange={(e) => { const t = templates.find(t => t.id === e.target.value); if (t) loadTemplate(t); }} className="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 rounded-lg">
           <option value="">-- בחרי תבנית --</option>
           {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
@@ -270,12 +272,12 @@ export default function EmailTemplateEditor() {
         </button>
         {selectedId && !creatingNew && (
           <button onClick={() => handleDelete(selectedId)} className="px-4 py-2 border border-red-400 text-red-600 rounded-full hover:bg-red-50 flex items-center gap-2">
-            <Trash2 className="w-4 h-4" /> מחק
+            <Trash2 className="w-4 h-4" /> מחק תבנית
           </button>
         )}
       </div>
 
-      {/* Template basic info */}
+      {/* Basic info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">שם התבנית</label>
@@ -287,17 +289,17 @@ export default function EmailTemplateEditor() {
         </div>
       </div>
 
-      {/* Header section */}
+      {/* Header */}
       <div className="border border-[#6D436D]/20 rounded-xl p-5 bg-[#6D436D]/5">
         <h4 className="font-bold text-[#6D436D] mb-4">🏷️ כותרת עליונה</h4>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">לוגו (URL או העלאה)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">לוגו</label>
             <div className="flex gap-2">
               <input type="text" value={sections.logo_url} onChange={e => setSections({...sections, logo_url: e.target.value})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="https://..." />
               <label className="px-3 py-2 bg-[#6D436D] text-white rounded-lg cursor-pointer flex items-center gap-1 text-sm hover:bg-[#5a365a]">
-                {uploadingField === 'logo_url' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                <input type="file" className="hidden" accept="image/*" onChange={e => handleUploadImage(e, 'logo_url')} />
+                {uploadingField === 'image_url_logo' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                <input type="file" className="hidden" accept="image/*" onChange={e => handleUploadImage(e, 'logo', 'image_url')} />
               </label>
             </div>
             {sections.logo_url && <img src={sections.logo_url} alt="logo" className="mt-2 h-12 rounded" />}
@@ -314,7 +316,7 @@ export default function EmailTemplateEditor() {
         <h4 className="font-bold text-gray-800 mb-4">👋 ברכה ופתיחה</h4>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">שורת פנייה (השתמשי ב-{`{{name}}`} לשם הנמען)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">שורת פנייה (השתמשי ב-{'{{name}}'} לשם הנמען)</label>
             <input type="text" value={sections.greeting} onChange={e => setSections({...sections, greeting: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
           </div>
           <div>
@@ -327,88 +329,113 @@ export default function EmailTemplateEditor() {
       {/* Content blocks */}
       <div className="border border-gray-200 rounded-xl p-5">
         <div className="flex justify-between items-center mb-4">
-          <h4 className="font-bold text-gray-800">📝 בלוקי תוכן</h4>
-          <button onClick={addBlock} className="px-4 py-2 bg-green-600 text-white rounded-full text-sm font-semibold flex items-center gap-1 hover:bg-green-700">
-            <Plus className="w-4 h-4" /> הוסף בלוק
-          </button>
+          <h4 className="font-bold text-gray-800">📋 בלוקי תוכן</h4>
+          <div className="flex gap-2 flex-wrap">
+            {BLOCK_TYPES.map(({ type, icon, label }) => (
+              <button key={type} onClick={() => addBlock(type)}
+                className="px-3 py-1.5 bg-[#6D436D] text-white rounded-full text-xs font-semibold hover:bg-[#5a365a] flex items-center gap-1">
+                <Plus className="w-3 h-3" />{icon} {label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="space-y-4">
+          {sections.blocks.length === 0 && <p className="text-gray-500 text-center py-4">הוסיפי בלוק ראשון 👆</p>}
           {sections.blocks.map((block, idx) => (
-            <div key={block.id || idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div key={block.id || idx} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
               <div className="flex justify-between items-center mb-3">
-                <span className="font-medium text-sm text-gray-600">בלוק {idx + 1}</span>
-                <button onClick={() => removeBlock(idx)} className="text-red-500 hover:text-red-700"><X className="w-4 h-4" /></button>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{BLOCK_TYPES.find(t => t.type === block.type)?.icon || '📝'}</span>
+                  <span className="font-medium text-sm text-gray-700">{BLOCK_TYPES.find(t => t.type === block.type)?.label || 'טקסט'} #{idx + 1}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => moveBlock(idx, -1)} disabled={idx === 0} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
+                  <button onClick={() => moveBlock(idx, 1)} disabled={idx === sections.blocks.length - 1} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
+                  <button onClick={() => removeBlock(idx)} className="p-1 text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <input type="text" value={block.title} onChange={e => updateBlock(idx, 'title', e.target.value)} placeholder="כותרת הבלוק (אופציונלי)" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                <textarea value={block.content} onChange={e => updateBlock(idx, 'content', e.target.value)} placeholder="תוכן הבלוק..." rows="4" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+
+              {/* Text block */}
+              {block.type === 'text' && (
+                <div className="space-y-2">
+                  <input type="text" value={block.title} onChange={e => updateBlock(idx, 'title', e.target.value)} placeholder="כותרת הבלוק (אופציונלי)" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  <textarea value={block.content} onChange={e => updateBlock(idx, 'content', e.target.value)} placeholder="תוכן הבלוק..." rows="4" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="text" value={block.button_text} onChange={e => updateBlock(idx, 'button_text', e.target.value)} placeholder="טקסט כפתור (אופציונלי)" className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                    <input type="text" value={block.button_url} onChange={e => updateBlock(idx, 'button_url', e.target.value)} placeholder="קישור כפתור" className="px-3 py-2 border border-gray-300 rounded-lg text-sm" dir="ltr" />
+                  </div>
+                </div>
+              )}
+
+              {/* Image block */}
+              {block.type === 'image' && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input type="text" value={block.image_url} onChange={e => updateBlock(idx, 'image_url', e.target.value)} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="URL תמונה..." />
+                    <label className="px-3 py-2 bg-gray-600 text-white rounded-lg cursor-pointer flex items-center gap-1 text-sm hover:bg-gray-700">
+                      {uploadingField === `image_url_${idx}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                      <input type="file" className="hidden" accept="image/*" onChange={e => handleUploadImage(e, idx, 'image_url')} />
+                    </label>
+                  </div>
+                  {block.image_url && <img src={block.image_url} alt="preview" className="max-h-32 rounded" />}
+                </div>
+              )}
+
+              {/* Video block */}
+              {block.type === 'video' && (
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">קישור לסרטון</label>
+                    <input type="text" value={block.video_url} onChange={e => updateBlock(idx, 'video_url', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="https://youtube.com/..." dir="ltr" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">תמונה ממוזערת</label>
+                    <div className="flex gap-2">
+                      <input type="text" value={block.video_thumbnail_url} onChange={e => updateBlock(idx, 'video_thumbnail_url', e.target.value)} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="https://..." />
+                      <label className="px-3 py-2 bg-gray-600 text-white rounded-lg cursor-pointer flex items-center gap-1 text-sm">
+                        {uploadingField === `video_thumbnail_url_${idx}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                        <input type="file" className="hidden" accept="image/*" onChange={e => handleUploadImage(e, idx, 'video_thumbnail_url')} />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Button block */}
+              {block.type === 'button' && (
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="text" value={block.button_text} onChange={e => updateBlock(idx, 'button_text', e.target.value)} placeholder="טקסט כפתור (אופציונלי)" className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                  <input type="text" value={block.button_url} onChange={e => updateBlock(idx, 'button_url', e.target.value)} placeholder="קישור כפתור" className="px-3 py-2 border border-gray-300 rounded-lg text-sm" dir="ltr" />
+                  <input type="text" value={block.button_text} onChange={e => updateBlock(idx, 'button_text', e.target.value)} placeholder="טקסט הכפתור" className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  <input type="text" value={block.button_url} onChange={e => updateBlock(idx, 'button_url', e.target.value)} placeholder="https://..." className="px-3 py-2 border border-gray-300 rounded-lg text-sm" dir="ltr" />
+                </div>
+              )}
+
+              {/* Add block after this one */}
+              <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
+                <p className="text-xs text-gray-400 mb-2">הוסף בלוק אחרי זה:</p>
+                <div className="flex gap-2 flex-wrap">
+                  {BLOCK_TYPES.map(({ type, icon, label }) => (
+                    <button key={type} onClick={() => addBlock(type, idx)}
+                      className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs hover:bg-[#6D436D]/10 hover:text-[#6D436D] flex items-center gap-1">
+                      <Plus className="w-3 h-3" />{icon}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
           ))}
-          {sections.blocks.length === 0 && (
-            <p className="text-gray-500 text-center py-4">לחצי "הוסף בלוק" להוספת תוכן</p>
-          )}
         </div>
       </div>
 
-      {/* Image */}
-      <div className="border border-gray-200 rounded-xl p-5">
-        <h4 className="font-bold text-gray-800 mb-4">🖼️ תמונה מרכזית (אופציונלי)</h4>
-        <div className="flex gap-2">
-          <input type="text" value={sections.image_url} onChange={e => setSections({...sections, image_url: e.target.value})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="https://..." />
-          <label className="px-3 py-2 bg-gray-600 text-white rounded-lg cursor-pointer flex items-center gap-1 text-sm hover:bg-gray-700">
-            {uploadingField === 'image_url' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-            <input type="file" className="hidden" accept="image/*" onChange={e => handleUploadImage(e, 'image_url')} />
-          </label>
-        </div>
-        {sections.image_url && <img src={sections.image_url} alt="preview" className="mt-2 max-h-32 rounded" />}
-      </div>
-
-      {/* Video */}
-      <div className="border border-gray-200 rounded-xl p-5">
-        <h4 className="font-bold text-gray-800 mb-4">🎬 סרטון (אופציונלי)</h4>
-        <div className="space-y-2">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">קישור לסרטון (יוטיוב וכו')</label>
-            <input type="text" value={sections.video_url} onChange={e => setSections({...sections, video_url: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="https://youtube.com/..." dir="ltr" />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">תמונה ממוזערת לסרטון</label>
-            <div className="flex gap-2">
-              <input type="text" value={sections.video_thumbnail_url} onChange={e => setSections({...sections, video_thumbnail_url: e.target.value})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="https://..." />
-              <label className="px-3 py-2 bg-gray-600 text-white rounded-lg cursor-pointer flex items-center gap-1 text-sm">
-                {uploadingField === 'video_thumbnail_url' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                <input type="file" className="hidden" accept="image/*" onChange={e => handleUploadImage(e, 'video_thumbnail_url')} />
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Contact info */}
+      {/* Contact */}
       <div className="border border-gray-200 rounded-xl p-5">
         <h4 className="font-bold text-gray-800 mb-4">📞 פרטי קשר (ריק = יילקח מהגדרות כלליות)</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">טלפון</label>
-            <input type="text" value={sections.contact_phone} onChange={e => setSections({...sections, contact_phone: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder={generalSettings?.business_phone || '050-...'} />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">אימייל</label>
-            <input type="text" value={sections.contact_email} onChange={e => setSections({...sections, contact_email: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder={generalSettings?.business_email || 'info@...'} />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">כתובת</label>
-            <input type="text" value={sections.contact_address} onChange={e => setSections({...sections, contact_address: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder={generalSettings?.business_address || 'תל אביב'} />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">הערה נוספת</label>
-            <input type="text" value={sections.contact_extra} onChange={e => setSections({...sections, contact_extra: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="מידע נוסף..." />
-          </div>
+          {[['contact_phone', 'טלפון', generalSettings?.business_phone || '050-...'], ['contact_email', 'אימייל', generalSettings?.business_email || 'info@...'], ['contact_address', 'כתובת', generalSettings?.business_address || 'תל אביב'], ['contact_extra', 'הערה נוספת', 'מידע נוסף...']].map(([field, label, placeholder]) => (
+            <div key={field}>
+              <label className="block text-sm text-gray-600 mb-1">{label}</label>
+              <input type="text" value={sections[field]} onChange={e => setSections({...sections, [field]: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder={placeholder} />
+            </div>
+          ))}
         </div>
       </div>
 
@@ -416,12 +443,7 @@ export default function EmailTemplateEditor() {
       <div className="border border-gray-200 rounded-xl p-5">
         <h4 className="font-bold text-gray-800 mb-4">📱 רשתות חברתיות (אופציונלי)</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[
-            ['social_whatsapp', 'WhatsApp (מספר בינלאומי)', '972501234567'],
-            ['social_facebook', 'Facebook (URL)', 'https://facebook.com/...'],
-            ['social_instagram', 'Instagram (URL)', 'https://instagram.com/...'],
-            ['social_youtube', 'YouTube (URL)', 'https://youtube.com/...'],
-          ].map(([field, label, placeholder]) => (
+          {[['social_whatsapp', 'WhatsApp (מספר)', '972501234567'], ['social_facebook', 'Facebook (URL)', 'https://facebook.com/...'], ['social_instagram', 'Instagram (URL)', 'https://instagram.com/...'], ['social_youtube', 'YouTube (URL)', 'https://youtube.com/...']].map(([field, label, placeholder]) => (
             <div key={field}>
               <label className="block text-sm text-gray-600 mb-1">{label}</label>
               <input type="text" value={sections[field]} onChange={e => setSections({...sections, [field]: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder={placeholder} dir="ltr" />
@@ -440,23 +462,20 @@ export default function EmailTemplateEditor() {
         </button>
       </div>
 
-      {/* Sticky save button */}
-      <div className="fixed bottom-6 left-6 z-50">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`shadow-xl px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-all text-sm ${savedIndicator ? 'bg-green-600 text-white' : 'bg-[#6D436D] text-white hover:bg-[#5a365a] disabled:bg-gray-400'}`}
-        >
-          {saving ? <><Loader2 className="w-4 h-4 animate-spin" />שומר...</> : savedIndicator ? '✅ נשמר!' : <><Save className="w-4 h-4" />שמור תבנית</>}
-        </button>
-      </div>
-
       {showPreview && (
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="bg-gray-100 px-4 py-2 text-sm text-gray-600 font-medium">תצוגה מקדימה של המייל</div>
           <iframe srcDoc={previewHtml} className="w-full h-[600px] border-0" title="Email Preview" />
         </div>
       )}
+
+      {/* Sticky save button */}
+      <div className="fixed bottom-6 left-6 z-50">
+        <button onClick={handleSave} disabled={saving}
+          className={`shadow-xl px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-all text-sm ${savedIndicator ? 'bg-green-600 text-white' : 'bg-[#6D436D] text-white hover:bg-[#5a365a] disabled:bg-gray-400'}`}>
+          {saving ? <><Loader2 className="w-4 h-4 animate-spin" />שומר...</> : savedIndicator ? '✅ נשמר!' : <><Save className="w-4 h-4" />שמור תבנית</>}
+        </button>
+      </div>
     </div>
   );
 }

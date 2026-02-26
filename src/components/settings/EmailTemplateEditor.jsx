@@ -434,8 +434,8 @@ export default function EmailTemplateEditor() {
 
       {/* Actions */}
       <div className="flex gap-3 pt-2">
-        <button onClick={handleSave} disabled={saving} className="flex-1 bg-[#6D436D] text-white py-3 rounded-full font-semibold hover:bg-[#5a365a] disabled:bg-gray-400 flex items-center justify-center gap-2">
-          {saving ? <><Loader2 className="w-5 h-5 animate-spin" />שומר...</> : <><Save className="w-5 h-5" />שמור תבנית</>}
+        <button onClick={handleSave} disabled={saving} className={`flex-1 py-3 rounded-full font-semibold flex items-center justify-center gap-2 transition-colors ${savedIndicator ? 'bg-green-600 text-white' : 'bg-[#6D436D] text-white hover:bg-[#5a365a] disabled:bg-gray-400'}`}>
+          {saving ? <><Loader2 className="w-5 h-5 animate-spin" />שומר...</> : savedIndicator ? '✅ נשמר בהצלחה!' : <><Save className="w-5 h-5" />שמור תבנית</>}
         </button>
         <button onClick={() => setShowPreview(!showPreview)} className="px-6 py-3 border-2 border-[#6D436D] text-[#6D436D] rounded-full font-semibold flex items-center gap-2 hover:bg-[#6D436D]/10">
           <Eye className="w-5 h-5" />{showPreview ? 'סגור תצוגה מקדימה' : 'תצוגה מקדימה'}

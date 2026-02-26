@@ -230,7 +230,7 @@ export default function NewsletterManager() {
         group: selectedGroup, recipients_count: totalLogRecipients,
         status: (emailErrorCount + whatsappErrorCount) > 0 ? `נשלח חלקית (${emailErrorCount + whatsappErrorCount} שגיאות)` : 'נשלח בהצלחה',
         sent_date: new Date().toISOString(),
-        sent_by: sendChannel === 'both' ? 'Brevo + WhatsApp' : sendChannel === 'email' ? 'Brevo' : 'WhatsApp'
+        sent_by: sendChannel === 'both' ? 'Base44 + WhatsApp' : sendChannel === 'email' ? 'Base44' : 'WhatsApp'
       });
 
       setSendStatus('success');

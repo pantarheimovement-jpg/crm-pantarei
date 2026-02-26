@@ -282,6 +282,17 @@ export default function CRMSettings() {
                 <Zap className="w-5 h-5 inline-block ml-2" />
                 אוטומציה
               </button>
+              <button
+                onClick={() => setActiveTab('email-templates')}
+                className={`px-6 py-4 font-medium whitespace-nowrap ${
+                  activeTab === 'email-templates'
+                    ? 'border-b-2 border-[#6D436D] text-[#6D436D]'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Mail className="w-5 h-5 inline-block ml-2" />
+                תבניות מייל
+              </button>
             </div>
           </div>
 

@@ -18,10 +18,11 @@ export default function TestEmailModal({ htmlContent, subject, onClose }) {
 
     setSending(true);
     try {
-      await base44.integrations.Core.SendEmail({
+      await base44.functions.invoke('sendEmailGmail', {
         to: email.trim(),
         subject: subject || 'מייל ניסיון מ-Pantarhei CRM',
-        body: htmlContent
+        html_content: htmlContent,
+        from_name: 'פנטהריי'
       });
       alert(`✅ מייל ניסיון נשלח בהצלחה אל ${email}!`);
       onClose();

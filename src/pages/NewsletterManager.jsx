@@ -189,19 +189,23 @@ export default function NewsletterManager() {
         const batchRecipients = recipients.slice(batchIndex * BATCH_SIZE, Math.min((batchIndex + 1) * BATCH_SIZE, recipients.length));
 
         if (sendChannel === 'email' || sendChannel === 'both') {
-          const emailRecipients = batchRecipients.filter(r => r.email).map(recipient => ({
-            email: recipient.email,
-            name: recipient.name || '',
-            html_content: finalEmailContent
+          const emailRecipients = batchRecipients.filter(r => r.email);
+          for (const recipient of emailRecipients) {
+            const personalizedHtml = finalEmailContent
               .replace(/\{\{unsubscribe_link\}\}/g, `${window.location.origin}/Unsubscribe?token=${recipient.unsubscribe_token}`)
-              .replace(/\{\{name\}\}/g, recipient.name || '')
-          }));
-          if (emailRecipients.length > 0) {
+              .replace(/\{\{name\}\}/g, recipient.name || '');
             try {
-              const result = await base44.functions.invoke('sendNewsletterBrevo', { recipients: emailRecipients, subject, html_content: finalEmailContent, from_name: 'פורצות קדימה - MOVEUP', from_email: 'hello@moveup.today' });
-              emailSuccessCount += result.data.success_count;
-              emailErrorCount += result.data.failed_count;
-            } catch (error) { emailErrorCount += emailRecipients.length; }
+              await base44.functions.invoke('sendEmailGmail', {
+                to: recipient.email,
+                subject,
+                html_content: personalizedHtml,
+                from_name: 'פנטהריי'
+              });
+              emailSuccessCount++;
+            } catch (error) {
+              console.error('Gmail send error for', recipient.email, error);
+              emailErrorCount++;
+            }
           }
         }
 
@@ -226,7 +230,7 @@ export default function NewsletterManager() {
         group: selectedGroup, recipients_count: totalLogRecipients,
         status: (emailErrorCount + whatsappErrorCount) > 0 ? `נשלח חלקית (${emailErrorCount + whatsappErrorCount} שגיאות)` : 'נשלח בהצלחה',
         sent_date: new Date().toISOString(),
-        sent_by: sendChannel === 'both' ? 'Brevo + WhatsApp' : sendChannel === 'email' ? 'Brevo' : 'WhatsApp'
+        sent_by: sendChannel === 'both' ? 'Gmail + WhatsApp' : sendChannel === 'email' ? 'Gmail' : 'WhatsApp'
       });
 
       setSendStatus('success');
@@ -262,10 +266,24 @@ export default function NewsletterManager() {
           .replace(/\{\{name\}\}/g, recipient.name || '')
       }));
 
-      const result = await base44.functions.invoke('sendNewsletterBrevo', { recipients: emailRecipients, subject: resendSubject, html_content: resendContent, from_name: 'פורצות קדימה - MOVEUP', from_email: 'hello@moveup.today' });
+      let resendSuccess = 0, resendFailed = 0;
+      for (const recipient of emailRecipients) {
+        try {
+          await base44.functions.invoke('sendEmailGmail', {
+            to: recipient.email,
+            subject: resendSubject,
+            html_content: recipient.html_content || resendContent,
+            from_name: 'פנטהריי'
+          });
+          resendSuccess++;
+        } catch (error) {
+          console.error('Gmail resend error for', recipient.email, error);
+          resendFailed++;
+        }
+      }
 
-      await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent, group: resendGroup, recipients_count: result.data.success_count, status: result.data.failed_count === 0 ? 'נשלח בהצלחה' : `נשלח חלקית`, sent_date: new Date().toISOString(), sent_by: 'Brevo (שליחה מחדש)' });
-      alert(`הניוזלטר נשלח מחדש בהצלחה ל-${result.data.success_count} מנויים!`);
+      await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent, group: resendGroup, recipients_count: resendSuccess, status: resendFailed === 0 ? 'נשלח בהצלחה' : `נשלח חלקית (${resendFailed} שגיאות)`, sent_date: new Date().toISOString(), sent_by: 'Gmail (שליחה מחדש)' });
+      alert(`הניוזלטר נשלח מחדש בהצלחה ל-${resendSuccess} מנויים!`);
       setShowResendModal(false); setResendData(null); setResendSubject(''); setResendGroup('קבוצה 1'); setResendContent('');
       loadLogs();
     } catch (error) {

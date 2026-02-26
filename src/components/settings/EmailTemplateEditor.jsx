@@ -187,14 +187,14 @@ export default function EmailTemplateEditor() {
       const data = { name: templateName, subject: templateSubject, body: html, active: true };
       if (selectedId && !creatingNew) {
         await base44.entities.EmailTemplate.update(selectedId, data);
-        alert('התבנית נשמרה בהצלחה!');
       } else {
         const created = await base44.entities.EmailTemplate.create(data);
         setSelectedId(created.id);
-        alert('התבנית נוצרה בהצלחה!');
       }
       await loadTemplates();
       setCreatingNew(false);
+      setSavedIndicator(true);
+      setTimeout(() => setSavedIndicator(false), 3000);
     } finally {
       setSaving(false);
     }

@@ -259,12 +259,7 @@ export default function NewsletterManager() {
 
     setSending(true);
     try {
-      const emailRecipients = recipients.filter(r => r.email).map(recipient => ({
-        email: recipient.email, name: recipient.name || '',
-        html_content: resendContent
-          .replace(/\{\{unsubscribe_link\}\}/g, `${window.location.origin}/Unsubscribe?token=${recipient.unsubscribe_token}`)
-          .replace(/\{\{name\}\}/g, recipient.name || '')
-      }));
+      const emailRecipients = recipients.filter(r => r.email);
 
       let resendSuccess = 0, resendFail = 0;
       for (const recipient of emailRecipients) {

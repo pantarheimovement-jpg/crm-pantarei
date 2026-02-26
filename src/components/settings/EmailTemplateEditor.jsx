@@ -170,13 +170,7 @@ export default function EmailTemplateEditor() {
     setSelectedId(template.id);
     setTemplateName(template.name || '');
     setTemplateSubject(template.subject || '');
-    // Try to parse sections from body, or use defaults
-    try {
-      const parsed = template._sections ? JSON.parse(template._sections) : null;
-      setSections(parsed || extractSectionsFromHtml(template.body));
-    } catch {
-      setSections({ ...DEFAULT_TEMPLATE_SECTIONS });
-    }
+    setSections({ ...DEFAULT_TEMPLATE_SECTIONS });
     setCreatingNew(false);
   };
 

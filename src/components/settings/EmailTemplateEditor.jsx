@@ -30,95 +30,121 @@ function buildHtmlFromSections(s, generalSettings) {
   const systemName = generalSettings?.system_name || 'Pantarhei';
   const logoUrl = s.logo_url || generalSettings?.logo_url || '';
 
+  // Pantarhei colors - hardcoded for email client compatibility
+  const PRIMARY = '#6D436D';
+  const ACCENT = '#D29486';
+  const ACTION = '#FAD980';
+  const TEXT = '#5E4B35';
+  const BG = '#FDF8F0';
+
   const blocksHtml = (s.blocks || []).map(block => {
     if (block.type === 'image') {
       return block.image_url ? `
-    <div class="content" style="text-align:center;">
-      <img src="${block.image_url}" alt="תמונה" style="width:100%;max-width:500px;border-radius:12px;">
-    </div>` : '';
+      <tr><td style="padding:10px 30px;text-align:center;">
+        <img src="${block.image_url}" alt="תמונה" width="500" style="width:100%;max-width:500px;border-radius:12px;display:block;margin:0 auto;">
+      </td></tr>` : '';
     }
     if (block.type === 'video') {
       return (block.video_url && block.video_thumbnail_url) ? `
-    <div class="content" style="text-align:center;">
-      <a href="${block.video_url}" target="_blank">
-        <img src="${block.video_thumbnail_url}" alt="צפה בסרטון" style="border-radius:12px;width:100%;max-width:500px;">
-      </a>
-      <p style="font-size:14px;color:#555;margin-top:10px;">▶ לחצו לצפייה בסרטון</p>
-    </div>` : '';
+      <tr><td style="padding:10px 30px;text-align:center;">
+        <a href="${block.video_url}" target="_blank" style="text-decoration:none;">
+          <img src="${block.video_thumbnail_url}" alt="צפה בסרטון" width="500" style="width:100%;max-width:500px;border-radius:12px;display:block;margin:0 auto;">
+        </a>
+        <p style="font-family:'Rubik',Arial,sans-serif;font-size:14px;color:#555;margin-top:10px;">▶ לחצו לצפייה בסרטון</p>
+      </td></tr>` : '';
     }
     if (block.type === 'button') {
       return (block.button_text && block.button_url) ? `
-    <div class="content" style="text-align:center;padding:20px;">
-      <a href="${block.button_url}" class="button">${block.button_text}</a>
-    </div>` : '';
+      <tr><td style="padding:20px 30px;text-align:center;">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr><td style="background-color:${ACTION};border-radius:50px;text-align:center;">
+          <a href="${block.button_url}" target="_blank" style="display:inline-block;padding:14px 30px;font-family:'Rubik',Arial,sans-serif;font-size:16px;font-weight:bold;color:${TEXT};text-decoration:none;">${block.button_text}</a>
+        </td></tr></table>
+      </td></tr>` : '';
     }
     // text block
-    return `
-    <div class="content">
-      ${block.title ? `<h2 class="section-title">${block.title}</h2>` : ''}
-      ${block.content ? `<p>${block.content.replace(/\n/g, '<br>')}</p>` : ''}
-      ${block.button_text && block.button_url ? `<p style="text-align:center;"><a href="${block.button_url}" class="button">${block.button_text}</a></p>` : ''}
-    </div>`;
+    let html = '<tr><td style="padding:15px 30px;font-family:\'Rubik\',Arial,sans-serif;line-height:1.7;color:' + TEXT + ';font-size:15px;">';
+    if (block.title) {
+      html += `<h2 style="font-family:'Rubik',Arial,sans-serif;font-size:26px;font-weight:700;color:${PRIMARY};margin:20px 0 10px;text-align:center;">${block.title}</h2>`;
+    }
+    if (block.content) {
+      html += `<p style="margin:0 0 15px;font-size:15px;line-height:1.7;">${block.content.replace(/\n/g, '<br>')}</p>`;
+    }
+    if (block.button_text && block.button_url) {
+      html += `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:15px auto;"><tr><td style="background-color:${ACTION};border-radius:50px;text-align:center;">
+        <a href="${block.button_url}" target="_blank" style="display:inline-block;padding:14px 30px;font-family:'Rubik',Arial,sans-serif;font-size:16px;font-weight:bold;color:${TEXT};text-decoration:none;">${block.button_text}</a>
+      </td></tr></table>`;
+    }
+    html += '</td></tr>';
+    return html;
   }).join('\n');
 
-  const socialHtml = (s.social_whatsapp || s.social_facebook || s.social_instagram || s.social_youtube) ? `
-    <div class="social-icons">
-      ${s.social_whatsapp ? `<a href="https://wa.me/${s.social_whatsapp}" target="_blank"><img src="https://img.icons8.com/color/48/000000/whatsapp.png" alt="WhatsApp"></a>` : ''}
-      ${s.social_facebook ? `<a href="${s.social_facebook}" target="_blank"><img src="https://img.icons8.com/color/48/000000/facebook-new.png" alt="Facebook"></a>` : ''}
-      ${s.social_instagram ? `<a href="${s.social_instagram}" target="_blank"><img src="https://img.icons8.com/color/48/000000/instagram-new.png" alt="Instagram"></a>` : ''}
-      ${s.social_youtube ? `<a href="${s.social_youtube}" target="_blank"><img src="https://img.icons8.com/color/48/000000/youtube-play.png" alt="YouTube"></a>` : ''}
-    </div>` : '';
+  const socialLinks = [];
+  if (s.social_whatsapp) socialLinks.push(`<a href="https://wa.me/${s.social_whatsapp}" target="_blank" style="display:inline-block;margin:0 6px;"><img src="https://img.icons8.com/color/48/000000/whatsapp.png" alt="WhatsApp" width="32" height="32" style="width:32px;height:32px;border:0;"></a>`);
+  if (s.social_facebook) socialLinks.push(`<a href="${s.social_facebook}" target="_blank" style="display:inline-block;margin:0 6px;"><img src="https://img.icons8.com/color/48/000000/facebook-new.png" alt="Facebook" width="32" height="32" style="width:32px;height:32px;border:0;"></a>`);
+  if (s.social_instagram) socialLinks.push(`<a href="${s.social_instagram}" target="_blank" style="display:inline-block;margin:0 6px;"><img src="https://img.icons8.com/color/48/000000/instagram-new.png" alt="Instagram" width="32" height="32" style="width:32px;height:32px;border:0;"></a>`);
+  if (s.social_youtube) socialLinks.push(`<a href="${s.social_youtube}" target="_blank" style="display:inline-block;margin:0 6px;"><img src="https://img.icons8.com/color/48/000000/youtube-play.png" alt="YouTube" width="32" height="32" style="width:32px;height:32px;border:0;"></a>`);
+  const socialHtml = socialLinks.length > 0 ? `
+      <tr><td style="text-align:center;padding:20px;background-color:${BG};">
+        ${socialLinks.join('')}
+      </td></tr>` : '';
 
   return `<!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he" dir="rtl" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&family=Amatic+SC:wght@400;700&display=swap');
-:root{--crm-bg:#FDF8F0;--crm-primary:#6D436D;--crm-accent:#D29486;--crm-action:#FAD980;--crm-text:#5E4B35;}
-body{font-family:"Rubik",sans-serif;color:var(--crm-text);background-color:var(--crm-bg);margin:0;padding:0;direction:rtl;text-align:right;}
-.container{max-width:600px;margin:20px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 8px rgba(0,0,0,0.05);}
-.header{background-color:var(--crm-primary);padding:20px;text-align:center;color:#fff;}
-.header h1{font-family:"Amatic SC",cursive;font-size:32px;margin:0;color:#fff;}
-.header img{max-width:150px;margin-bottom:10px;border-radius:12px;}
-.content{padding:20px 30px;line-height:1.6;}
-.section-title{font-family:"Amatic SC",cursive;font-size:28px;color:var(--crm-primary);margin-top:20px;margin-bottom:10px;text-align:center;}
-.button{display:inline-block;background-color:var(--crm-action);color:var(--crm-text)!important;padding:12px 25px;border-radius:50px;font-weight:bold;text-decoration:none;margin:15px 0;}
-.social-icons{text-align:center;padding:20px;background-color:var(--crm-bg);}
-.social-icons a{display:inline-block;margin:0 8px;}
-.social-icons img{width:28px;height:28px;}
-.contact-info{text-align:center;padding:20px 30px;font-size:14px;color:var(--crm-text);}
-.contact-info p{margin:5px 0;}
-.footer{text-align:center;padding:20px;font-size:12px;color:#888;background-color:#f0f0f0;}
-.footer a{color:#888;text-decoration:underline;}
-@media(max-width:600px){.container{margin:0;border-radius:0;}.content{padding:15px;}}
+  body, table, td { font-family: 'Rubik', Arial, Helvetica, sans-serif; }
+  img { border: 0; outline: none; text-decoration: none; }
+  a { color: ${PRIMARY}; }
 </style>
 </head>
-<body>
-<div class="container">
-  <div class="header">
-    ${logoUrl ? `<img src="${logoUrl}" alt="לוגו" width="150">` : ''}
-    <h1>${s.header_title || ''}</h1>
-  </div>
-  <div class="content">
-    <p>${s.greeting || ''}</p>
-    <p>${(s.intro_text || '').replace(/\n/g, '<br>')}</p>
-  </div>
-  ${blocksHtml}
-  <div class="contact-info">
-    <h2 class="section-title">צרו קשר</h2>
-    ${phone ? `<p>טלפון: ${phone}</p>` : ''}
-    ${email ? `<p>אימייל: <a href="mailto:${email}" style="color:var(--crm-primary);">${email}</a></p>` : ''}
-    ${address ? `<p>כתובת: ${address}</p>` : ''}
-    ${s.contact_extra ? `<p style="font-size:12px;margin-top:10px;">${s.contact_extra}</p>` : ''}
-  </div>
-  ${socialHtml}
-  <div class="footer">
-    <p>נשלח על ידי ${systemName}</p>
-    <p><a href="{{unsubscribe_link}}">להסרה מהרשימה</a></p>
-  </div>
-</div>
+<body style="margin:0;padding:0;background-color:${BG};font-family:'Rubik',Arial,sans-serif;direction:rtl;text-align:right;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BG};margin:0;padding:0;">
+<tr><td align="center" style="padding:20px 10px;">
+
+  <!-- Main container -->
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+    
+    <!-- Header -->
+    <tr><td style="background-color:${PRIMARY};padding:25px 20px;text-align:center;">
+      ${logoUrl ? `<img src="${logoUrl}" alt="לוגו" width="130" style="max-width:130px;height:auto;border-radius:10px;margin-bottom:12px;display:block;margin-left:auto;margin-right:auto;">` : ''}
+      <h1 style="font-family:'Rubik',Arial,sans-serif;font-size:28px;font-weight:700;color:#ffffff;margin:0;line-height:1.3;">${s.header_title || ''}</h1>
+    </td></tr>
+
+    <!-- Greeting -->
+    <tr><td style="padding:25px 30px 10px;font-family:'Rubik',Arial,sans-serif;font-size:15px;line-height:1.7;color:${TEXT};">
+      <p style="margin:0 0 10px;font-size:16px;">${s.greeting || ''}</p>
+      <p style="margin:0;font-size:15px;line-height:1.7;">${(s.intro_text || '').replace(/\n/g, '<br>')}</p>
+    </td></tr>
+
+    <!-- Content blocks -->
+    ${blocksHtml}
+
+    <!-- Contact info -->
+    <tr><td style="padding:25px 30px;text-align:center;font-family:'Rubik',Arial,sans-serif;color:${TEXT};">
+      <h2 style="font-family:'Rubik',Arial,sans-serif;font-size:24px;font-weight:700;color:${PRIMARY};margin:0 0 15px;">צרו קשר</h2>
+      ${phone ? `<p style="margin:5px 0;font-size:14px;">טלפון: ${phone}</p>` : ''}
+      ${email ? `<p style="margin:5px 0;font-size:14px;">אימייל: <a href="mailto:${email}" style="color:${PRIMARY};text-decoration:none;">${email}</a></p>` : ''}
+      ${address ? `<p style="margin:5px 0;font-size:14px;">כתובת: ${address}</p>` : ''}
+      ${s.contact_extra ? `<p style="font-size:12px;margin-top:12px;color:#888;">${s.contact_extra}</p>` : ''}
+    </td></tr>
+
+    <!-- Social icons -->
+    ${socialHtml}
+
+    <!-- Footer -->
+    <tr><td style="text-align:center;padding:20px;font-size:12px;color:#888888;background-color:#f0f0f0;font-family:'Rubik',Arial,sans-serif;">
+      <p style="margin:0 0 8px;">נשלח על ידי ${systemName}</p>
+      <p style="margin:0;"><a href="{{unsubscribe_link}}" style="color:#888888;text-decoration:underline;">להסרה מהרשימה</a></p>
+    </td></tr>
+
+  </table>
+
+</td></tr>
+</table>
 </body>
 </html>`;
 }

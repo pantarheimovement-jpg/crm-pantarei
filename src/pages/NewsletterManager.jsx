@@ -31,8 +31,7 @@ export default function NewsletterManager() {
   const [sendChannel, setSendChannel] = useState('email');
   const [whatsappMessage, setWhatsappMessage] = useState('');
 
-  const [importing, setImporting] = useState(false);
-  const [importFile, setImportFile] = useState(null);
+
 
   const [showAddSubscriber, setShowAddSubscriber] = useState(false);
   const [newSubscriber, setNewSubscriber] = useState({

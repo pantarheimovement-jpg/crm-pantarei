@@ -156,9 +156,7 @@ export default function EmailTemplateEditor() {
   const loadTemplates = async () => {
     const data = await base44.entities.EmailTemplate.list();
     setTemplates(data || []);
-    if (data && data.length > 0 && !selectedId) {
-      loadTemplate(data[0]);
-    }
+    // Don't auto-load template - keep whatever is in localStorage/state
   };
 
   const loadGeneralSettings = async () => {

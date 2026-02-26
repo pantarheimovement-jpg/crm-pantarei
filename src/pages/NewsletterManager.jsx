@@ -189,19 +189,23 @@ export default function NewsletterManager() {
         const batchRecipients = recipients.slice(batchIndex * BATCH_SIZE, Math.min((batchIndex + 1) * BATCH_SIZE, recipients.length));
 
         if (sendChannel === 'email' || sendChannel === 'both') {
-          const emailRecipients = batchRecipients.filter(r => r.email).map(recipient => ({
-            email: recipient.email,
-            name: recipient.name || '',
-            html_content: finalEmailContent
+          const emailRecipients = batchRecipients.filter(r => r.email);
+          for (const recipient of emailRecipients) {
+            const personalizedHtml = finalEmailContent
               .replace(/\{\{unsubscribe_link\}\}/g, `${window.location.origin}/Unsubscribe?token=${recipient.unsubscribe_token}`)
-              .replace(/\{\{name\}\}/g, recipient.name || '')
-          }));
-          if (emailRecipients.length > 0) {
+              .replace(/\{\{name\}\}/g, recipient.name || '');
             try {
-              const result = await base44.functions.invoke('sendNewsletterBrevo', { recipients: emailRecipients, subject, html_content: finalEmailContent, from_name: 'פורצות קדימה - MOVEUP', from_email: 'hello@moveup.today' });
-              emailSuccessCount += result.data.success_count;
-              emailErrorCount += result.data.failed_count;
-            } catch (error) { emailErrorCount += emailRecipients.length; }
+              await base44.integrations.Core.SendEmail({
+                to: recipient.email,
+                subject,
+                body: personalizedHtml,
+                from_name: 'פורצות קדימה - MOVEUP'
+              });
+              emailSuccessCount++;
+            } catch (error) {
+              console.error(`Failed to send to ${recipient.email}:`, error);
+              emailErrorCount++;
+            }
           }
         }
 

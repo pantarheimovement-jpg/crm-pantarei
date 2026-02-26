@@ -11,13 +11,17 @@ export default function TestEmailModal({ htmlContent, subject, onClose }) {
       alert('אנא הזיני כתובת מייל');
       return;
     }
+    if (!htmlContent) {
+      alert('אנא הכיני תוכן מייל קודם (בחרי תבנית, HTML, או כתבי תוכן)');
+      return;
+    }
+
     setSending(true);
-    const bodyToSend = htmlContent || `<div dir="rtl" style="font-family:sans-serif;padding:20px;"><h2>מייל ניסיון</h2><p>זהו מייל ניסיון מ-Pantarhei CRM.</p></div>`;
     try {
       await base44.integrations.Core.SendEmail({
         to: email.trim(),
         subject: subject || 'מייל ניסיון מ-Pantarhei CRM',
-        body: bodyToSend
+        body: htmlContent
       });
       alert(`✅ מייל ניסיון נשלח בהצלחה אל ${email}!`);
       onClose();

@@ -14,11 +14,46 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing required fields: to, subject, html_content' }, { status: 400 });
     }
 
+    const senderName = from_name || 'פנטהריי';
+    const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY');
+    let sent_via = null;
+
+    // --- Try Brevo first ---
+    if (BREVO_API_KEY && BREVO_API_KEY.length > 10) {
+      try {
+        const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'api-key': BREVO_API_KEY,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            sender: { name: senderName, email: 'pantarhei.movement@gmail.com' },
+            to: [{ email: to }],
+            subject: subject,
+            htmlContent: html_content,
+          }),
+        });
+
+        if (brevoResponse.ok) {
+          sent_via = 'brevo';
+          console.log(`Email sent via Brevo to ${to}`);
+          return Response.json({ success: true, sent_via: 'brevo' });
+        } else {
+          const errorData = await brevoResponse.text();
+          console.warn(`Brevo failed for ${to}: ${errorData}. Falling back to Gmail.`);
+        }
+      } catch (brevoError) {
+        console.warn(`Brevo error for ${to}: ${brevoError.message}. Falling back to Gmail.`);
+      }
+    } else {
+      console.log('No Brevo API key configured. Using Gmail directly.');
+    }
+
+    // --- Fallback: Gmail API ---
     const accessToken = await base44.asServiceRole.connectors.getAccessToken("gmail");
 
-    const senderName = from_name || 'פנטהריי';
-
-    // Build the raw MIME message
     const boundary = 'boundary_' + Date.now();
     const mimeMessage = [
       `From: ${senderName} <me>`,
@@ -35,7 +70,6 @@ Deno.serve(async (req) => {
       `--${boundary}--`
     ].join('\r\n');
 
-    // Encode to base64url
     const raw = btoa(unescape(encodeURIComponent(mimeMessage)))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
@@ -53,11 +87,12 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       const errorData = await response.text();
       console.error('Gmail API error:', errorData);
-      return Response.json({ error: 'Gmail send failed', details: errorData }, { status: response.status });
+      return Response.json({ error: 'Both Brevo and Gmail failed', details: errorData }, { status: response.status });
     }
 
     const result = await response.json();
-    return Response.json({ success: true, messageId: result.id });
+    console.log(`Email sent via Gmail to ${to}`);
+    return Response.json({ success: true, sent_via: 'gmail', messageId: result.id });
   } catch (error) {
     console.error('Error:', error);
     return Response.json({ error: error.message }, { status: 500 });

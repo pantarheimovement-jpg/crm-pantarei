@@ -4,7 +4,12 @@ import { Settings, Save, Loader2, Palette, Type, Image as ImageIcon, FileText, T
 import EmailTemplateEditor from '../components/settings/EmailTemplateEditor';
 
 export default function CRMSettings() {
-  const [activeTab, setActiveTab] = useState('crm-general');
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('crmSettings_tab') || 'crm-general');
+
+  const switchTab = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('crmSettings_tab', tab);
+  };
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   

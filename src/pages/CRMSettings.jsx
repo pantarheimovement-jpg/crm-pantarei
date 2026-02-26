@@ -822,7 +822,7 @@ export default function CRMSettings() {
                         </p>
                         <div className="flex gap-3">
                           <a
-                            href={base44.agents.getWhatsAppConnectURL('task_manager')}
+                            href={window.location.origin + base44.agents.getWhatsAppConnectURL('task_manager')}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-6 py-3 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 flex items-center gap-2"
@@ -832,7 +832,7 @@ export default function CRMSettings() {
                           </a>
                           <button
                             onClick={() => {
-                              const url = base44.agents.getWhatsAppConnectURL('task_manager');
+                              const url = window.location.origin + base44.agents.getWhatsAppConnectURL('task_manager');
                               navigator.clipboard.writeText(url);
                               setCopiedLink(true);
                               setTimeout(() => setCopiedLink(false), 2000);

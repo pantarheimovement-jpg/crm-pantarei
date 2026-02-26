@@ -821,15 +821,16 @@ export default function CRMSettings() {
                           חברי את הסוכן לווטסאפ כדי לנהל את ה-CRM דרך הודעות. הסוכן יכול להוסיף משתתפים, קורסים ומשימות.
                         </p>
                         <div className="flex gap-3">
-                          <a
-                            href={window.location.origin + base44.agents.getWhatsAppConnectURL('task_manager')}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => {
+                              const url = window.location.origin + base44.agents.getWhatsAppConnectURL('task_manager');
+                              window.open(url, '_blank');
+                            }}
                             className="px-6 py-3 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 flex items-center gap-2"
                           >
                             <MessageCircle className="w-5 h-5" />
                             חבר לווטסאפ
-                          </a>
+                          </button>
                           <button
                             onClick={() => {
                               const url = window.location.origin + base44.agents.getWhatsAppConnectURL('task_manager');

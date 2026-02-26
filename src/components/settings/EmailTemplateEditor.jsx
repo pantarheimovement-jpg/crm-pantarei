@@ -125,15 +125,28 @@ body{font-family:var(--font-body);color:var(--crm-text);background-color:var(--c
 export default function EmailTemplateEditor() {
   const [templates, setTemplates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [sections, setSections] = useState(DEFAULT_TEMPLATE_SECTIONS);
-  const [templateName, setTemplateName] = useState('');
-  const [templateSubject, setTemplateSubject] = useState('');
+  const [sections, setSections] = useState(() => {
+    try { const s = localStorage.getItem('emailTemplate_sections'); return s ? JSON.parse(s) : DEFAULT_TEMPLATE_SECTIONS; } catch { return DEFAULT_TEMPLATE_SECTIONS; }
+  });
+  const [templateName, setTemplateName] = useState(() => localStorage.getItem('emailTemplate_name') || '');
+  const [templateSubject, setTemplateSubject] = useState(() => localStorage.getItem('emailTemplate_subject') || '');
   const [generalSettings, setGeneralSettings] = useState(null);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingField, setUploadingField] = useState(null);
   const [creatingNew, setCreatingNew] = useState(false);
+  const [savedIndicator, setSavedIndicator] = useState(false);
+
+  // Auto-save to localStorage whenever data changes
+  useEffect(() => {
+    localStorage.setItem('emailTemplate_sections', JSON.stringify(sections));
+  }, [sections]);
+  useEffect(() => {
+    localStorage.setItem('emailTemplate_name', templateName);
+  }, [templateName]);
+  useEffect(() => {
+    localStorage.setItem('emailTemplate_subject', templateSubject);
+  }, [templateSubject]);
 
   useEffect(() => {
     loadTemplates();

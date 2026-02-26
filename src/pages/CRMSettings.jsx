@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Settings, Save, Loader2, Palette, Type, Image as ImageIcon, FileText, Tag, Zap, Plus, Trash2, GripVertical } from 'lucide-react';
+import { Settings, Save, Loader2, Palette, Type, Image as ImageIcon, FileText, Tag, Zap, Plus, Trash2, GripVertical, MessageCircle, Copy, Check } from 'lucide-react';
 
 export default function CRMSettings() {
   const [activeTab, setActiveTab] = useState('crm-general');
@@ -14,6 +14,7 @@ export default function CRMSettings() {
   const [generalSettings, setGeneralSettings] = useState(null);
   const [designSettings, setDesignSettings] = useState(null);
   const [newStatus, setNewStatus] = useState({ name: '', color: '#6D436D', order_index: 0 });
+  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     loadSystemTexts();
@@ -807,6 +808,55 @@ export default function CRMSettings() {
             {/* Automation Tab */}
             {activeTab === 'automation' && automationSettings && (
               <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">חיבור סוכן WhatsApp</h3>
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6 mb-6">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-green-500 rounded-full">
+                        <MessageCircle className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-gray-900 mb-2">סוכן AI לווטסאפ</h4>
+                        <p className="text-sm text-gray-700 mb-4">
+                          חברי את הסוכן לווטסאפ כדי לנהל את ה-CRM דרך הודעות. הסוכן יכול להוסיף משתתפים, קורסים ומשימות.
+                        </p>
+                        <div className="flex gap-3">
+                          <a
+                            href={base44.agents.getWhatsAppConnectURL('task_manager')}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-6 py-3 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 flex items-center gap-2"
+                          >
+                            <MessageCircle className="w-5 h-5" />
+                            חבר לווטסאפ
+                          </a>
+                          <button
+                            onClick={() => {
+                              const url = base44.agents.getWhatsAppConnectURL('task_manager');
+                              navigator.clipboard.writeText(url);
+                              setCopiedLink(true);
+                              setTimeout(() => setCopiedLink(false), 2000);
+                            }}
+                            className="px-6 py-3 border-2 border-green-600 text-green-700 rounded-full font-semibold hover:bg-green-50 flex items-center gap-2"
+                          >
+                            {copiedLink ? (
+                              <>
+                                <Check className="w-5 h-5" />
+                                הועתק!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-5 h-5" />
+                                העתק קישור
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">הגדרות WhatsApp</h3>
                   <div className="space-y-4">

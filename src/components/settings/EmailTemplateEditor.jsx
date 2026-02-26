@@ -440,6 +440,17 @@ export default function EmailTemplateEditor() {
         </button>
       </div>
 
+      {/* Sticky save button */}
+      <div className="fixed bottom-6 left-6 z-50">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className={`shadow-xl px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-all text-sm ${savedIndicator ? 'bg-green-600 text-white' : 'bg-[#6D436D] text-white hover:bg-[#5a365a] disabled:bg-gray-400'}`}
+        >
+          {saving ? <><Loader2 className="w-4 h-4 animate-spin" />שומר...</> : savedIndicator ? '✅ נשמר!' : <><Save className="w-4 h-4" />שמור תבנית</>}
+        </button>
+      </div>
+
       {showPreview && (
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="bg-gray-100 px-4 py-2 text-sm text-gray-600 font-medium">תצוגה מקדימה של המייל</div>

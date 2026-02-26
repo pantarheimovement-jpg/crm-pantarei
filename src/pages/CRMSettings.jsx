@@ -959,6 +959,10 @@ export default function CRMSettings() {
             )}
 
 
+            {activeTab === 'email-templates' && (
+              <EmailTemplateEditor />
+            )}
+
           </div>
         </div>
       </div>

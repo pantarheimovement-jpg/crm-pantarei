@@ -516,7 +516,11 @@ export default function NewsletterManager() {
 
         {showTestEmailModal && (
           <TestEmailModal
-            htmlContent={currentEmailContent || (emailTemplates.find(t => t.id === selectedTemplate)?.body || '')}
+            htmlContent={
+              currentEmailContent ||
+              emailTemplates.find(tmpl => tmpl.id === selectedTemplate)?.body ||
+              ''
+            }
             subject={subject || t('מייל ניסיון', 'Test Email')}
             onClose={() => setShowTestEmailModal(false)}
           />

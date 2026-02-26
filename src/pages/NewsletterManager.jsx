@@ -52,7 +52,8 @@ export default function NewsletterManager() {
   const [updatingSubscriber, setUpdatingSubscriber] = useState(false);
 
   const [designMode, setDesignMode] = useState('free');
-  const [selectedTemplate, setSelectedTemplate] = useState('classic');
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [emailTemplates, setEmailTemplates] = useState([]);
   const [templateData, setTemplateData] = useState({
     title: '',
     subtitle: '',
@@ -78,7 +79,20 @@ export default function NewsletterManager() {
   useEffect(() => {
     loadSubscribers();
     loadLogs();
+    loadEmailTemplates();
   }, []);
+
+  const loadEmailTemplates = async () => {
+    try {
+      const data = await base44.entities.EmailTemplate.filter({ active: true });
+      setEmailTemplates(data || []);
+      if (data && data.length > 0 && !selectedTemplate) {
+        setSelectedTemplate(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading email templates:', error);
+    }
+  };
 
   const loadSubscribers = async () => {
     setLoading(true);
@@ -501,149 +515,24 @@ export default function NewsletterManager() {
   };
 
   const generateTemplateHTML = () => {
-    const primaryColor = siteSettings?.primary_color || '#005e6c';
-    const secondaryColor = siteSettings?.secondary_color || '#006f79';
-    const textColor = siteSettings?.text_color || '#2e2e2e';
-    const backgroundColor = siteSettings?.background_color || '#f4f1ee';
+    if (!selectedTemplate) return '';
+    
+    const template = emailTemplates.find(t => t.id === selectedTemplate);
+    if (!template) return '';
+    
     const ctaButtonsHtml = generateCtaButtonsHTML();
-
-    const templates = {
-      classic: `
-        <!DOCTYPE html>
-        <html dir="rtl" lang="he">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: ${backgroundColor}; margin: 0; padding: 20px; direction: rtl; }
-            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); direction: rtl; }
-            .header { background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor}); padding: 40px 20px; text-align: center; direction: rtl; }
-            .header h1 { color: white; margin: 0; font-size: 32px; direction: rtl; }
-            .header p { color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 18px; direction: rtl; }
-            .content { padding: 40px 30px; text-align: right; direction: rtl; }
-            .content img { width: 100%; max-width: 500px; border-radius: 8px; margin: 20px 0; }
-            .content p { color: ${textColor}; line-height: 1.8; font-size: 16px; text-align: right; direction: rtl; }
-            .content h1, .content h2, .content h3, .content h4, .content h5, .content h6 { text-align: right; direction: rtl; }
-            .content ul, .content ol { text-align: right; direction: rtl; padding-right: 20px; padding-left: 0; }
-            .content li { text-align: right; direction: rtl; }
-            .cta { text-align: center; margin: 30px 0; direction: rtl; }
-            .cta a { background: ${primaryColor}; color: white; padding: 15px 40px; text-decoration: none; border-radius: 50px; display: inline-block; font-weight: bold; }
-            .footer { background: ${backgroundColor}; padding: 30px; text-align: center; color: #666; font-size: 14px; direction: rtl; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>${templateData.title || t('כותרת הניוזלטר', 'Newsletter Title')}</h1>
-              <p>${templateData.subtitle || t('כותרת משנה', 'Subtitle')}</p>
-            </div>
-            <div class="content">
-              ${templateData.imageUrl ? `<img src="${templateData.imageUrl}" alt="${t('תמונה', 'Image')}" style="max-width: 100%; height: auto; display: block; margin: 20px auto;">` : ''}
-              ${templateData.mainText || t('תוכן הניוזלטר יופיע כאן...', 'Newsletter content will appear here...')}
-            </div>
-            ${ctaButtonsHtml}
-            <div class="footer">
-              <p>${t('קיבלת מייל זה כי נרשמת לרשימת התפוצה שלנו', 'You received this email because you subscribed to our newsletter')}</p>
-              <p><a href="{{unsubscribe_link}}" style="color: ${primaryColor};">${t('הסרה מהרשימה', 'Unsubscribe')}</a></p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-      modern: `
-        <!DOCTYPE html>
-        <html dir="rtl" lang="he">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: ${backgroundColor}; margin: 0; padding: 20px; direction: rtl; }
-            .container { max-width: 700px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 16px rgba(0,0,0,0.1); direction: rtl; }
-            .hero { background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor}); padding: 60px 40px; text-align: center; position: relative; direction: rtl; }
-            .hero h1 { color: white; margin: 0; font-size: 36px; font-weight: bold; direction: rtl; }
-            .hero p { color: rgba(255,255,255,0.95); margin: 15px 0 0 0; font-size: 20px; direction: rtl; }
-            .two-column { display: flex; padding: 40px; gap: 30px; flex-wrap: wrap; direction: rtl; }
-            .column { flex: 1; min-width: 250px; direction: rtl; }
-            .column img { width: 100%; border-radius: 12px; margin-bottom: 20px; }
-            .column p { color: ${textColor}; line-height: 1.8; font-size: 16px; text-align: right; direction: rtl; }
-            .column h1, .column h2, .column h3, .column h4, .column h5, .column h6 { text-align: right; direction: rtl; }
-            .column ul, .column ol { text-align: right; direction: rtl; padding-right: 20px; padding-left: 0; }
-            .column li { text-align: right; direction: rtl; }
-            .cta-section { background: #f8f9fa; padding: 40px; text-align: center; direction: rtl; }
-            .cta-section a { background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor}); color: white; padding: 18px 50px; text-decoration: none; border-radius: 50px; display: inline-block; font-weight: bold; font-size: 18px; }
-            .footer { padding: 30px; text-align: center; color: #666; font-size: 14px; background: #fafafa; direction: rtl; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="hero">
-              <h1>${templateData.title || t('כותרת מודרנית', 'Modern Title')}</h1>
-              <p>${templateData.subtitle || t('תת כותרת מרשימה', 'Impressive Subtitle')}</p>
-            </div>
-            <div class="two-column">
-              ${templateData.imageUrl ? `
-              <div class="column">
-                <img src="${templateData.imageUrl}" alt="${t('תמונה', 'Image')}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-              </div>
-              ` : ''}
-              <div class="column">
-                ${templateData.mainText || t('תוכן הניוזלטר המודרני שלך...', 'Your modern newsletter content...')}
-              </div>
-            </div>
-            ${ctaButtonsHtml}
-            <div class="footer">
-              <p>${t('קיבלת מייל זה כי נרשמת לרשימת התפוצה שלנו', 'You received this email because you subscribed to our newsletter')}</p>
-              <p><a href="{{unsubscribe_link}}" style="color: ${primaryColor};">${t('הסרה מהרשימה', 'Unsubscribe')}</a></p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-      minimal: `
-        <!DOCTYPE html>
-        <html dir="rtl" lang="he">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #ffffff; margin: 0; padding: 40px 20px; direction: rtl; }
-            .container { max-width: 500px; margin: 0 auto; direction: rtl; }
-            .header { border-bottom: 2px solid ${primaryColor}; padding-bottom: 20px; margin-bottom: 30px; direction: rtl; }
-            .header h1 { color: ${textColor}; margin: 0; font-size: 28px; font-weight: 300; letter-spacing: -0.5px; text-align: right; direction: rtl; }
-            .header p { color: #666; margin: 10px 0 0 0; font-size: 16px; font-weight: 300; text-align: right; direction: rtl; }
-            .content { text-align: right; direction: rtl; }
-            .content img { width: 100%; border-radius: 4px; margin: 30px 0; }
-            .content p { color: ${textColor}; line-height: 1.9; font-size: 16px; font-weight: 300; text-align: right; direction: rtl; }
-            .content h1, .content h2, .content h3, .content h4, .content h5, .content h6 { text-align: right; direction: rtl; }
-            .content ul, .content ol { text-align: right; direction: rtl; padding-right: 20px; padding-left: 0; }
-            .content li { text-align: right; direction: rtl; }
-            .cta { margin: 40px 0; text-align: center; direction: rtl; }
-            .cta a { color: ${primaryColor}; padding: 14px 35px; text-decoration: none; border: 2px solid ${primaryColor}; display: inline-block; font-weight: 400; transition: all 0.3s; }
-            .footer { border-top: 1px solid #e0e0e0; padding-top: 20px; margin-top: 40px; text-align: center; color: #999; font-size: 13px; font-weight: 300; direction: rtl; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>${templateData.title || t('כותרת נקייה', 'Clean Title')}</h1>
-              <p>${templateData.subtitle || t('פשטות היא תחכום', 'Simplicity is Sophistication')}</p>
-            </div>
-            <div class="content">
-              ${templateData.imageUrl ? `<img src="${templateData.imageUrl}" alt="${t('תמונה', 'Image')}" style="max-width: 100%; height: auto; display: block; margin: 30px auto;">` : ''}
-              ${templateData.mainText || t('תוכן מינימליסטי ואלגנטי...', 'Minimalist and elegant content...')}
-            </div>
-            ${ctaButtonsHtml}
-            <div class="footer">
-              <p>${t('קיבלת מייל זה כי נרשמת לרשימת התפוצה שלנו', 'You received this email because you subscribed to our newsletter')}</p>
-              <p><a href="{{unsubscribe_link}}" style="color: ${primaryColor}; text-decoration: none;">${t('הסרה מהרשימה', 'Unsubscribe')}</a></p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `
-    };
-
-    return templates[selectedTemplate] || templates.classic;
+    let finalHtml = template.body || '';
+    
+    // הוספת כפתורי CTA לפני הפוטר
+    if (ctaButtonsHtml) {
+      if (finalHtml.includes('</body>')) {
+        finalHtml = finalHtml.replace('</body>', `${ctaButtonsHtml}</body>`);
+      } else {
+        finalHtml += ctaButtonsHtml;
+      }
+    }
+    
+    return finalHtml;
   };
 
   const generateCtaButtonsHTML = () => {
@@ -2118,226 +2007,23 @@ export default function NewsletterManager() {
                         {t('בחרי תבנית', 'Choose Template')}
                       </label>
                       <select
-                        value={selectedTemplate}
+                        value={selectedTemplate || ''}
                         onChange={(e) => setSelectedTemplate(e.target.value)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        <option value="classic">{t('תבנית קלאסית', 'Classic Template')}</option>
-                        <option value="modern">{t('תבנית מודרנית', 'Modern Template')}</option>
-                        <option value="minimal">{t('תבנית מינימליסטית', 'Minimal Template')}</option>
+                        {emailTemplates.length === 0 ? (
+                          <option value="">{t('אין תבניות זמינות', 'No templates available')}</option>
+                        ) : (
+                          emailTemplates.map(template => (
+                            <option key={template.id} value={template.id}>{template.name}</option>
+                          ))
+                        )}
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {t('כותרת ראשית', 'Main Title')}
-                      </label>
-                      <input
-                        type="text"
-                        value={templateData.title}
-                        onChange={(e) => setTemplateData({...templateData, title: e.target.value})}
-                        placeholder={t('הכותרת שלך כאן', 'Your title here')}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {t('כותרת משנה', 'Subtitle')}
-                      </label>
-                      <input
-                        type="text"
-                        value={templateData.subtitle}
-                        onChange={(e) => setTemplateData({...templateData, subtitle: e.target.value})}
-                        placeholder={t('כותרת משנה', 'Subtitle')}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {t('תוכן ראשי', 'Main Content')}
-                      </label>
-                      <RichTextEditor
-                        value={templateData.mainText}
-                        onChange={(value) => setTemplateData({...templateData, mainText: value})}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {t('תמונה', 'Image')}
-                      </label>
-                      <div className="flex gap-3">
-                        <input
-                          type="text"
-                          value={templateData.imageUrl}
-                          onChange={(e) => setTemplateData({...templateData, imageUrl: e.target.value})}
-                          placeholder="https://example.com/image.jpg"
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <label className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 cursor-pointer flex items-center gap-2 whitespace-nowrap">
-                          {uploadingImage ? (
-                            <>
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                              {t('מעלה...', 'Uploading...')}
-                            </>
-                          ) : (
-                            <>
-                              <Image className="w-5 h-5" />
-                              {t('העלה תמונה', 'Upload Image')}
-                            </>
-                          )}
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            disabled={uploadingImage}
-                          />
-                        </label>
-                      </div>
-                      {templateData.imageUrl && (
-                        <div className="mt-3">
-                          <img
-                            src={templateData.imageUrl}
-                            alt="Preview"
-                            className="w-full max-w-md rounded-lg border border-gray-300"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="font-semibold text-purple-900">
-                          {t('כפתורי קריאה לפעולה (אופציונלי)', 'CTA Buttons (Optional)')}
-                        </h3>
-                        <button
-                          onClick={addCtaButton}
-                          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          {t('הוסף כפתור', 'Add Button')}
-                        </button>
-                      </div>
-
-                      {ctaButtons.length === 0 ? (
-                        <p className="text-sm text-gray-600 text-center py-4">
-                          {t('לחצי על "הוסף כפתור" להוספת כפתור קריאה לפעולה', 'Click "Add Button" to add a CTA button')}
-                        </p>
-                      ) : (
-                        <div className="space-y-4">
-                          {ctaButtons.map((button, index) => (
-                            <div key={index} className="bg-white rounded-lg p-4 border border-purple-200">
-                              <div className="flex justify-between items-start mb-3">
-                                <h4 className="font-medium text-gray-900">
-                                  {t('כפתור', 'Button')} {index + 1}
-                                </h4>
-                                <button
-                                  onClick={() => removeCtaButton(index)}
-                                  className="text-red-600 hover:text-red-800 p-1"
-                                  title={t('מחק כפתור', 'Delete Button')}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div className="grid md:grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      {t('טקסט כפתור', 'Button Text')}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={button.text}
-                                      onChange={(e) => updateCtaButton(index, 'text', e.target.value)}
-                                      placeholder={t('לחצי כאן', 'Click Here')}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      {t('קישור', 'Link')}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={button.link}
-                                      onChange={(e) => updateCtaButton(index, 'link', e.target.value)}
-                                      placeholder="https://moveup.today"
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    />
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    {t('סגנון כפתור', 'Button Style')}
-                                  </label>
-                                  <select
-                                    value={button.style}
-                                    onChange={(e) => updateCtaButton(index, 'style', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                  >
-                                    <option value="primary">{t('ראשי - רקע מלא', 'Primary - Full Background')}</option>
-                                    <option value="secondary">{t('משני - רקע לבן', 'Secondary - White Background')}</option>
-                                    <option value="outline">{t('מסגרת - שקוף', 'Outline - Transparent')}</option>
-                                  </select>
-                                </div>
-
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    {t('תמונה לכפתור (אופציונלי)', 'Button Image (Optional)')}
-                                  </label>
-                                  <div className="flex gap-3">
-                                    <input
-                                      type="text"
-                                      value={button.imageUrl}
-                                      onChange={(e) => updateCtaButton(index, 'imageUrl', e.target.value)}
-                                      placeholder="https://example.com/image.jpg"
-                                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    />
-                                    <label className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 cursor-pointer flex items-center gap-2 whitespace-nowrap">
-                                      {uploadingCtaImage ? (
-                                        <>
-                                          <Loader2 className="w-5 h-5 animate-spin" />
-                                          {t('מעלה...', 'Uploading...')}
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Image className="w-5 h-5" />
-                                          {t('העלה', 'Upload')}
-                                        </>
-                                      )}
-                                      <input
-                                        type="file"
-                                        className="hidden"
-                                        accept="image/*"
-                                        onChange={(e) => handleCtaImageUpload(e, index)}
-                                        disabled={uploadingCtaImage}
-                                      />
-                                    </label>
-                                  </div>
-                                  {button.imageUrl && (
-                                    <img
-                                      src={button.imageUrl}
-                                      alt="Preview"
-                                      className="mt-2 w-32 rounded border"
-                                      onError={(e) => e.target.style.display = 'none'}
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-xs text-gray-600 mt-4">
-                        {t('הכפתורים יופיעו בתחתית המייל, מעל לינק ההסרה. ניתן להוסיף מספר כפתורים בסגנונות שונים.', 'Buttons will appear at the bottom of the email, above the unsubscribe link. You can add multiple buttons with different styles.')}
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <p className="text-sm text-yellow-800">
+                        💡 {t('תבנית זו מכילה HTML מוכן. ניתן לערוך אותה בהגדרות CRM או להשתמש בה כפי שהיא.', 'This template contains ready HTML. You can edit it in CRM settings or use it as is.')}
                       </p>
                     </div>
                   </div>

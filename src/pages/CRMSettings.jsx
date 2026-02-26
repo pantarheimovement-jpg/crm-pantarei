@@ -232,72 +232,20 @@ export default function CRMSettings() {
         <div className="bg-white rounded-lg shadow-sm mb-6">
           <div className="border-b border-gray-200">
             <div className="flex overflow-x-auto">
-              <button
-                onClick={() => setActiveTab('crm-general')}
-                className={`px-6 py-4 font-medium whitespace-nowrap ${
-                  activeTab === 'crm-general'
-                    ? 'border-b-2 border-[#6D436D] text-[#6D436D]'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Settings className="w-5 h-5 inline-block ml-2" />
-                הגדרות כלליות
-              </button>
-              <button
-                onClick={() => setActiveTab('design')}
-                className={`px-6 py-4 font-medium whitespace-nowrap ${
-                  activeTab === 'design'
-                    ? 'border-b-2 border-[#6D436D] text-[#6D436D]'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Palette className="w-5 h-5 inline-block ml-2" />
-                עיצוב ומיתוג
-              </button>
-              <button
-                onClick={() => setActiveTab('labels')}
-                className={`px-6 py-4 font-medium whitespace-nowrap ${
-                  activeTab === 'labels'
-                    ? 'border-b-2 border-[#005e6c] text-[#005e6c]'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Tag className="w-5 h-5 inline-block ml-2" />
-                תוויות ושדות
-              </button>
-              <button
-                onClick={() => setActiveTab('statuses')}
-                className={`px-6 py-4 font-medium whitespace-nowrap ${
-                  activeTab === 'statuses'
-                    ? 'border-b-2 border-[#005e6c] text-[#005e6c]'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <GripVertical className="w-5 h-5 inline-block ml-2" />
-                סטטוסים ושלבים
-              </button>
-              <button
-                onClick={() => setActiveTab('automation')}
-                className={`px-6 py-4 font-medium whitespace-nowrap ${
-                  activeTab === 'automation'
-                    ? 'border-b-2 border-[#005e6c] text-[#005e6c]'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Zap className="w-5 h-5 inline-block ml-2" />
-                אוטומציה
-              </button>
-              <button
-                onClick={() => setActiveTab('email-templates')}
-                className={`px-6 py-4 font-medium whitespace-nowrap ${
-                  activeTab === 'email-templates'
-                    ? 'border-b-2 border-[#6D436D] text-[#6D436D]'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Mail className="w-5 h-5 inline-block ml-2" />
-                תבניות מייל
-              </button>
+              {[
+                { key: 'crm-general', icon: Settings, label: 'הגדרות כלליות' },
+                { key: 'design', icon: Palette, label: 'עיצוב ומיתוג' },
+                { key: 'labels', icon: Tag, label: 'תוויות ושדות' },
+                { key: 'statuses', icon: GripVertical, label: 'סטטוסים ושלבים' },
+                { key: 'automation', icon: Zap, label: 'אוטומציה' },
+                { key: 'email-templates', icon: Mail, label: 'תבניות מייל' },
+              ].map(({ key, icon: Icon, label }) => (
+                <button key={key} onClick={() => switchTab(key)}
+                  className={`px-6 py-4 font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === key ? 'border-b-2 border-[#6D436D] text-[#6D436D]' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <Icon className="w-5 h-5" />{label}
+                </button>
+              ))}
             </div>
           </div>
 

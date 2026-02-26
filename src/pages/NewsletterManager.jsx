@@ -126,19 +126,22 @@ export default function NewsletterManager() {
 
   const generateCtaButtonsHTML = () => {
     if (!ctaButtons || ctaButtons.length === 0) return '';
-    const primaryColor = siteSettings?.primary_color || '#005e6c';
     return ctaButtons.map((button, index) => {
       if (!button.text || !button.link) return '';
       const buttonStyles = {
-        primary: { bg: primaryColor, color: '#ffffff', border: 'none' },
-        secondary: { bg: '#ffffff', color: primaryColor, border: `2px solid ${primaryColor}` },
-        outline: { bg: 'transparent', color: primaryColor, border: `2px solid ${primaryColor}` }
+        primary: { bg: '#6D436D', color: '#ffffff' },
+        secondary: { bg: '#FAD980', color: '#5E4B35' },
+        outline: { bg: '#ffffff', color: '#6D436D' }
       };
-      const style = buttonStyles[button.style] || buttonStyles.primary;
-      return `<div style="text-align: center; margin: ${index === 0 ? '30px' : '15px'} 0; direction: rtl;">
-        ${button.imageUrl ? `<img src="${button.imageUrl}" alt="${button.text}" width="200" style="max-width:200px;margin:0 auto 15px;display:block;border-radius:8px;">` : ''}
-        <a href="${button.link}" style="background:${style.bg};color:${style.color};padding:15px 40px;text-decoration:none;border-radius:50px;display:inline-block;font-weight:bold;font-size:16px;border:${style.border};">${button.text}</a>
-      </div>`;
+      const style = buttonStyles[button.style] || buttonStyles.secondary;
+      let html = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:${index === 0 ? '25px' : '10px'} auto;text-align:center;">`;
+      if (button.imageUrl) {
+        html += `<tr><td style="padding-bottom:15px;text-align:center;"><img src="${button.imageUrl}" alt="${button.text}" width="200" style="max-width:200px;border-radius:8px;display:block;margin:0 auto;"></td></tr>`;
+      }
+      html += `<tr><td style="background-color:${style.bg};border-radius:50px;text-align:center;">
+        <a href="${button.link}" target="_blank" style="display:inline-block;padding:14px 35px;font-family:'Rubik',Arial,sans-serif;font-size:16px;font-weight:bold;color:${style.color};text-decoration:none;">${button.text}</a>
+      </td></tr></table>`;
+      return html;
     }).join('');
   };
 

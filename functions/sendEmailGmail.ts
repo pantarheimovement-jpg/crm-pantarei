@@ -54,11 +54,20 @@ Deno.serve(async (req) => {
     // --- Fallback: Gmail API ---
     const accessToken = await base44.asServiceRole.connectors.getAccessToken("gmail");
 
+    // Encode subject in UTF-8 base64 for MIME
+    const encoder = new TextEncoder();
+    const subjectBytes = encoder.encode(subject);
+    const subjectB64 = btoa(String.fromCharCode(...subjectBytes));
+
+    // Encode HTML content in base64 (raw bytes, no double encoding)
+    const htmlBytes = encoder.encode(html_content);
+    const htmlB64 = btoa(String.fromCharCode(...htmlBytes));
+
     const boundary = 'boundary_' + Date.now();
-    const mimeMessage = [
+    const mimeLines = [
       `From: ${senderName} <me>`,
       `To: ${to}`,
-      `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
+      `Subject: =?UTF-8?B?${subjectB64}?=`,
       'MIME-Version: 1.0',
       `Content-Type: multipart/alternative; boundary="${boundary}"`,
       '',
@@ -66,11 +75,14 @@ Deno.serve(async (req) => {
       'Content-Type: text/html; charset=UTF-8',
       'Content-Transfer-Encoding: base64',
       '',
-      btoa(unescape(encodeURIComponent(html_content))),
+      htmlB64,
       `--${boundary}--`
-    ].join('\r\n');
+    ];
+    const mimeMessage = mimeLines.join('\r\n');
 
-    const raw = btoa(unescape(encodeURIComponent(mimeMessage)))
+    // Encode the full MIME message to base64url for Gmail API
+    const mimeBytes = encoder.encode(mimeMessage);
+    const raw = btoa(String.fromCharCode(...mimeBytes))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');

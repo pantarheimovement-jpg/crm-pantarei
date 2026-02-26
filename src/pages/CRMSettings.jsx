@@ -959,9 +959,9 @@ export default function CRMSettings() {
             )}
 
 
-            {activeTab === 'email-templates' && (
+            <div style={{ display: activeTab === 'email-templates' ? 'block' : 'none' }}>
               <EmailTemplateEditor />
-            )}
+            </div>
 
           </div>
         </div>

@@ -183,11 +183,109 @@ export default function EmailTemplateEditor() {
     if (data && data.length > 0) setGeneralSettings(data[0]);
   };
 
+  const parseHtmlToSections = (html) => {
+    if (!html) return { ...DEFAULT_SECTIONS };
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const s = { ...DEFAULT_SECTIONS, blocks: [] };
+
+    // Logo
+    const headerTd = doc.querySelector('td[style*="background-color:#6D436D"]') || doc.querySelector('td[style*="background-color: #6D436D"]');
+    if (headerTd) {
+      const logoImg = headerTd.querySelector('img');
+      if (logoImg) s.logo_url = logoImg.getAttribute('src') || '';
+      const h1 = headerTd.querySelector('h1');
+      if (h1) s.header_title = h1.textContent || '';
+    }
+
+    // Greeting - find the first content td after header
+    const allTds = doc.querySelectorAll('td');
+    let greetingFound = false;
+    for (const td of allTds) {
+      const style = td.getAttribute('style') || '';
+      if (style.includes('padding:25px 30px 10px') || style.includes('padding: 25px 30px 10px')) {
+        const ps = td.querySelectorAll('p');
+        if (ps.length >= 1) s.greeting = ps[0].textContent || '';
+        if (ps.length >= 2) s.intro_text = ps[1].innerHTML?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') || '';
+        greetingFound = true;
+        break;
+      }
+    }
+
+    // Content blocks - find tds with content padding
+    const contentTds = [];
+    for (const td of allTds) {
+      const style = td.getAttribute('style') || '';
+      if (style.includes('padding:15px 30px') || style.includes('padding: 15px 30px')) {
+        contentTds.push(td);
+      }
+    }
+
+    for (const td of contentTds) {
+      const h2 = td.querySelector('h2');
+      const p = td.querySelector('p');
+      const a = td.querySelector('a[style*="padding:14px"]') || td.querySelector('a[style*="padding: 14px"]');
+      
+      if (h2 || p) {
+        const block = { ...DEFAULT_BLOCK(), type: 'text' };
+        if (h2) block.title = h2.textContent || '';
+        if (p) block.content = p.innerHTML?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') || '';
+        if (a) {
+          block.button_text = a.textContent || '';
+          block.button_url = a.getAttribute('href') || '';
+        }
+        s.blocks.push(block);
+      }
+    }
+
+    // Contact info
+    const contactTd = Array.from(allTds).find(td => {
+      const h2 = td.querySelector('h2');
+      return h2 && (h2.textContent || '').includes('צרו קשר');
+    });
+    if (contactTd) {
+      const ps = contactTd.querySelectorAll('p');
+      for (const p of ps) {
+        const text = p.textContent || '';
+        if (text.includes('טלפון')) s.contact_phone = text.replace('טלפון:', '').replace('טלפון', '').trim();
+        if (text.includes('אימייל') || text.includes('אימייל:')) {
+          const link = p.querySelector('a');
+          s.contact_email = link ? link.textContent : text.replace('אימייל:', '').replace('אימייל', '').trim();
+        }
+        if (text.includes('כתובת')) s.contact_address = text.replace('כתובת:', '').replace('כתובת', '').trim();
+      }
+    }
+
+    // Social icons
+    const socialTd = Array.from(allTds).find(td => {
+      const style = td.getAttribute('style') || '';
+      return style.includes('background-color:#FDF8F0') && td.querySelectorAll('a img').length > 0;
+    });
+    if (socialTd) {
+      const links = socialTd.querySelectorAll('a');
+      for (const link of links) {
+        const href = link.getAttribute('href') || '';
+        if (href.includes('wa.me')) s.social_whatsapp = href.replace('https://wa.me/', '');
+        else if (href.includes('facebook')) s.social_facebook = href;
+        else if (href.includes('instagram')) s.social_instagram = href;
+        else if (href.includes('youtube')) s.social_youtube = href;
+      }
+    }
+
+    // If no blocks found, add a default one
+    if (s.blocks.length === 0) {
+      s.blocks.push({ ...DEFAULT_BLOCK() });
+    }
+
+    return s;
+  };
+
   const loadTemplate = (template) => {
     setSelectedId(template.id);
     setTemplateName(template.name || '');
     setTemplateSubject(template.subject || '');
-    setSections({ ...DEFAULT_SECTIONS });
+    const parsed = parseHtmlToSections(template.body);
+    setSections(parsed);
     setCreatingNew(false);
   };
 

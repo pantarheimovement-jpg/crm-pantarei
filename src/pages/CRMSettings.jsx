@@ -31,9 +31,7 @@ export default function CRMSettings() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'statuses') {
-      loadLeadStatuses();
-    }
+    if (activeTab === 'statuses') loadLeadStatuses();
   }, [activeTab]);
 
   const loadSystemTexts = async () => {

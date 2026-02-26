@@ -266,10 +266,27 @@ export default function NewsletterManager() {
           .replace(/\{\{name\}\}/g, recipient.name || '')
       }));
 
-      const result = await base44.functions.invoke('sendNewsletterBrevo', { recipients: emailRecipients, subject: resendSubject, html_content: resendContent, from_name: 'פורצות קדימה - MOVEUP', from_email: 'hello@moveup.today' });
+      let resendSuccess = 0, resendFail = 0;
+      for (const recipient of emailRecipients) {
+        const personalizedHtml = resendContent
+          .replace(/\{\{unsubscribe_link\}\}/g, `${window.location.origin}/Unsubscribe?token=${recipient.unsubscribe_token}`)
+          .replace(/\{\{name\}\}/g, recipient.name || '');
+        try {
+          await base44.integrations.Core.SendEmail({
+            to: recipient.email,
+            subject: resendSubject,
+            body: personalizedHtml,
+            from_name: 'פורצות קדימה - MOVEUP'
+          });
+          resendSuccess++;
+        } catch (error) {
+          console.error(`Failed to resend to ${recipient.email}:`, error);
+          resendFail++;
+        }
+      }
 
-      await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent, group: resendGroup, recipients_count: result.data.success_count, status: result.data.failed_count === 0 ? 'נשלח בהצלחה' : `נשלח חלקית`, sent_date: new Date().toISOString(), sent_by: 'Brevo (שליחה מחדש)' });
-      alert(`הניוזלטר נשלח מחדש בהצלחה ל-${result.data.success_count} מנויים!`);
+      await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent, group: resendGroup, recipients_count: resendSuccess, status: resendFail === 0 ? 'נשלח בהצלחה' : `נשלח חלקית`, sent_date: new Date().toISOString(), sent_by: 'Base44 (שליחה מחדש)' });
+      alert(`הניוזלטר נשלח מחדש בהצלחה ל-${resendSuccess} מנויים!`);
       setShowResendModal(false); setResendData(null); setResendSubject(''); setResendGroup('קבוצה 1'); setResendContent('');
       loadLogs();
     } catch (error) {

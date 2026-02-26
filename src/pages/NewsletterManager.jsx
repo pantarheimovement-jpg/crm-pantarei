@@ -162,7 +162,27 @@ export default function NewsletterManager() {
       if (ctaButtonsHtml) html = html.includes('</body>') ? html.replace('</body>', `${ctaButtonsHtml}</body>`) : html + ctaButtonsHtml;
       return html;
     }
-    return `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="UTF-8"><style>body{font-family:'Segoe UI',sans-serif;background:#f4f1ee;margin:0;padding:20px;direction:rtl;}.container{max-width:600px;margin:0 auto;background:white;border-radius:12px;padding:40px;}.footer{margin-top:40px;padding-top:20px;border-top:1px solid #e0e0e0;text-align:center;color:#666;font-size:14px;}</style></head><body><div class="container">${content}${ctaButtonsHtml}<div class="footer"><p>קיבלת מייל זה כי נרשמת לרשימת התפוצה שלנו</p><p><a href="{{unsubscribe_link}}" style="color:#005e6c;">הסרה מהרשימה</a></p></div></div></body></html>`;
+    return `<!DOCTYPE html>
+<html dir="rtl" lang="he" xmlns="http://www.w3.org/1999/xhtml">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background-color:#FDF8F0;font-family:'Rubik',Arial,sans-serif;direction:rtl;text-align:right;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FDF8F0;">
+<tr><td align="center" style="padding:20px 10px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+<tr><td style="padding:30px;font-family:'Rubik',Arial,sans-serif;font-size:15px;line-height:1.7;color:#5E4B35;">
+${content}
+${ctaButtonsHtml}
+</td></tr>
+<tr><td style="text-align:center;padding:20px;font-size:12px;color:#888;background-color:#f0f0f0;font-family:'Rubik',Arial,sans-serif;">
+<p style="margin:0 0 8px;">קיבלת מייל זה כי נרשמת לרשימת התפוצה שלנו</p>
+<p style="margin:0;"><a href="{{unsubscribe_link}}" style="color:#888;text-decoration:underline;">הסרה מהרשימה</a></p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>`;
   };
 
   const handleSendNewsletter = async () => {

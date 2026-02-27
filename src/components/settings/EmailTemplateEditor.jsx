@@ -284,8 +284,19 @@ export default function EmailTemplateEditor() {
     setSelectedId(template.id);
     setTemplateName(template.name || '');
     setTemplateSubject(template.subject || '');
-    const parsed = parseHtmlToSections(template.body);
-    setSections(parsed);
+    // If sections_json exists, use it directly (accurate). Otherwise fall back to HTML parsing.
+    if (template.sections_json) {
+      try {
+        const parsed = JSON.parse(template.sections_json);
+        setSections(parsed);
+      } catch {
+        const parsed = parseHtmlToSections(template.body);
+        setSections(parsed);
+      }
+    } else {
+      const parsed = parseHtmlToSections(template.body);
+      setSections(parsed);
+    }
     setCreatingNew(false);
   };
 

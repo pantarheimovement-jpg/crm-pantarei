@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
-import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar, MapPin, DollarSign } from 'lucide-react';
+import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar, MapPin, DollarSign, Grid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -15,6 +15,7 @@ export default function Courses() {
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [viewMode, setViewMode] = useState('cards');
   const [formData, setFormData] = useState({
     name: '',
     type: 'קורס קבוע',
@@ -254,10 +255,25 @@ export default function Courses() {
                 className="pr-10"
               />
             </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`p-2 rounded-lg ${viewMode === 'cards' ? 'bg-[var(--crm-primary)] text-white' : 'bg-gray-100'}`}
+              >
+                <Grid className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-2 rounded-lg ${viewMode === 'table' ? 'bg-[var(--crm-primary)] text-white' : 'bg-gray-100'}`}
+              >
+                <List className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Courses Grid */}
+        {/* Courses Grid - Cards View */}
+        {viewMode === 'cards' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map(course => (
             <div
@@ -356,6 +372,94 @@ export default function Courses() {
             </div>
           ))}
         </div>
+        )}
+
+        {/* Courses Table View */}
+        {viewMode === 'table' && (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="px-4 py-3 text-center w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.length === filteredCourses.length && filteredCourses.length > 0}
+                        onChange={toggleSelectAll}
+                        className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">שם הקורס</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">סוג</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">סטטוס</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">לוז</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מיקום</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מחיר</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">משתתפים</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredCourses.map(course => (
+                    <tr key={course.id} id={`course-${course.id}`} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(course.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedIds([...selectedIds, course.id]);
+                            } else {
+                              setSelectedIds(selectedIds.filter(id => id !== course.id));
+                            }
+                          }}
+                          className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-[var(--crm-text)]">{course.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{course.type}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
+                          style={{ backgroundColor: getStatusColor(course.status) }}
+                        >
+                          {course.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{course.schedule || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{course.location || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{course.price ? `₪${course.price}` : '-'}</td>
+                      <td className="px-4 py-3">
+                        <Link 
+                          to={createPageUrl('Students') + '?course=' + course.id}
+                          className="text-sm text-[var(--crm-primary)] hover:underline font-medium"
+                        >
+                          {course.current_students || 0} / {course.max_students || '∞'}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => openModal(course)}
+                            className="text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(course.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {filteredCourses.length === 0 && (
           <div className="text-center py-12">

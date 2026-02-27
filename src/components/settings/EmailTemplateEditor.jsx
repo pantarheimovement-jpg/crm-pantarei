@@ -212,29 +212,71 @@ export default function EmailTemplateEditor() {
       }
     }
 
-    // Content blocks - find tds with content padding
-    const contentTds = [];
-    for (const td of allTds) {
+    // Content blocks - iterate through all <tr> inside the main container table
+    // The main container is the table with max-width:600px
+    const mainTable = doc.querySelector('table[width="600"]') || doc.querySelector('table[style*="max-width:600px"]');
+    const allTrs = mainTable ? mainTable.querySelectorAll(':scope > tbody > tr, :scope > tr') : [];
+    
+    for (const tr of allTrs) {
+      const td = tr.querySelector('td');
+      if (!td) continue;
       const style = td.getAttribute('style') || '';
-      if (style.includes('padding:15px 30px') || style.includes('padding: 15px 30px')) {
-        contentTds.push(td);
-      }
-    }
-
-    for (const td of contentTds) {
-      const h2 = td.querySelector('h2');
-      const p = td.querySelector('p');
-      const a = td.querySelector('a[style*="padding:14px"]') || td.querySelector('a[style*="padding: 14px"]');
       
-      if (h2 || p) {
-        const block = { ...DEFAULT_BLOCK(), type: 'text' };
-        if (h2) block.title = h2.textContent || '';
-        if (p) block.content = p.innerHTML?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') || '';
-        if (a) {
-          block.button_text = a.textContent || '';
-          block.button_url = a.getAttribute('href') || '';
+      // Skip header, greeting, contact, social, footer sections
+      if (style.includes('background-color:#6D436D') || style.includes('background-color: #6D436D')) continue;
+      if (style.includes('padding:25px 30px 10px') || style.includes('padding: 25px 30px 10px')) continue;
+      if (style.includes('background-color:#f0f0f0') || style.includes('background-color: #f0f0f0')) continue;
+      if (style.includes('background-color:#FDF8F0') || style.includes('background-color: #FDF8F0')) continue;
+      
+      // Check if this is a "contact" section (has h2 with צרו קשר)
+      const contactH2 = td.querySelector('h2');
+      if (contactH2 && (contactH2.textContent || '').includes('צרו קשר')) continue;
+
+      // Detect IMAGE block: td with img but no link wrapping it and alt="תמונה"
+      const imgOnly = td.querySelector('img[alt="תמונה"]');
+      if (imgOnly && !td.querySelector('a')) {
+        const block = { ...DEFAULT_BLOCK(), type: 'image' };
+        block.image_url = imgOnly.getAttribute('src') || '';
+        if (block.image_url) { s.blocks.push(block); continue; }
+      }
+
+      // Detect VIDEO block: td with a > img (thumbnail linking to video) and text "לחצו לצפייה"
+      const videoLink = td.querySelector('a');
+      const videoImg = videoLink ? videoLink.querySelector('img[alt="צפה בסרטון"]') : null;
+      if (videoLink && videoImg) {
+        const block = { ...DEFAULT_BLOCK(), type: 'video' };
+        block.video_url = videoLink.getAttribute('href') || '';
+        block.video_thumbnail_url = videoImg.getAttribute('src') || '';
+        if (block.video_url && block.video_thumbnail_url) { s.blocks.push(block); continue; }
+      }
+
+      // Detect standalone BUTTON block: td with only a table > a button and padding:20px
+      if (style.includes('padding:20px 30px') || style.includes('padding: 20px 30px')) {
+        const btnLink = td.querySelector('a[style*="padding:14px"]') || td.querySelector('a[style*="padding: 14px"]');
+        if (btnLink && !td.querySelector('h2') && !td.querySelector('p:not(:empty)')) {
+          const block = { ...DEFAULT_BLOCK(), type: 'button' };
+          block.button_text = btnLink.textContent || '';
+          block.button_url = btnLink.getAttribute('href') || '';
+          if (block.button_text) { s.blocks.push(block); continue; }
         }
-        s.blocks.push(block);
+      }
+
+      // Detect TEXT block: td with padding:15px 30px
+      if (style.includes('padding:15px 30px') || style.includes('padding: 15px 30px')) {
+        const h2 = td.querySelector('h2');
+        const p = td.querySelector('p');
+        const a = td.querySelector('a[style*="padding:14px"]') || td.querySelector('a[style*="padding: 14px"]');
+        
+        if (h2 || p) {
+          const block = { ...DEFAULT_BLOCK(), type: 'text' };
+          if (h2) block.title = h2.textContent || '';
+          if (p) block.content = p.innerHTML?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') || '';
+          if (a) {
+            block.button_text = a.textContent || '';
+            block.button_url = a.getAttribute('href') || '';
+          }
+          s.blocks.push(block);
+        }
       }
     }
 

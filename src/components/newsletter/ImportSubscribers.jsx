@@ -3,8 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { Upload, Loader2 } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 
-const SUBSCRIBERS_PER_GROUP = 280;
-
 function generateToken() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
@@ -17,22 +15,7 @@ export default function ImportSubscribers({ onImportDone }) {
   const { t } = useLanguage();
   const [importing, setImporting] = useState(false);
   const [importFile, setImportFile] = useState(null);
-
-  const getAvailableGroup = async () => {
-    const allSubs = await base44.entities.Subscribers.list();
-    const groupCounts = {};
-    allSubs.forEach(sub => {
-      const group = sub.group || 'קבוצה 1';
-      groupCounts[group] = (groupCounts[group] || 0) + 1;
-    });
-    let groupNum = 1;
-    while (true) {
-      const groupName = `קבוצה ${groupNum}`;
-      if ((groupCounts[groupName] || 0) < SUBSCRIBERS_PER_GROUP) return groupName;
-      groupNum++;
-      if (groupNum > 1000) return `קבוצה ${groupNum}`;
-    }
-  };
+  const [progress, setProgress] = useState('');
 
   const handleImportCSV = async () => {
     if (!importFile || (!importFile.file && !importFile.text)) {
@@ -40,6 +23,7 @@ export default function ImportSubscribers({ onImportDone }) {
       return;
     }
     setImporting(true);
+    setProgress(t('קורא נתונים...', 'Reading data...'));
     try {
       let items = [];
       if (importFile.type === 'text' && importFile.text) {
@@ -69,6 +53,7 @@ export default function ImportSubscribers({ onImportDone }) {
         } else {
           alert(t('שגיאה בקריאת הקובץ. נסי שיטת ההעתקה וההדבקה.', 'Error reading file. Try the copy-paste method.'));
           setImporting(false);
+          setProgress('');
           return;
         }
       }
@@ -76,36 +61,62 @@ export default function ImportSubscribers({ onImportDone }) {
       if (items.length === 0) {
         alert(t('לא נמצאו כתובות מייל או מספרי וואטסאפ תקינים', 'No valid email addresses or WhatsApp numbers found'));
         setImporting(false);
+        setProgress('');
         return;
       }
 
-      let successCount = 0, errorCount = 0, duplicateCount = 0;
+      // Load all existing subscribers once for duplicate detection
+      setProgress(t(`נמצאו ${items.length} רשומות. בודק כפילויות...`, `Found ${items.length} records. Checking duplicates...`));
+      const allExistingSubscribers = await base44.entities.Subscribers.list();
+      const existingEmails = new Set(allExistingSubscribers.map(s => s.email?.toLowerCase()).filter(Boolean));
+      const existingWhatsapps = new Set(allExistingSubscribers.map(s => s.whatsapp).filter(Boolean));
+
+      let duplicateCount = 0;
+      const subscribersToCreate = [];
+
       for (const item of items) {
-        if (item.email || item.whatsapp) {
-          try {
-            let existing = [];
-            if (item.email) existing = await base44.entities.Subscribers.filter({ email: item.email });
-            if (existing.length === 0 && item.whatsapp) existing = await base44.entities.Subscribers.filter({ whatsapp: item.whatsapp });
-            if (existing && existing.length > 0) { duplicateCount++; continue; }
-            const assignedGroup = await getAvailableGroup();
-            await base44.entities.Subscribers.create({
-              email: item.email || '', whatsapp: item.whatsapp || '', name: item.name || '',
-              job_title: item.job_title || '', company: item.company || '', notes: item.notes || '',
-              group: assignedGroup, subscribed: true, unsubscribe_token: generateToken(),
-              source: importFile.type === 'text' ? 'הדבקה ידנית' : 'ייבוא CSV'
-            });
-            successCount++;
-          } catch (err) { errorCount++; }
+        if (!item.email && !item.whatsapp) continue;
+        const emailLower = item.email?.toLowerCase() || '';
+        const isDuplicate = (emailLower && existingEmails.has(emailLower)) ||
+                            (item.whatsapp && existingWhatsapps.has(item.whatsapp));
+        if (isDuplicate) {
+          duplicateCount++;
+        } else {
+          subscribersToCreate.push({
+            email: item.email || '',
+            whatsapp: item.whatsapp || '',
+            name: item.name || '',
+            job_title: item.job_title || '',
+            company: item.company || '',
+            notes: item.notes || '',
+            subscribed: true,
+            unsubscribe_token: generateToken(),
+            source: importFile.type === 'text' ? 'הדבקה ידנית' : 'ייבוא CSV'
+          });
+          // Also add to sets to catch duplicates within the import itself
+          if (emailLower) existingEmails.add(emailLower);
+          if (item.whatsapp) existingWhatsapps.add(item.whatsapp);
         }
       }
 
-      alert(`✅ הייבוא הושלם!\n\nנוספו: ${successCount} מנויים\nכבר קיימים: ${duplicateCount}\nשגיאות: ${errorCount}`);
+      // Bulk create in batches of 100
+      let successCount = 0;
+      const BATCH_SIZE = 100;
+      for (let i = 0; i < subscribersToCreate.length; i += BATCH_SIZE) {
+        const batch = subscribersToCreate.slice(i, i + BATCH_SIZE);
+        setProgress(t(`מייבא ${i + batch.length} מתוך ${subscribersToCreate.length}...`, `Importing ${i + batch.length} of ${subscribersToCreate.length}...`));
+        await base44.entities.Subscribers.bulkCreate(batch);
+        successCount += batch.length;
+      }
+
+      alert(`✅ הייבוא הושלם!\n\nנוספו: ${successCount} מנויים\nכבר קיימים: ${duplicateCount}`);
       onImportDone();
       setImportFile(null);
     } catch (error) {
-      alert(t('שגיאה בייבוא. נסי שיטת ההעתקה וההדבקה.', 'Import error. Try the copy-paste method.'));
+      alert(t('שגיאה בייבוא: ' + error.message, 'Import error: ' + error.message));
     } finally {
       setImporting(false);
+      setProgress('');
     }
   };
 
@@ -117,7 +128,7 @@ export default function ImportSubscribers({ onImportDone }) {
           <li>{t('העתק והדבק ישירות (מומלץ!)', 'Copy & Paste directly (Recommended!)')}</li>
           <li>{t('או העלה קובץ CSV', 'Or upload a CSV file')}</li>
         </ul>
-        <p className="text-xs text-blue-700 mt-2">{t(`המנויים יחולקו אוטומטית לקבוצות של ${SUBSCRIBERS_PER_GROUP} מנויים`, `Imported subscribers will be automatically divided into groups of ${SUBSCRIBERS_PER_GROUP} members`)}</p>
+        <p className="text-xs text-blue-700 mt-2">{t('פורמט: מייל,וואטסאפ,שם,תפקיד,חברה,הערות', 'Format: email,whatsapp,name,job_title,company,notes')}</p>
       </div>
 
       <div className="bg-green-50 border border-green-200 rounded-lg p-6">
@@ -145,18 +156,15 @@ export default function ImportSubscribers({ onImportDone }) {
           disabled={importing || !(importFile?.type === 'text' && importFile.text?.trim())}
           className="w-full mt-4 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {importing ? <><Loader2 className="w-5 h-5 animate-spin" />{t('מייבא...', 'Importing...')}</> : <><Upload className="w-5 h-5" />{t('ייבא מנויים', 'Import Subscribers')}</>}
+          {importing ? <><Loader2 className="w-5 h-5 animate-spin" />{progress || t('מייבא...', 'Importing...')}</> : <><Upload className="w-5 h-5" />{t('ייבא מנויים', 'Import Subscribers')}</>}
         </button>
       </div>
 
       <div className="border-t pt-6">
         <h3 className="font-semibold text-gray-900 mb-3">{t('דרך 2: העלאת קובץ CSV', 'Method 2: Upload CSV File')}</h3>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-          <p className="text-sm text-yellow-800">⚠️ {t('העלאת קובץ עלולה לגרום לבעיות קידוד', 'File upload may cause encoding issues')}</p>
-        </div>
         <input
           type="file"
-          accept=".csv"
+          accept=".csv,.xlsx,.xls"
           onChange={(e) => setImportFile({ type: 'file', file: e.target.files[0] })}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg"
         />
@@ -165,9 +173,16 @@ export default function ImportSubscribers({ onImportDone }) {
           disabled={importing || !(importFile?.type === 'file' && importFile.file)}
           className="w-full mt-4 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {importing ? <><Loader2 className="w-5 h-5 animate-spin" />{t('מייבא...', 'Importing...')}</> : <><Upload className="w-5 h-5" />{t('ייבא קובץ', 'Import File')}</>}
+          {importing ? <><Loader2 className="w-5 h-5 animate-spin" />{progress || t('מייבא...', 'Importing...')}</> : <><Upload className="w-5 h-5" />{t('ייבא קובץ', 'Import File')}</>}
         </button>
       </div>
+
+      {importing && progress && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-yellow-600" />
+          <p className="text-sm text-yellow-800 font-medium">{progress}</p>
+        </div>
+      )}
     </div>
   );
 }

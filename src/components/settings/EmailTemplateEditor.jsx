@@ -586,15 +586,27 @@ export default function EmailTemplateEditor() {
                     <input type="text" value={block.video_url} onChange={e => updateBlock(idx, 'video_url', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="https://youtube.com/..." dir="ltr" />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">תמונה ממוזערת</label>
+                    <label className="block text-xs text-gray-600 mb-1">תמונה ממוזערת (אופציונלי - נוצרת אוטומטית מיוטיוב/וימאו)</label>
                     <div className="flex gap-2">
-                      <input type="text" value={block.video_thumbnail_url} onChange={e => updateBlock(idx, 'video_thumbnail_url', e.target.value)} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="https://..." />
+                      <input type="text" value={block.video_thumbnail_url} onChange={e => updateBlock(idx, 'video_thumbnail_url', e.target.value)} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="אוטומטי מיוטיוב, או הדביקי URL..." />
                       <label className="px-3 py-2 bg-gray-600 text-white rounded-lg cursor-pointer flex items-center gap-1 text-sm">
                         {uploadingField === `video_thumbnail_url_${idx}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
                         <input type="file" className="hidden" accept="image/*" onChange={e => handleUploadImage(e, idx, 'video_thumbnail_url')} />
                       </label>
                     </div>
                   </div>
+                  {/* Thumbnail preview */}
+                  {(() => {
+                    const thumb = block.video_thumbnail_url || getAutoThumbnail(block.video_url);
+                    return thumb ? (
+                      <div className="mt-1">
+                        <p className="text-xs text-gray-500 mb-1">{block.video_thumbnail_url ? 'תמונה ממוזערת (ידנית):' : 'תמונה ממוזערת (אוטומטית מהסרטון):'}</p>
+                        <img src={thumb} alt="thumbnail preview" className="max-h-32 rounded border" />
+                      </div>
+                    ) : block.video_url ? (
+                      <p className="text-xs text-orange-600 mt-1">⚠️ לא ניתן לייצר תמונה ממוזערת אוטומטית מ-URL זה. העלי תמונה ידנית.</p>
+                    ) : null;
+                  })()}
                 </div>
               )}
 

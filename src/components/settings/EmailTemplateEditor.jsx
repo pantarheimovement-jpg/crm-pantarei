@@ -57,10 +57,11 @@ function buildHtmlFromSections(s, generalSettings) {
       </td></tr>` : '';
     }
     if (block.type === 'video') {
-      return (block.video_url && block.video_thumbnail_url) ? `
+      const thumbnail = block.video_thumbnail_url || getAutoThumbnail(block.video_url);
+      return (block.video_url && thumbnail) ? `
       <tr><td style="padding:10px 30px;text-align:center;">
         <a href="${block.video_url}" target="_blank" style="text-decoration:none;">
-          <img src="${block.video_thumbnail_url}" alt="צפה בסרטון" width="500" style="width:100%;max-width:500px;border-radius:12px;display:block;margin:0 auto;">
+          <img src="${thumbnail}" alt="צפה בסרטון" width="500" style="width:100%;max-width:500px;border-radius:12px;display:block;margin:0 auto;">
         </a>
         <p style="font-family:'Rubik',Arial,sans-serif;font-size:14px;color:#555;margin-top:10px;">▶ לחצו לצפייה בסרטון</p>
       </td></tr>` : '';

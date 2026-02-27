@@ -5,6 +5,18 @@ import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePo
 // A "block" can be: text, image, video, button
 const DEFAULT_BLOCK = () => ({ id: Date.now() + Math.random(), type: 'text', title: '', content: '', button_text: '', button_url: '', image_url: '', video_url: '', video_thumbnail_url: '' });
 
+// Auto-generate thumbnail from YouTube/Vimeo URL
+function getAutoThumbnail(videoUrl) {
+  if (!videoUrl) return '';
+  // YouTube: various URL formats
+  const ytMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+  // Vimeo
+  const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return `https://vumbnail.com/${vimeoMatch[1]}.jpg`;
+  return '';
+}
+
 const DEFAULT_SECTIONS = {
   logo_url: '',
   header_title: 'ניוזלטר מפנטהרי',

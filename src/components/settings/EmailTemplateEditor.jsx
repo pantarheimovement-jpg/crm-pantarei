@@ -294,7 +294,14 @@ export default function EmailTemplateEditor() {
     setSaving(true);
     try {
       const html = buildHtmlFromSections(sections, generalSettings);
-      const data = { name: templateName, subject: templateSubject, body: html, active: true };
+      const sectionsToSave = { ...sections };
+      const data = { 
+        name: templateName, 
+        subject: templateSubject, 
+        body: html, 
+        sections_json: JSON.stringify(sectionsToSave),
+        active: true 
+      };
       if (selectedId && !creatingNew) {
         await base44.entities.EmailTemplate.update(selectedId, data);
       } else {

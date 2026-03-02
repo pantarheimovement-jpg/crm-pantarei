@@ -240,6 +240,7 @@ Deno.serve(async (req) => {
       }
       
       student = await base44.asServiceRole.entities.Student.create(studentData);
+      console.log(`✅ New student created: ${student.full_name} (ID: ${student.id})`);
     }
     
     // ========================================

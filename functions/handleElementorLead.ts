@@ -48,9 +48,12 @@ Deno.serve(async (req) => {
     // חילוץ מייל
     let email = extractField(rawPayload, ['email', 'אימייל', 'דוא"ל', "דוא\\'ל", 'מייל']);
     if (!email) {
+      // Fallback: search for email-like value in any field
       for (const [key, value] of Object.entries(rawPayload)) {
-        if (typeof key === 'string' && key.includes('@')) {
-          email = key;
+        const str = typeof value === 'string' ? value : '';
+        if (str.includes('@') && str.includes('.')) {
+          console.log(`📧 Found email in field "${key}": ${str}`);
+          email = str;
           break;
         }
       }

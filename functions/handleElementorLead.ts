@@ -121,20 +121,32 @@ Deno.serve(async (req) => {
     // חיפוש student קיים
     let existingStudent = null;
     
-    if (email) {
-      const byEmail = await base44.asServiceRole.entities.Student.filter({ email });
-      existingStudent = byEmail && byEmail.length > 0 ? byEmail[0] : null;
-    }
-    
-    if (!existingStudent && phone) {
-      const byPhone = await base44.asServiceRole.entities.Student.filter({ phone });
-      existingStudent = byPhone && byPhone.length > 0 ? byPhone[0] : null;
-    }
-    
-    if (!existingStudent && full_name) {
-      // FIX: Using filter instead of list() to prevent CPU timeout
-      const byName = await base44.asServiceRole.entities.Student.filter({ full_name });
-      existingStudent = byName && byName.length > 0 ? byName[0] : null;
+    try {
+      if (email) {
+        console.log(`🔍 Searching student by email: ${email}`);
+        const byEmail = await base44.asServiceRole.entities.Student.filter({ email });
+        existingStudent = byEmail && byEmail.length > 0 ? byEmail[0] : null;
+        if (existingStudent) console.log(`✅ Found by email: ${existingStudent.full_name} (ID: ${existingStudent.id})`);
+      }
+      
+      if (!existingStudent && phone) {
+        console.log(`🔍 Searching student by phone: ${phone}`);
+        const byPhone = await base44.asServiceRole.entities.Student.filter({ phone });
+        existingStudent = byPhone && byPhone.length > 0 ? byPhone[0] : null;
+        if (existingStudent) console.log(`✅ Found by phone: ${existingStudent.full_name} (ID: ${existingStudent.id})`);
+      }
+      
+      if (!existingStudent && full_name) {
+        console.log(`🔍 Searching student by name: ${full_name}`);
+        const byName = await base44.asServiceRole.entities.Student.filter({ full_name });
+        existingStudent = byName && byName.length > 0 ? byName[0] : null;
+        if (existingStudent) console.log(`✅ Found by name: ${existingStudent.full_name} (ID: ${existingStudent.id})`);
+      }
+      
+      if (!existingStudent) console.log('🆕 No existing student found - will create new');
+    } catch (searchError) {
+      console.error('⚠️ Error searching for existing student:', searchError.message);
+      console.log('🆕 Proceeding to create new student due to search error');
     }
     
     // קבלת סטטוסים

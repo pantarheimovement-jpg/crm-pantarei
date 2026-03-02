@@ -20,6 +20,7 @@ Deno.serve(async (req) => {
       }
     }
     
+    console.log('📦 Raw Payload keys:', Object.keys(rawPayload));
     console.log('📦 Raw Payload:', JSON.stringify(rawPayload, null, 2));
     
     // פונקציית עזר לחילוץ נתונים

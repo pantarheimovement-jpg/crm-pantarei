@@ -23,17 +23,38 @@ export const SystemSettingsProvider = ({ children }) => {
     loadSettings();
   }, []);
 
-  // רענון אוטומטי כשהדף חוזר להיות visible
+  // רענון אוטומטי כשהדף חוזר להיות visible - בלי להציג מסך טעינה
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        loadSettings();
+        refreshSettingsSilently();
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
+
+  // רענון שקט - ללא מסך טעינה (לשימוש כש-visibility חוזר)
+  const refreshSettingsSilently = async () => {
+    try {
+      const [design, texts, statuses, automation, general] = await Promise.all([
+        base44.entities.DesignSettings.list(),
+        base44.entities.SystemTexts.list(),
+        base44.entities.LeadStatuses.list(),
+        base44.entities.AutomationSettings.list(),
+        base44.entities.GeneralSettings.list()
+      ]);
+
+      setDesignSettings(design && design.length > 0 ? design[0] : null);
+      setSystemTexts(texts && texts.length > 0 ? texts[0] : null);
+      setLeadStatuses(statuses || []);
+      setAutomationSettings(automation && automation.length > 0 ? automation[0] : null);
+      setGeneralSettings(general && general.length > 0 ? general[0] : null);
+    } catch (error) {
+      console.error('Error refreshing system settings silently:', error);
+    }
+  };
 
   const loadSettings = async () => {
     setLoading(true);

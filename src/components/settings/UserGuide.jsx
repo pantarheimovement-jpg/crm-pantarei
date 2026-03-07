@@ -325,41 +325,6 @@ export default function UserGuide() {
         />
       </Section>
 
-      {/* אינטראקציות */}
-      <Section title="אינטראקציות" icon={MessageSquare} color="#E67E22">
-        <FAQItem
-          icon={MessageSquare}
-          question="מה נמצא בדף האינטראקציות?"
-          answer={
-            <div>
-              <p>דף האינטראקציות מתעד את כל הפעילות מול ארגונים ואנשי קשר:</p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li><strong>סוגי אינטראקציות</strong> — שיחה, מייל, וואטסאפ, פגישה, זום, הצעת מחיר, הזמנה</li>
-                <li><strong>קישור לארגון</strong> — כל אינטראקציה מקושרת לארגון (ניתן ליצור ארגון חדש תוך כדי)</li>
-                <li><strong>קישור לאיש קשר</strong> — אופציונלי, ניתן ליצור איש קשר חדש תוך כדי</li>
-                <li><strong>סינון</strong> — לפי סוג, תוצאה, וחיפוש חופשי</li>
-                <li><strong>ייבוא / ייצוא</strong></li>
-              </ul>
-            </div>
-          }
-        />
-        <FAQItem
-          icon={AlertCircle}
-          color="#E67E22"
-          question="מה הסטטוסים (תוצאות) של אינטראקציות?"
-          answer={
-            <div className="space-y-2">
-              <StatusBadge name="פתוח" color="#3498DB" description="האינטראקציה בתהליך, דורשת המשך." />
-              <StatusBadge name="סגור" color="#95A5A6" description="האינטראקציה הסתיימה." />
-              <StatusBadge name="המשך טיפול" color="#F39C12" description="צריך לחזור ללקוח עם מענה." />
-              <StatusBadge name="הצלחה" color="#2ECC71" description="האינטראקציה הניבה תוצאה חיובית." />
-              <StatusBadge name="אין עניין" color="#E74C3C" description="הצד השני לא מעוניין." />
-              <p className="mt-2"><ManualBadge>ידני</ManualBadge> <span className="text-sm">כל הסטטוסים ידניים.</span></p>
-            </div>
-          }
-        />
-      </Section>
-
       {/* ניוזלטר */}
       <Section title="ניוזלטר ודיוור" icon={Mail} color="#9B59B6">
         <FAQItem

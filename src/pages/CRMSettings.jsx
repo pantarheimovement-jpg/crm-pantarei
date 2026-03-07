@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Settings, Save, Loader2, Palette, Type, Image as ImageIcon, FileText, Tag, Zap, Plus, Trash2, GripVertical, MessageCircle, Copy, Check, Mail } from 'lucide-react';
+import { Settings, Save, Loader2, Palette, Type, Image as ImageIcon, FileText, Tag, Zap, Plus, Trash2, GripVertical, MessageCircle, Copy, Check, Mail, BookOpen } from 'lucide-react';
 import EmailTemplateEditor from '../components/settings/EmailTemplateEditor';
+import UserGuide from '../components/settings/UserGuide';
 
 export default function CRMSettings() {
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('crmSettings_tab') || 'crm-general');

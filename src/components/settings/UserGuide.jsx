@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { 
   ChevronDown, ChevronUp, BookOpen, LayoutDashboard, Users, GraduationCap, 
-  MessageSquare, CheckSquare, Mail, Zap, Settings, Search, ArrowRight,
-  Sparkles, AlertCircle, RefreshCw
+  CheckSquare, Mail, Zap, Settings, Search, ArrowRight,
+  Sparkles, AlertCircle, RefreshCw, MessageSquare
 } from 'lucide-react';
 
 function FAQItem({ question, answer, icon: Icon, color = '#6D436D' }) {

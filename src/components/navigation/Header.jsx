@@ -80,13 +80,7 @@ export default function Header() {
       path: 'Courses',
       icon: GraduationCap
     },
-    {
-      key: 'interactions',
-      label: systemTexts?.page_interactions || 'אינטראקציות',
-      labelEn: 'Interactions',
-      path: 'Interactions',
-      icon: MessageSquare
-    },
+
     {
       key: 'tasks',
       label: systemTexts?.page_tasks || 'משימות',

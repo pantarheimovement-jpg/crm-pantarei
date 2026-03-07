@@ -238,6 +238,7 @@ export default function CRMSettings() {
                 { key: 'statuses', icon: GripVertical, label: 'סטטוסים ושלבים' },
                 { key: 'automation', icon: Zap, label: 'אוטומציה' },
                 { key: 'email-templates', icon: Mail, label: 'תבניות מייל' },
+                { key: 'user-guide', icon: BookOpen, label: 'מדריך למשתמשת' },
               ].map(({ key, icon: Icon, label }) => (
                 <button key={key} onClick={() => switchTab(key)}
                   className={`px-6 py-4 font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === key ? 'border-b-2 border-[#6D436D] text-[#6D436D]' : 'text-gray-500 hover:text-gray-700'}`}

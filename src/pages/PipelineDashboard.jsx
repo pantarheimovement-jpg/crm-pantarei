@@ -111,8 +111,8 @@ export default function PipelineDashboard() {
     }
     
     return students.filter(s => {
-      if (!s.registration_date && !s.created_date) return false;
-      const localDate = toLocalDateStr(s.registration_date || s.created_date);
+      if (!s.created_date && !s.registration_date) return false;
+      const localDate = toLocalDateStr(s.created_date || s.registration_date);
       return localDate >= startDateStr;
     });
   }, [students, dateFilter]);
@@ -134,8 +134,8 @@ export default function PipelineDashboard() {
       }
       return {
         count: all.length,
-        today: all.filter(s => isToday(s.registration_date || s.created_date)).length,
-        week: all.filter(s => isThisWeek(s.registration_date || s.created_date)).length
+        today: all.filter(s => isToday(s.created_date || s.registration_date)).length,
+        week: all.filter(s => isThisWeek(s.created_date || s.registration_date)).length
       };
     };
 

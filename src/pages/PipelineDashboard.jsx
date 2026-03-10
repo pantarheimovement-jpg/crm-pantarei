@@ -68,42 +68,52 @@ export default function PipelineDashboard() {
   };
 
   // תאריכים
+  // פונקציית עזר להמרת תאריך UTC לתאריך מקומי (ישראל)
+  const toLocalDateStr = (dateStr) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' }); // returns YYYY-MM-DD
+  };
+
+  const todayLocalStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+
   const isToday = (dateStr) => {
     if (!dateStr) return false;
-    const d = new Date(dateStr);
-    const today = new Date();
-    return d.toDateString() === today.toDateString();
+    return toLocalDateStr(dateStr) === todayLocalStr;
   };
 
   const isThisWeek = (dateStr) => {
     if (!dateStr) return false;
-    const d = new Date(dateStr);
-    const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
+    const localStr = toLocalDateStr(dateStr);
+    if (!localStr) return false;
+    const d = new Date(localStr + 'T00:00:00');
+    const nowLocal = new Date(todayLocalStr + 'T00:00:00');
+    const weekStart = new Date(nowLocal);
+    weekStart.setDate(nowLocal.getDate() - nowLocal.getDay());
     return d >= weekStart;
   };
 
   // סינון משתתפים לפי פילטר תאריכים
   const filteredStudents = useMemo(() => {
     if (dateFilter === 'all') return students;
-    const now = new Date();
     
-    let startDate;
+    const nowLocal = new Date(todayLocalStr + 'T00:00:00');
+    
+    let startDateStr;
     if (dateFilter === 'today') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      startDateStr = todayLocalStr;
     } else if (dateFilter === 'week') {
-      startDate = new Date(now);
-      startDate.setDate(now.getDate() - now.getDay());
-      startDate.setHours(0, 0, 0, 0);
+      const weekStart = new Date(nowLocal);
+      weekStart.setDate(nowLocal.getDate() - nowLocal.getDay());
+      startDateStr = weekStart.toISOString().split('T')[0];
     } else if (dateFilter === 'month') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      startDateStr = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-01`;
     }
     
     return students.filter(s => {
       if (!s.registration_date && !s.created_date) return false;
-      const dateToCheck = new Date(s.registration_date || s.created_date);
-      return dateToCheck >= startDate;
+      const localDate = toLocalDateStr(s.registration_date || s.created_date);
+      return localDate >= startDateStr;
     });
   }, [students, dateFilter]);
 

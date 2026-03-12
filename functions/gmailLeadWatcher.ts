@@ -126,8 +126,15 @@ ${emailBody}
 
         console.log('🧠 AI extraction:', JSON.stringify(extractionResult, null, 2));
 
-        if (!extractionResult || !extractionResult.is_lead_form) {
-          console.log(`⏭️ Email ${msg.id}: AI determined this is not a lead form`);
+        // Consider it a lead if AI says so OR if we have at least name+phone or name+email
+        const hasLeadData = extractionResult && (
+          extractionResult.is_lead_form === true ||
+          (extractionResult.full_name && (extractionResult.phone || extractionResult.email)) ||
+          (extractionResult.first_name && (extractionResult.phone || extractionResult.email))
+        );
+
+        if (!hasLeadData) {
+          console.log(`⏭️ Email ${msg.id}: No usable lead data found`);
           continue;
         }
 

@@ -126,19 +126,24 @@ ${emailBody}
 
         console.log('🧠 AI extraction:', JSON.stringify(extractionResult, null, 2));
 
-        // Consider it a lead if AI says so OR if we have at least name+phone or name+email
-        const hasLeadData = extractionResult && (
-          extractionResult.is_lead_form === true ||
-          (extractionResult.full_name && (extractionResult.phone || extractionResult.email)) ||
-          (extractionResult.first_name && (extractionResult.phone || extractionResult.email))
+        // Sometimes AI returns nested format {properties: {field: value}} — normalize it
+        let leadData = extractionResult;
+        if (leadData && leadData.properties && typeof leadData.properties === 'object' && !leadData.full_name) {
+          console.log('🔧 Normalizing nested AI response format');
+          leadData = leadData.properties;
+        }
+
+        // Consider it a lead if we have at least name+phone or name+email
+        const hasLeadData = leadData && (
+          leadData.is_lead_form === true ||
+          (leadData.full_name && (leadData.phone || leadData.email)) ||
+          (leadData.first_name && (leadData.phone || leadData.email))
         );
 
         if (!hasLeadData) {
           console.log(`⏭️ Email ${msg.id}: No usable lead data found`);
           continue;
         }
-
-        const leadData = extractionResult;
 
         // Build full name
         const fullName = leadData.full_name || 

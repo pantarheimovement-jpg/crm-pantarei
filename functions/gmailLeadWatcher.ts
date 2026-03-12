@@ -27,7 +27,10 @@ Deno.serve(async (req) => {
     // STEP 1: Get recent Elementor emails
     // Search for emails from Elementor forms in last 2 hours
     // =============================================
-    const searchQuery = encodeURIComponent('subject:(טופס חדש OR "New Form" OR "אלמנטור" OR "Elementor") newer_than:2h');
+    // Search for Elementor form emails - broad search to catch all variants
+    // Includes common subjects and sender patterns for Elementor form notifications
+    const hoursBack = 3;
+    const searchQuery = encodeURIComponent(`(subject:(טופס OR form OR "אלמנטור" OR Elementor OR "לאבאן" OR "LBMS" OR "הרשמה" OR "פנטהריי" OR "pantarhei") OR from:wordpress@pantarhei-studio.co.il OR from:noreply@pantarhei-studio.co.il) newer_than:${hoursBack}h -label:starred`);
     
     const listResponse = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${searchQuery}&maxResults=10`,

@@ -248,7 +248,7 @@ ${emailBody}
           status: 'ליד חדש',
           lead_source: 'אתר',
           last_contact_date: new Date().toISOString(),
-          notes: `🤖 נוצר אוטומטית ע"י רשת ביטחון (ליד ממייל Elementor)\n${leadData.message || ''}`
+          notes: leadData.message || ''
         };
 
         if (course) {

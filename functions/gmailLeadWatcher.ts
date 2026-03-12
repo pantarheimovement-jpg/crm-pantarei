@@ -12,8 +12,14 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   try {
-    const body = await req.json();
-    console.log('📦 Webhook payload:', JSON.stringify(body, null, 2));
+    // Parse payload - support custom hours_back for one-time scans
+    let body = {};
+    try { body = await req.json(); } catch(e) { /* empty body is ok */ }
+    
+    const hoursBack = body.hours_back || 3;
+    const dryRun = body.dry_run || false; // dry_run = just list emails, don't create leads
+    
+    console.log(`📦 Config: hours_back=${hoursBack}, dry_run=${dryRun}`);
 
     // Get Gmail access token
     const { accessToken } = await base44.asServiceRole.connectors.getConnection("gmail");
@@ -24,13 +30,10 @@ Deno.serve(async (req) => {
     }
 
     // =============================================
-    // STEP 1: Get recent Elementor emails
-    // Search for emails from Elementor forms in last 2 hours
+    // STEP 1: Search for lead form emails
+    // Subject pattern: "מתעניין/מתעניינ.ת" + course name
     // =============================================
-    // Search for Elementor form emails - broad search to catch all variants
-    // Includes common subjects and sender patterns for Elementor form notifications
-    const hoursBack = 3;
-    const searchQuery = encodeURIComponent(`(subject:(טופס OR form OR "אלמנטור" OR Elementor OR "לאבאן" OR "LBMS" OR "הרשמה" OR "פנטהריי" OR "pantarhei") OR from:wordpress@pantarhei-studio.co.il OR from:noreply@pantarhei-studio.co.il) newer_than:${hoursBack}h -label:starred`);
+    const searchQuery = encodeURIComponent(`subject:(מתעניין OR מתעניינת OR "מתעניינ.ת") newer_than:${hoursBack}h -label:starred`);
     
     const listResponse = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${searchQuery}&maxResults=10`,

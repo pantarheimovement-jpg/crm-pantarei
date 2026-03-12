@@ -274,7 +274,7 @@ ${emailBody}
 
         await base44.asServiceRole.entities.Task.create({
           name: 'שיחת היכרות',
-          description: `ליד שנקלט מרשת ביטחון (מייל Elementor)\n${fullName}\n${leadData.course_name || ''}`,
+          description: `${fullName}\n${leadData.course_name || ''}`,
           status: 'ממתין',
           scheduled_date: scheduledDate.toISOString().split('T')[0],
           student_id: newStudent.id,

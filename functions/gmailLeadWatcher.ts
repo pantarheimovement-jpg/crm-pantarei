@@ -80,16 +80,22 @@ Deno.serve(async (req) => {
         console.log(`📧 Processing email ${msg.id}`);
         console.log(`📝 Body preview: ${emailBody.substring(0, 200)}...`);
 
-        // Check if this looks like an Elementor form submission
-        const isElementorEmail = emailBody.includes('אלמנטור') || 
-                                  emailBody.includes('Elementor') || 
-                                  emailBody.includes('טופס') ||
-                                  emailBody.includes('form_name') ||
-                                  emailBody.includes('שם פרטי') ||
-                                  emailBody.includes('במה מתעניין');
+        // Extract subject from headers for logging
+        const subjectHeader = emailData.payload?.headers?.find(h => h.name.toLowerCase() === 'subject');
+        const emailSubject = subjectHeader ? subjectHeader.value : '(no subject)';
+        console.log(`📌 Subject: ${emailSubject}`);
 
-        if (!isElementorEmail) {
-          console.log(`⏭️ Email ${msg.id}: Not an Elementor form email`);
+        // Check if this looks like a lead form submission
+        const isLeadEmail = emailBody.includes('מתעניין') || 
+                            emailBody.includes('מתעניינת') ||
+                            emailBody.includes('שם פרטי') ||
+                            emailBody.includes('טלפון') ||
+                            emailBody.includes('אימייל') ||
+                            emailBody.includes('form_name') ||
+                            emailBody.includes('Elementor');
+
+        if (!isLeadEmail) {
+          console.log(`⏭️ Email ${msg.id}: Not a lead form email`);
           continue;
         }
 

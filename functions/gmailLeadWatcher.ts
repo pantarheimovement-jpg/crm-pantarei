@@ -187,8 +187,15 @@ ${emailBody}
           console.log(`⏭️ Lead "${fullName || leadData.email}" already exists in CRM (ID: ${existingStudent.id})`);
           skippedCount++;
           
-          // Star the email to mark as processed
-          await markEmailProcessed(accessToken, msg.id);
+          // Star the email to mark as processed (only in live mode)
+          if (!dryRun) await markEmailProcessed(accessToken, msg.id);
+          continue;
+        }
+
+        // In dry_run mode, just log what would be created
+        if (dryRun) {
+          console.log(`🔎 [DRY RUN] Would create lead: ${fullName || leadData.email || leadData.phone} | Course: ${leadData.course_name || 'N/A'}`);
+          createdCount++;
           continue;
         }
 

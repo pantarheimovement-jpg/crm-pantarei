@@ -247,6 +247,7 @@ ${emailBody}
           phone: storedPhone || null,
           status: 'ליד חדש',
           lead_source: 'אתר',
+          lead_entry_date: new Date().toISOString().split('T')[0],
           last_contact_date: new Date().toISOString(),
           notes: leadData.message || ''
         };

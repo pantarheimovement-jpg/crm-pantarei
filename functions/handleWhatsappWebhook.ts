@@ -348,6 +348,7 @@ Deno.serve(async (req) => {
           status: 'ליד חדש',
           lead_source: 'וואטסאפ',
           interest_area: intent.identifiedCourseName || '',
+          lead_entry_date: new Date().toISOString().split('T')[0],
           last_contact_date: new Date().toISOString(),
           notes: `הודעה ראשונה (ליד חזק): ${messageText}`
         });
@@ -431,6 +432,7 @@ Deno.serve(async (req) => {
           phone: storedPhone,
           status: 'הודעה מוואטסאפ לבדיקה',
           lead_source: 'וואטסאפ',
+          lead_entry_date: new Date().toISOString().split('T')[0],
           last_contact_date: new Date().toISOString(),
           notes: `הודעה לבדיקה: ${messageText}`
         });

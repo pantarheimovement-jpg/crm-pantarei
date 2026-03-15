@@ -163,6 +163,7 @@ Deno.serve(async (req) => {
       email,
       phone: phone || null,
       lead_source: 'אתר',
+      lead_entry_date: new Date().toISOString().split('T')[0],
       last_contact_date: new Date().toISOString(),
       notes: [...validationNotes, message].filter(Boolean).join('\n')
     };

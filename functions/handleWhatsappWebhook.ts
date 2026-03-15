@@ -141,12 +141,12 @@ function extractMessageIntent(message, courseNames) {
 
   const hasCourseContext = debugInfo.hasCourseKeyword || debugInfo.hasSpecificCourseName;
 
-  if (debugInfo.hasInterestPhrase && hasCourseContext) {
+  if (debugInfo.hasInterestPhrase) {
     debugInfo.intentType = 'strong_lead';
     return { intentType: 'strong_lead', identifiedCourseName: debugInfo.matchedCourseName || null, debugInfo };
   }
 
-  if (hasCourseContext || debugInfo.hasInterestPhrase) {
+  if (hasCourseContext) {
     debugInfo.intentType = 'for_review';
     return { intentType: 'for_review', identifiedCourseName: debugInfo.matchedCourseName || null, debugInfo };
   }

@@ -518,9 +518,9 @@ export default function Tasks() {
               <option value="all">כל הסטטוסים</option>
               <option value="ממתין">ממתין</option>
               <option value="ניסיון לשיחה">ניסיון לשיחה</option>
-              <option value="לא רלוונטי">לא רלוונטי</option>
               <option value="בבדיקה">בבדיקה</option>
               <option value="הושלם">הושלם</option>
+              <option value="לא רלוונטי">לא רלוונטי</option>
               <option value="אבוד">אבוד</option>
             </select>
 
@@ -647,9 +647,10 @@ export default function Tasks() {
 
                     <div className="flex items-center gap-2 mt-2">
                       <span className={`px-2 py-1 rounded-full text-xs ${
-                        task.status === 'ענתה' ? 'bg-green-100 text-green-800' :
-                        task.status === 'לא ענתה' ? 'bg-red-100 text-red-800' :
-                        task.status === 'הושלם' ? 'bg-blue-100 text-blue-800' :
+                        task.status === 'ניסיון לשיחה' ? 'bg-red-100 text-red-800' :
+                        task.status === 'בבדיקה' ? 'bg-blue-100 text-blue-800' :
+                        task.status === 'הושלם' ? 'bg-green-100 text-green-800' :
+                        task.status === 'לא רלוונטי' ? 'bg-gray-100 text-gray-800' :
                         task.status === 'אבוד' ? 'bg-gray-100 text-gray-800' :
                         'bg-yellow-100 text-yellow-800'
                       }`}>

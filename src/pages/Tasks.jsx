@@ -798,11 +798,10 @@ export default function Tasks() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
                     >
                       <option value="ממתין">ממתין</option>
+                      <option value="ניסיון לשיחה">ניסיון לשיחה</option>
                       <option value="בבדיקה">בבדיקה</option>
-                      <option value="ענתה">ענתה</option>
-                      <option value="לא ענתה">לא ענתה</option>
-                      <option value="לא רלוונטי">לא רלוונטי</option>
                       <option value="הושלם">הושלם</option>
+                      <option value="לא רלוונטי">לא רלוונטי</option>
                       <option value="אבוד">אבוד</option>
                     </select>
                   </div>

@@ -473,7 +473,7 @@ async function notifyOfir(base44, leadName, leadPhone, messageText, courseName) 
 
   // WhatsApp notification to Ofir
   if (GREEN_ID && GREEN_TOKEN) {
-    const whatsappMsg = `💜 ליד חדש מוואטסאפ לבדיקה:\n\n👤 *${leadName}*\n📞 ${leadPhone}${courseName ? '\n📚 ' + courseName : ''}\n💬 "${messageText}"\n\nלשלוח תגובה אוטומטית?\nהשיבי *כן* או *לא*`;
+    const whatsappMsg = `💜 ליד חדש מוואטסאפ לבדיקה:\n\n👤 *${leadName}*\n📞 ${leadPhone}${courseName ? '\n📚 ' + courseName : ''}\n💬 "${messageText}"\n\nלשלוח תגובה אוטומטית?\nהשיבי *כן ${leadName}* או *לא ${leadName}*`;
 
     const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
 

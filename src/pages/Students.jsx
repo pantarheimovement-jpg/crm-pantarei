@@ -677,7 +677,7 @@ export default function Students() {
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מייל</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">קורסים וסטטוסים</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">תשלומים</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">היסטוריה</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">שיחות</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות</th>
                   </tr>
                 </thead>
@@ -743,7 +743,7 @@ export default function Students() {
                             onClick={() => toggleLogs(student.id)}
                             className="text-sm text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 underline"
                           >
-                            {loadingLogs[student.id] ? 'טוען...' : expandedLogs[student.id] ? 'סגור' : 'היסטוריה'}
+                            {loadingLogs[student.id] ? 'טוען...' : expandedLogs[student.id] ? 'סגור' : 'שיחות'}
                           </button>
                         </td>
                         <td className="px-4 py-3">

@@ -364,8 +364,8 @@ export default function Tasks() {
   });
 
   const stats = {
-    answered: tasks.filter(t => t.status === 'ענתה').length,
-    notAnswered: tasks.filter(t => t.status === 'לא ענתה').length,
+    tryCall: tasks.filter(t => t.status === 'ניסיון לשיחה').length,
+    inReview: tasks.filter(t => t.status === 'בבדיקה').length,
     completed: tasks.filter(t => t.status === 'הושלם').length,
     scheduled: tasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) >= new Date() && t.status !== 'הושלם').length
   };
@@ -421,29 +421,41 @@ export default function Tasks() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+          <div 
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-md transition-shadow" 
+            style={{ borderRadius: 'var(--crm-border-radius)' }}
+            onClick={() => setFilterStatus('ניסיון לשיחה')}
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">ענתה</p>
-                <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{stats.answered}</p>
-              </div>
-              <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-accent)' }}>
-                <CheckCircle size={24} style={{ color: 'white' }} />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">לא ענתה</p>
-                <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{stats.notAnswered}</p>
+                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">ניסיון לשיחה</p>
+                <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{stats.tryCall}</p>
               </div>
               <div className="p-3 rounded-xl" style={{ backgroundColor: '#ef4444' }}>
-                <AlertCircle size={24} style={{ color: 'white' }} />
+                <Phone size={24} style={{ color: 'white' }} />
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+          <div 
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-md transition-shadow" 
+            style={{ borderRadius: 'var(--crm-border-radius)' }}
+            onClick={() => setFilterStatus('בבדיקה')}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">בבדיקה</p>
+                <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{stats.inReview}</p>
+              </div>
+              <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-accent)' }}>
+                <Search size={24} style={{ color: 'white' }} />
+              </div>
+            </div>
+          </div>
+          <div 
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-md transition-shadow" 
+            style={{ borderRadius: 'var(--crm-border-radius)' }}
+            onClick={() => setFilterStatus('הושלם')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">הושלמו</p>
@@ -454,7 +466,11 @@ export default function Tasks() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+          <div 
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-md transition-shadow" 
+            style={{ borderRadius: 'var(--crm-border-radius)' }}
+            onClick={() => setFilterStatus('all')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">מתוזמנות</p>

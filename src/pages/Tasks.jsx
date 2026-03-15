@@ -501,8 +501,7 @@ export default function Tasks() {
             >
               <option value="all">כל הסטטוסים</option>
               <option value="ממתין">ממתין</option>
-              <option value="ענתה">ענתה</option>
-              <option value="לא ענתה">לא ענתה</option>
+              <option value="ניסיון לשיחה">ניסיון לשיחה</option>
               <option value="לא רלוונטי">לא רלוונטי</option>
               <option value="בבדיקה">בבדיקה</option>
               <option value="הושלם">הושלם</option>

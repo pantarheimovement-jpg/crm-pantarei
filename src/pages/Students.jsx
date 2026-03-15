@@ -30,7 +30,7 @@ export default function Students() {
     status: 'חדש',
     lead_source: 'אחר',
     interest_area: '',
-    trial_date: '',
+    lead_entry_date: '',
     registration_date: '',
     course_id: '',
     course_name: '',
@@ -583,10 +583,10 @@ export default function Students() {
                       {student.course_name}
                     </div>
                   ) : null}
-                  {student.trial_date && (
+                  {student.lead_entry_date && (
                     <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-80">
                       <Calendar className="w-4 h-4" />
-                      ניסיון: {new Date(student.trial_date).toLocaleDateString('he-IL')}
+                      כניסה: {new Date(student.lead_entry_date).toLocaleDateString('he-IL')}
                     </div>
                   )}
                   {student.payment_number && student.total_payments && (
@@ -881,10 +881,10 @@ export default function Students() {
                     onChange={(e) => setFormData({...formData, lead_source: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   >
-                    <option value="פייסבוק">פייסבוק</option>
-                    <option value="אינסטגרם">אינסטגרם</option>
-                    <option value="המלצה">המלצה</option>
                     <option value="אתר">אתר</option>
+                    <option value="וואטסאפ">וואטסאפ</option>
+                    <option value="פייסבוק">פייסבוק</option>
+                    <option value="ידני">ידני</option>
                     <option value="אחר">אחר</option>
                   </select>
                 </div>

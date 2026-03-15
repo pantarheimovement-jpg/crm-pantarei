@@ -110,15 +110,9 @@ export default function Tasks() {
 
         if (existingStudent) {
           // עדכון הסטטוס ל"נוצר משיחה" אם צריך
-          const existingCourses = existingStudent.courses || [];
-
+          // Student already exists - just link to them
           await base44.entities.Student.update(existingStudent.id, {
-            ...existingStudent,
-            status: 'נוצר משיחה',
-            courses: existingCourses.length > 0 ? [
-              ...existingCourses.slice(0, -1),
-              { ...existingCourses[existingCourses.length - 1], status: 'נוצר משיחה' }
-            ] : existingCourses
+            last_contact_date: new Date().toISOString()
           });
 
           studentId = existingStudent.id;
@@ -129,7 +123,8 @@ export default function Tasks() {
           const newStudent = await base44.entities.Student.create({
             full_name: studentName.trim(),
             phone: '',
-            status: 'נוצר משיחה'
+            status: 'ליד חדש',
+            lead_source: 'ידני'
           });
           studentId = newStudent.id;
           studentName = newStudent.full_name;

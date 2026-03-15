@@ -438,7 +438,7 @@ export default function Students() {
         <div className="flex gap-2 bg-white p-1 rounded-full shadow-sm mb-6" style={{ borderRadius: 'var(--crm-button-radius)' }}>
           {[
             { key: 'all', label: 'הכל' },
-            { key: 'leads', label: 'לידים בטיפול' },
+            { key: 'leads', label: 'לידים חדשים' },
             { key: 'registered', label: 'רשומים' }
           ].map(filter => (
             <button

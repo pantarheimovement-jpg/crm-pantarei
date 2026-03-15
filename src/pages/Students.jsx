@@ -608,15 +608,15 @@ export default function Students() {
                     className="text-sm text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 underline flex items-center gap-1"
                   >
                     <Calendar className="w-4 h-4" />
-                    {loadingLogs[student.id] ? 'טוען...' : expandedLogs[student.id] ? 'סגור היסטוריה' : 'הצג היסטוריית משימות'}
+                    {loadingLogs[student.id] ? 'טוען...' : expandedLogs[student.id] ? 'סגור היסטוריה' : 'הצג היסטוריית שיחות'}
                   </button>
 
                   {/* לוג משימות */}
                   {expandedLogs[student.id] && (
                     <div className="mt-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                      <h4 className="font-bold text-gray-700 mb-2 text-sm">היסטוריית משימות:</h4>
+                      <h4 className="font-bold text-gray-700 mb-2 text-sm">היסטוריית שיחות:</h4>
                       {expandedLogs[student.id].length === 0 ? (
-                        <p className="text-gray-400 italic text-xs">אין משימות מתועדות</p>
+                        <p className="text-gray-400 italic text-xs">אין שיחות מתועדות</p>
                       ) : (
                         <div className="space-y-2">
                           {expandedLogs[student.id].map(task => (
@@ -767,9 +767,9 @@ export default function Students() {
                         <tr>
                           <td colSpan="8" className="px-4 py-3 bg-gray-50">
                             <div className="text-sm">
-                              <h4 className="font-bold text-gray-700 mb-2">היסטוריית משימות:</h4>
+                              <h4 className="font-bold text-gray-700 mb-2">היסטוריית שיחות:</h4>
                               {expandedLogs[student.id].length === 0 ? (
-                                <p className="text-gray-400 italic text-xs">אין משימות מתועדות</p>
+                                <p className="text-gray-400 italic text-xs">אין שיחות מתועדות</p>
                               ) : (
                                 <div className="space-y-2">
                                   {expandedLogs[student.id].map(task => (

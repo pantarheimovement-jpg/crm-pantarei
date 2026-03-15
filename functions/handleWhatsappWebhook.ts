@@ -408,6 +408,7 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.Student.update(existingStudent.id, {
           last_contact_date: new Date().toISOString(),
           status: 'הודעה מוואטסאפ לבדיקה',
+          lead_source: existingStudent.lead_source || 'וואטסאפ',
           notes: (existingStudent.notes || '') + `\n📱 ${new Date().toLocaleDateString('he-IL')}: הודעה לבדיקה: "${messageText}"`
         });
 

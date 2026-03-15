@@ -520,22 +520,78 @@ async function notifyOfir(base44, leadName, leadPhone, messageText, courseName) 
 // HANDLE OFIR'S APPROVAL/REJECTION RESPONSE
 // =============================================
 async function handleOfirResponse(base44, messageText) {
-  const trimmed = messageText.trim().toLowerCase();
+  const trimmed = messageText.trim();
+  const trimmedLower = trimmed.toLowerCase();
 
-  const isApproval = APPROVE_KEYWORDS.some(k => trimmed === k || trimmed.startsWith(k + ' '));
-  const isRejection = REJECT_KEYWORDS.some(k => trimmed === k || trimmed.startsWith(k + ' '));
+  // Extract name from message: "כן עינת גן אל" → name = "עינת גן אל"
+  let extractedName = '';
+  let isApproval = false;
+  let isRejection = false;
+
+  for (const k of APPROVE_KEYWORDS) {
+    if (trimmedLower === k) {
+      isApproval = true;
+      break;
+    }
+    if (trimmedLower.startsWith(k + ' ')) {
+      isApproval = true;
+      extractedName = trimmed.substring(k.length).trim();
+      break;
+    }
+  }
+
+  if (!isApproval) {
+    for (const k of REJECT_KEYWORDS) {
+      if (trimmedLower === k) {
+        isRejection = true;
+        break;
+      }
+      if (trimmedLower.startsWith(k + ' ')) {
+        isRejection = true;
+        extractedName = trimmed.substring(k.length).trim();
+        break;
+      }
+    }
+  }
 
   if (!isApproval && !isRejection) {
     console.log('👩‍💼 Ofir sent a message but not an approval/rejection - ignoring');
     return { status: 'ignored', reason: 'Ofir message not approval/rejection' };
   }
 
-  // Find the most recent student pending review
-  const pendingStudents = await base44.asServiceRole.entities.Student.filter(
-    { status: 'הודעה מוואטסאפ לבדיקה' },
-    '-created_date',
-    1
-  );
+  console.log(`👩‍💼 Ofir response: approval=${isApproval}, rejection=${isRejection}, extractedName="${extractedName}"`);
+
+  // Find pending student - by name if provided, otherwise most recent
+  let pendingStudents;
+  if (extractedName) {
+    // Search by name among pending students
+    const allPending = await base44.asServiceRole.entities.Student.filter(
+      { status: 'הודעה מוואטסאפ לבדיקה' },
+      '-created_date',
+      50
+    );
+    // Try exact match first, then partial match
+    pendingStudents = allPending.filter(s => 
+      s.full_name && s.full_name.trim().toLowerCase() === extractedName.toLowerCase()
+    );
+    if (pendingStudents.length === 0) {
+      pendingStudents = allPending.filter(s => 
+        s.full_name && s.full_name.trim().toLowerCase().includes(extractedName.toLowerCase())
+      );
+    }
+    if (pendingStudents.length === 0) {
+      console.log(`👩‍💼 No pending lead found with name "${extractedName}"`);
+      await sendWhatsApp(`לא נמצא ליד בשם "${extractedName}" ממתין לבדיקה.`);
+      return { status: 'no_matching_lead', name: extractedName };
+    }
+  } else {
+    // Fallback: most recent pending
+    pendingStudents = await base44.asServiceRole.entities.Student.filter(
+      { status: 'הודעה מוואטסאפ לבדיקה' },
+      '-created_date',
+      1
+    );
+  }
 
   if (!pendingStudents || pendingStudents.length === 0) {
     console.log('👩‍💼 No pending leads to approve/reject');

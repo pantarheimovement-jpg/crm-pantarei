@@ -296,7 +296,7 @@ export default function Students() {
         status: 'חדש',
         lead_source: 'אחר',
         interest_area: '',
-        trial_date: '',
+        lead_entry_date: '',
         registration_date: '',
         course_id: '',
         course_name: '',
@@ -937,11 +937,11 @@ export default function Students() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium mb-2">תאריך ניסיון</label>
+                  <label className="block text-sm font-medium mb-2">תאריך כניסת ליד</label>
                   <Input
                     type="date"
-                    value={formData.trial_date}
-                    onChange={(e) => setFormData({...formData, trial_date: e.target.value})}
+                    value={formData.lead_entry_date}
+                    onChange={(e) => setFormData({...formData, lead_entry_date: e.target.value})}
                   />
                 </div>
                 <div>

@@ -1,6 +1,17 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
 // =============================================
+// CONFIGURATION
+// =============================================
+const OFIR_PHONE = '972515041100';
+const OFIR_CHAT_ID = '972515041100@c.us';
+const NOTIFICATION_EMAIL = 'pantarhei.movement@gmail.com';
+
+// Ofir's approval keywords
+const APPROVE_KEYWORDS = ['כן', 'שלח', 'מאושר', 'כ', 'אשר', 'אישור', 'yes', 'שלחי'];
+const REJECT_KEYWORDS = ['לא', 'לא רלוונטי', 'ל', 'דלג', 'no', 'ביטול'];
+
+// =============================================
 // INTEREST PHRASES - ביטויים מובהקים של התעניינות
 // =============================================
 const INTEREST_PHRASES = [
@@ -19,7 +30,7 @@ const INTEREST_PHRASES = [
 ];
 
 // =============================================
-// COURSE-RELATED KEYWORDS - מילות מפתח הקשורות לקורסים
+// COURSE-RELATED KEYWORDS
 // =============================================
 const COURSE_KEYWORDS = [
   'קורס', 'קורסי', 'קורסים',
@@ -29,7 +40,6 @@ const COURSE_KEYWORDS = [
   'הכשרה', 'הכשרת',
   'השתלמות',
   'מודול',
-  // Brand-specific terms
   'לאבאן', 'פאשיה', 'תדרים',
   'dancefullness', 'LBMS', 'lbms',
   'נקודות מגע', 'שומטות', 'בדיקת נוכחות',
@@ -67,6 +77,12 @@ function getPhoneVariants(rawPhone) {
   return [...variants];
 }
 
+function isOfirPhone(phoneNumber) {
+  const normalized = normalizePhone(phoneNumber);
+  const ofirVariants = getPhoneVariants(OFIR_PHONE);
+  return ofirVariants.includes(normalized);
+}
+
 // =============================================
 // MESSAGE INTENT ANALYSIS
 // =============================================
@@ -87,7 +103,6 @@ function extractMessageIntent(message, courseNames) {
 
   const lowerMessage = message.toLowerCase().trim();
 
-  // Step 1: Check for INTEREST phrases
   for (const phrase of INTEREST_PHRASES) {
     if (lowerMessage.includes(phrase.toLowerCase())) {
       debugInfo.hasInterestPhrase = true;
@@ -96,7 +111,6 @@ function extractMessageIntent(message, courseNames) {
     }
   }
 
-  // Step 2: Check for COURSE keywords (generic)
   for (const keyword of COURSE_KEYWORDS) {
     if (lowerMessage.includes(keyword.toLowerCase())) {
       debugInfo.hasCourseKeyword = true;
@@ -105,17 +119,14 @@ function extractMessageIntent(message, courseNames) {
     }
   }
 
-  // Step 3: Check for SPECIFIC course names from database
   for (const name of courseNames) {
     if (!name) continue;
     const lowerName = name.toLowerCase();
-    // Check if the full course name appears in message
     if (lowerMessage.includes(lowerName)) {
       debugInfo.hasSpecificCourseName = true;
       debugInfo.matchedCourseName = name;
       break;
     }
-    // Check meaningful words from course name (4+ chars for specificity)
     const words = name.split(/[\s\-–,."'()]+/).filter(w => w.length >= 4);
     for (const word of words) {
       if (lowerMessage.includes(word.toLowerCase())) {
@@ -127,34 +138,18 @@ function extractMessageIntent(message, courseNames) {
     if (debugInfo.hasSpecificCourseName) break;
   }
 
-  // =============================================
-  // CLASSIFICATION LOGIC
-  // =============================================
-
   const hasCourseContext = debugInfo.hasCourseKeyword || debugInfo.hasSpecificCourseName;
 
-  // STRONG LEAD: Must have BOTH interest phrase AND course context
   if (debugInfo.hasInterestPhrase && hasCourseContext) {
     debugInfo.intentType = 'strong_lead';
-    return {
-      intentType: 'strong_lead',
-      identifiedCourseName: debugInfo.matchedCourseName || null,
-      debugInfo
-    };
+    return { intentType: 'strong_lead', identifiedCourseName: debugInfo.matchedCourseName || null, debugInfo };
   }
 
-  // FOR REVIEW: Has course context but WITHOUT clear interest phrase
-  // OR has interest phrase but WITHOUT course context (someone asking for details about "something")
   if (hasCourseContext || debugInfo.hasInterestPhrase) {
     debugInfo.intentType = 'for_review';
-    return {
-      intentType: 'for_review',
-      identifiedCourseName: debugInfo.matchedCourseName || null,
-      debugInfo
-    };
+    return { intentType: 'for_review', identifiedCourseName: debugInfo.matchedCourseName || null, debugInfo };
   }
 
-  // IGNORE: Nothing relevant detected
   debugInfo.intentType = 'ignore';
   return { intentType: 'ignore', identifiedCourseName: null, debugInfo };
 }
@@ -205,6 +200,15 @@ Deno.serve(async (req) => {
 
     console.log(`📞 From: ${phoneNumber}, Name: ${senderName}, Message: "${messageText}"`);
 
+    // =============================================
+    // CHECK IF THIS IS OFIR'S APPROVAL/REJECTION
+    // =============================================
+    if (isOfirPhone(phoneNumber)) {
+      console.log('👩‍💼 Message from Ofir - checking for approval/rejection');
+      const result = await handleOfirResponse(base44, messageText);
+      return Response.json(result);
+    }
+
     // --- STEP 1: Load course names for intent analysis ---
     const courses = await base44.asServiceRole.entities.Course.list();
     const courseNames = (courses || []).map(c => c.name).filter(Boolean);
@@ -239,7 +243,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Also try last-9-digits search
     if (!existingStudent) {
       const last9 = normalizePhone(phoneNumber).slice(-9);
       if (last9.length === 9) {
@@ -254,7 +257,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Format phone for storage
     let storedPhone = normalizePhone(phoneNumber);
     if (storedPhone.startsWith('972')) {
       storedPhone = '0' + storedPhone.substring(3);
@@ -266,16 +268,13 @@ Deno.serve(async (req) => {
     if (intent.intentType === 'strong_lead') {
 
       if (existingStudent) {
-        // --- Existing student with strong interest in a course ---
         console.log(`🔄 Existing student "${existingStudent.full_name}" showing strong interest`);
 
-        // Check if it's a NEW course interest for this student
         const existingCourses = existingStudent.courses || [];
         const identifiedCourse = intent.identifiedCourseName;
         let isNewCourseInterest = true;
 
         if (identifiedCourse) {
-          // Check if student is already linked to this course
           for (const c of existingCourses) {
             if (c.course_name && c.course_name.toLowerCase().includes(identifiedCourse.toLowerCase())) {
               isNewCourseInterest = false;
@@ -287,13 +286,11 @@ Deno.serve(async (req) => {
         if (isNewCourseInterest) {
           console.log(`✨ New course interest for existing student!`);
 
-          // Find the course in the database
           let matchedCourse = null;
           if (identifiedCourse) {
             matchedCourse = courses.find(c => c.name === identifiedCourse);
           }
 
-          // Update student record
           const updatedCourses = [...existingCourses];
           if (matchedCourse) {
             updatedCourses.push({
@@ -316,7 +313,6 @@ Deno.serve(async (req) => {
           await base44.asServiceRole.entities.Student.update(existingStudent.id, updateData);
           console.log(`✅ Student updated with new interest`);
 
-          // Send auto-reply for existing student with new course interest
           const autoReplySent = await sendAutoReply(base44, chatId, senderName, 'existing_new_course');
 
           return Response.json({
@@ -329,7 +325,6 @@ Deno.serve(async (req) => {
           });
 
         } else {
-          // Already linked to this course - just update last contact
           console.log(`⏭️ Existing student already linked to this course - updating last contact only`);
           await base44.asServiceRole.entities.Student.update(existingStudent.id, {
             last_contact_date: new Date().toISOString()
@@ -345,7 +340,6 @@ Deno.serve(async (req) => {
         }
 
       } else {
-        // --- New student with strong lead signals ---
         console.log('✨ New WhatsApp STRONG LEAD detected!');
 
         const student = await base44.asServiceRole.entities.Student.create({
@@ -360,7 +354,6 @@ Deno.serve(async (req) => {
 
         console.log(`✅ New lead created: ${student.id} - ${student.full_name}`);
 
-        // If a specific course was identified, link it
         if (intent.identifiedCourseName) {
           const matchedCourse = courses.find(c => c.name === intent.identifiedCourseName);
           if (matchedCourse) {
@@ -377,7 +370,6 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Create introduction task
         const scheduledDate = new Date();
         scheduledDate.setDate(scheduledDate.getDate() + 2);
 
@@ -392,7 +384,6 @@ Deno.serve(async (req) => {
 
         console.log('✅ Introduction task created');
 
-        // Send auto-reply
         const autoReplySent = await sendAutoReply(base44, chatId, senderName, 'new_lead');
 
         return Response.json({
@@ -407,30 +398,32 @@ Deno.serve(async (req) => {
     }
 
     // =============================================
-    // FOR REVIEW PATH
+    // FOR REVIEW PATH — now sends notification to Ofir
     // =============================================
     if (intent.intentType === 'for_review') {
 
       if (existingStudent) {
-        // Existing student - just add a note, no new record, no auto-reply
-        console.log(`📝 Existing student "${existingStudent.full_name}" - message for review (updating notes)`);
+        console.log(`📝 Existing student "${existingStudent.full_name}" - message for review`);
 
         await base44.asServiceRole.entities.Student.update(existingStudent.id, {
           last_contact_date: new Date().toISOString(),
+          status: 'הודעה מוואטסאפ לבדיקה',
           notes: (existingStudent.notes || '') + `\n📱 ${new Date().toLocaleDateString('he-IL')}: הודעה לבדיקה: "${messageText}"`
         });
+
+        // Notify Ofir
+        await notifyOfir(base44, existingStudent.full_name, storedPhone, messageText, intent.identifiedCourseName);
 
         return Response.json({
           status: 'existing_student_for_review',
           student_id: existingStudent.id,
           student_name: existingStudent.full_name,
-          auto_reply: false,
+          ofir_notified: true,
           intent: intent.debugInfo
         });
 
       } else {
-        // New contact - create with "for review" status, no auto-reply
-        console.log('📋 New contact - creating for manual review');
+        console.log('📋 New contact - creating for review + notifying Ofir');
 
         const student = await base44.asServiceRole.entities.Student.create({
           full_name: senderName || storedPhone,
@@ -443,17 +436,19 @@ Deno.serve(async (req) => {
 
         console.log(`✅ Student created for review: ${student.id} - ${student.full_name}`);
 
+        // Notify Ofir
+        await notifyOfir(base44, student.full_name, storedPhone, messageText, intent.identifiedCourseName);
+
         return Response.json({
           status: 'pending_review',
           student_id: student.id,
           student_name: student.full_name,
-          auto_reply: false,
+          ofir_notified: true,
           intent: intent.debugInfo
         });
       }
     }
 
-    // Fallback (should not reach here)
     console.log('⚠️ Unexpected fallthrough - ignoring');
     return Response.json({ status: 'ignored', reason: 'Unexpected fallthrough' });
 
@@ -466,7 +461,181 @@ Deno.serve(async (req) => {
 });
 
 // =============================================
-// AUTO-REPLY HELPER
+// NOTIFY OFIR — WhatsApp + Email
+// =============================================
+async function notifyOfir(base44, leadName, leadPhone, messageText, courseName) {
+  const GREEN_ID = Deno.env.get('GREEN_ID');
+  const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
+
+  // WhatsApp notification to Ofir
+  if (GREEN_ID && GREEN_TOKEN) {
+    const whatsappMsg = `💜 ליד חדש מוואטסאפ לבדיקה:\n\n👤 *${leadName}*\n📞 ${leadPhone}${courseName ? '\n📚 ' + courseName : ''}\n💬 "${messageText}"\n\nלשלוח תגובה אוטומטית?\nהשיבי *כן* או *לא*`;
+
+    const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
+
+    try {
+      const resp = await fetch(greenApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: OFIR_CHAT_ID, message: whatsappMsg })
+      });
+      const result = await resp.json();
+      if (resp.ok && result.idMessage) {
+        console.log(`✅ Ofir notified via WhatsApp: ${result.idMessage}`);
+      } else {
+        console.log(`❌ Failed to notify Ofir via WhatsApp:`, result);
+      }
+    } catch (e) {
+      console.error('❌ Error sending WhatsApp to Ofir:', e.message);
+    }
+  }
+
+  // Email notification
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail({
+      to: NOTIFICATION_EMAIL,
+      subject: `💜 ליד חדש מוואטסאפ לבדיקה - ${leadName}`,
+      body: `<div dir="rtl" style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2 style="color: #6D436D;">ליד חדש מוואטסאפ לבדיקה</h2>
+        <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
+          <tr><td style="padding: 8px; font-weight: bold;">שם:</td><td style="padding: 8px;">${leadName}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold;">טלפון:</td><td style="padding: 8px;">${leadPhone}</td></tr>
+          ${courseName ? `<tr><td style="padding: 8px; font-weight: bold;">קורס:</td><td style="padding: 8px;">${courseName}</td></tr>` : ''}
+          <tr><td style="padding: 8px; font-weight: bold;">הודעה:</td><td style="padding: 8px;">${messageText}</td></tr>
+        </table>
+        <p style="margin-top: 20px; color: #666;">ניתן לאשר/לדחות ע"י תגובה בוואטסאפ לסוכן.</p>
+      </div>`
+    });
+    console.log('✅ Ofir notified via email');
+  } catch (e) {
+    console.error('❌ Error sending email to Ofir:', e.message);
+  }
+}
+
+// =============================================
+// HANDLE OFIR'S APPROVAL/REJECTION RESPONSE
+// =============================================
+async function handleOfirResponse(base44, messageText) {
+  const trimmed = messageText.trim().toLowerCase();
+
+  const isApproval = APPROVE_KEYWORDS.some(k => trimmed === k || trimmed.startsWith(k + ' '));
+  const isRejection = REJECT_KEYWORDS.some(k => trimmed === k || trimmed.startsWith(k + ' '));
+
+  if (!isApproval && !isRejection) {
+    console.log('👩‍💼 Ofir sent a message but not an approval/rejection - ignoring');
+    return { status: 'ignored', reason: 'Ofir message not approval/rejection' };
+  }
+
+  // Find the most recent student pending review
+  const pendingStudents = await base44.asServiceRole.entities.Student.filter(
+    { status: 'הודעה מוואטסאפ לבדיקה' },
+    '-created_date',
+    1
+  );
+
+  if (!pendingStudents || pendingStudents.length === 0) {
+    console.log('👩‍💼 No pending leads to approve/reject');
+    await sendWhatsApp(`אין לידים ממתינים לבדיקה כרגע.`);
+    return { status: 'no_pending_leads' };
+  }
+
+  const student = pendingStudents[0];
+  console.log(`👩‍💼 Processing Ofir's response for student: ${student.full_name}`);
+
+  if (isApproval) {
+    // Update student to "ליד חדש"
+    await base44.asServiceRole.entities.Student.update(student.id, {
+      status: 'ליד חדש'
+    });
+
+    // Send auto-reply to the lead
+    let whatsappNumber = normalizePhone(student.phone);
+    if (whatsappNumber.startsWith('0')) {
+      whatsappNumber = '972' + whatsappNumber.substring(1);
+    }
+    const leadChatId = whatsappNumber + '@c.us';
+
+    const automationSettingsArr = await base44.asServiceRole.entities.AutomationSettings.list();
+    const automationSettings = automationSettingsArr && automationSettingsArr.length > 0 ? automationSettingsArr[0] : null;
+    const template = automationSettings?.whatsapp_auto_reply ||
+      'הי {{name}}, קיבלנו את פנייתך 💜 אנחנו נדאג ליצור איתך קשר בהקדם. סטודיו פנטהריי';
+    const displayName = student.full_name.split(' ')[0] || 'שלום';
+    const replyMessage = template.replace(/\{\{name\}\}/g, displayName);
+
+    const replySent = await sendWhatsAppToChat(leadChatId, replyMessage);
+
+    // Create introduction task
+    const scheduledDate = new Date();
+    scheduledDate.setDate(scheduledDate.getDate() + 2);
+
+    await base44.asServiceRole.entities.Task.create({
+      name: 'שיחת היכרות',
+      description: `ליד מאושר ע"י אופיר: ${student.full_name}\n${student.notes || ''}`,
+      status: 'ממתין',
+      scheduled_date: scheduledDate.toISOString().split('T')[0],
+      student_id: student.id,
+      student_name: student.full_name
+    });
+
+    // Confirm to Ofir
+    await sendWhatsApp(`✅ נשלחה הודעה ל${student.full_name} (${student.phone}) ונוצרה משימת שיחת היכרות.`);
+
+    console.log(`✅ Lead approved: ${student.full_name}`);
+    return { status: 'lead_approved', student_id: student.id, student_name: student.full_name, reply_sent: replySent };
+
+  } else {
+    // Rejection
+    await base44.asServiceRole.entities.Student.update(student.id, {
+      status: 'לא רלוונטי'
+    });
+
+    await sendWhatsApp(`❌ הליד "${student.full_name}" סומן כלא רלוונטי.`);
+
+    console.log(`❌ Lead rejected: ${student.full_name}`);
+    return { status: 'lead_rejected', student_id: student.id, student_name: student.full_name };
+  }
+}
+
+// =============================================
+// WHATSAPP HELPERS
+// =============================================
+async function sendWhatsApp(message) {
+  return sendWhatsAppToChat(OFIR_CHAT_ID, message);
+}
+
+async function sendWhatsAppToChat(chatId, message) {
+  const GREEN_ID = Deno.env.get('GREEN_ID');
+  const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
+
+  if (!GREEN_ID || !GREEN_TOKEN) {
+    console.log('⚠️ Green API not configured');
+    return false;
+  }
+
+  const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
+
+  try {
+    const resp = await fetch(greenApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId, message })
+    });
+    const result = await resp.json();
+    if (resp.ok && result.idMessage) {
+      console.log(`✅ WhatsApp sent to ${chatId}: ${result.idMessage}`);
+      return true;
+    } else {
+      console.log(`❌ WhatsApp send failed:`, result);
+      return false;
+    }
+  } catch (e) {
+    console.error('❌ WhatsApp error:', e.message);
+    return false;
+  }
+}
+
+// =============================================
+// AUTO-REPLY HELPER (for strong leads)
 // =============================================
 async function sendAutoReply(base44, chatId, senderName, replyType) {
   const automationSettingsArr = await base44.asServiceRole.entities.AutomationSettings.list();
@@ -476,14 +645,6 @@ async function sendAutoReply(base44, chatId, senderName, replyType) {
 
   if (!autoReplyEnabled) {
     console.log('⏭️ Auto-reply disabled in settings');
-    return false;
-  }
-
-  const GREEN_ID = Deno.env.get('GREEN_ID');
-  const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
-
-  if (!GREEN_ID || !GREEN_TOKEN) {
-    console.log('⚠️ Green API not configured - skipping auto-reply');
     return false;
   }
 
@@ -498,21 +659,5 @@ async function sendAutoReply(base44, chatId, senderName, replyType) {
     replyMessage = template.replace(/\{\{name\}\}/g, displayName);
   }
 
-  const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
-
-  const whatsappResponse = await fetch(greenApiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chatId, message: replyMessage })
-  });
-
-  const whatsappResult = await whatsappResponse.json();
-
-  if (whatsappResponse.ok && whatsappResult.idMessage) {
-    console.log(`✅ Auto-reply sent (${replyType}): ${whatsappResult.idMessage}`);
-    return true;
-  } else {
-    console.log(`❌ Auto-reply failed:`, whatsappResult);
-    return false;
-  }
+  return sendWhatsAppToChat(chatId, replyMessage);
 }

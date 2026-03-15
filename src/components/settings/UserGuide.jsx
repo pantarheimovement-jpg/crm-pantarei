@@ -174,7 +174,7 @@ export default function UserGuide() {
                 <StatusBadge name="במעקב ראשוני" color="#FAD980" description="נוצר קשר ראשוני, ממתינים לתגובה או שיעור ניסיון." />
                 <StatusBadge name="ניסיון" color="#4ECDC4" description="המשתתף הגיע לשיעור ניסיון." />
                 <StatusBadge name="רשום / נרשם" color="#2ECC71" description="המשתתף רשום ומשלם — נספר במונה הקורס." />
-                <StatusBadge name="נוצר משיחה" color="#3498DB" description="נוצר אוטומטית כשנרשמת שיחה עם שם שלא קיים במערכת." />
+                <StatusBadge name="היה ביום היכרות" color="#8B5CF6" description="הלקוח השתתף ביום היכרות." />
                 <StatusBadge name="לא רלוונטי" color="#95A5A6" description="ליד שלא מעוניין, לא מוצג בסינון 'לידים בטיפול'." />
               </div>
             </div>

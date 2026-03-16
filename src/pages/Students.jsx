@@ -1002,6 +1002,23 @@ export default function Students() {
                 </div>
               </div>
 
+              <div className="md:col-span-2">
+                <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <input
+                    type="checkbox"
+                    id="marketing-consent"
+                    checked={formData.marketing_consent || false}
+                    onChange={(e) => setFormData({...formData, marketing_consent: e.target.checked})}
+                    className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
+                    disabled
+                  />
+                  <label htmlFor="marketing-consent" className="text-sm font-medium text-gray-700 cursor-pointer">
+                    אושר מדיניות הפרטיות והסכמה לקבל עדכונים במייל ובוואטסאפ
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">שדה זה מתעדכן אוטומטית בלבד כאשר הלקוח/ה ממלא/ה את הצ'קבוקס בטופס באתר</p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2">הערות</label>
                 <textarea

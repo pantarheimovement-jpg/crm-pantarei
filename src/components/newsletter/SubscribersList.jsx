@@ -237,6 +237,11 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
                 <input type="checkbox" checked={editingSubscriber.subscribed} onChange={(e) => setEditingSubscriber({...editingSubscriber, subscribed: e.target.checked})} className="w-4 h-4" />
                 <label className="text-sm font-medium text-gray-700">{t('מנוי פעיל', 'Active Subscriber')}</label>
               </div>
+              <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <input type="checkbox" checked={editingSubscriber.marketing_consent || false} disabled className="w-4 h-4" />
+                <label className="text-sm font-medium text-gray-700">{t('אושר מדיניות הפרטיות והסכמה לקבל עדכונים במייל ובוואטסאפ', 'Privacy policy and marketing consent approved')}</label>
+              </div>
+              <p className="text-xs text-gray-500 -mt-2">{t('שדה זה מתעדכן אוטומטית בלבד', 'This field is updated automatically only')}</p>
               <div className="flex gap-3 pt-4">
                 <button onClick={handleUpdateSubscriber} disabled={updatingSubscriber} className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2">
                   {updatingSubscriber ? <><Loader2 className="w-5 h-5 animate-spin" />{t('מעדכן...', 'Updating...')}</> : <><CheckCircle className="w-5 h-5" />{t('עדכן', 'Update')}</>}
@@ -286,7 +291,7 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
                 <th className="px-4 py-3 text-center w-12">
                   <input type="checkbox" checked={selectedIds.length === filteredSubscribers.length && filteredSubscribers.length > 0} onChange={() => setSelectedIds(selectedIds.length === filteredSubscribers.length ? [] : filteredSubscribers.map(s => s.id))} className="w-5 h-5" />
                 </th>
-                {[t('מייל', 'Email'), t('וואטסאפ', 'WhatsApp'), t('שם', 'Name'), t('תפקיד', 'Job Title'), t('חברה', 'Company'), t('קבוצה', 'Group'), t('סטטוס', 'Status'), t('פעולות', 'Actions')].map(h => (
+                {[t('מייל', 'Email'), t('וואטסאפ', 'WhatsApp'), t('שם', 'Name'), t('תפקיד', 'Job Title'), t('חברה', 'Company'), t('קבוצה', 'Group'), t('הסכמה', 'Consent'), t('סטטוס', 'Status'), t('פעולות', 'Actions')].map(h => (
                   <th key={h} className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -306,6 +311,12 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
                     <select value={sub.group} onChange={(e) => handleUpdateSubscriberGroup(sub.id, e.target.value)} className="w-full px-3 py-1.5 text-xs font-medium rounded-full text-white border-0" style={{ backgroundColor: 'var(--crm-primary)', borderRadius: 'var(--crm-button-radius)' }}>
                       {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
                     </select>
+                  </td>
+                  <td className="px-4 py-4 text-sm text-center">
+                    {sub.marketing_consent
+                      ? <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">✓</span>
+                      : <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-400">✗</span>
+                    }
                   </td>
                   <td className="px-4 py-4 text-sm">
                     {sub.subscribed

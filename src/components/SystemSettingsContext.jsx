@@ -15,6 +15,9 @@ export const SystemSettingsProvider = ({ children }) => {
   const [designSettings, setDesignSettings] = useState(null);
   const [systemTexts, setSystemTexts] = useState(null);
   const [leadStatuses, setLeadStatuses] = useState([]);
+  const [taskStatuses, setTaskStatuses] = useState([]);
+  const [courseStatuses, setCourseStatuses] = useState([]);
+  const [leadSources, setLeadSources] = useState([]);
   const [automationSettings, setAutomationSettings] = useState(null);
   const [generalSettings, setGeneralSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,10 +41,13 @@ export const SystemSettingsProvider = ({ children }) => {
   // רענון שקט - ללא מסך טעינה (לשימוש כש-visibility חוזר)
   const refreshSettingsSilently = async () => {
     try {
-      const [design, texts, statuses, automation, general] = await Promise.all([
+      const [design, texts, statuses, tStatuses, cStatuses, lSources, automation, general] = await Promise.all([
         base44.entities.DesignSettings.list(),
         base44.entities.SystemTexts.list(),
         base44.entities.LeadStatuses.list(),
+        base44.entities.TaskStatuses.list(),
+        base44.entities.CourseStatuses.list(),
+        base44.entities.LeadSources.list(),
         base44.entities.AutomationSettings.list(),
         base44.entities.GeneralSettings.list()
       ]);
@@ -49,6 +55,9 @@ export const SystemSettingsProvider = ({ children }) => {
       setDesignSettings(design && design.length > 0 ? design[0] : null);
       setSystemTexts(texts && texts.length > 0 ? texts[0] : null);
       setLeadStatuses(statuses || []);
+      setTaskStatuses(tStatuses || []);
+      setCourseStatuses(cStatuses || []);
+      setLeadSources(lSources || []);
       setAutomationSettings(automation && automation.length > 0 ? automation[0] : null);
       setGeneralSettings(general && general.length > 0 ? general[0] : null);
     } catch (error) {
@@ -59,10 +68,13 @@ export const SystemSettingsProvider = ({ children }) => {
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const [design, texts, statuses, automation, general] = await Promise.all([
+      const [design, texts, statuses, tStatuses, cStatuses, lSources, automation, general] = await Promise.all([
         base44.entities.DesignSettings.list(),
         base44.entities.SystemTexts.list(),
         base44.entities.LeadStatuses.list(),
+        base44.entities.TaskStatuses.list(),
+        base44.entities.CourseStatuses.list(),
+        base44.entities.LeadSources.list(),
         base44.entities.AutomationSettings.list(),
         base44.entities.GeneralSettings.list()
       ]);
@@ -70,6 +82,9 @@ export const SystemSettingsProvider = ({ children }) => {
       setDesignSettings(design && design.length > 0 ? design[0] : null);
       setSystemTexts(texts && texts.length > 0 ? texts[0] : null);
       setLeadStatuses(statuses || []);
+      setTaskStatuses(tStatuses || []);
+      setCourseStatuses(cStatuses || []);
+      setLeadSources(lSources || []);
       setAutomationSettings(automation && automation.length > 0 ? automation[0] : null);
       setGeneralSettings(general && general.length > 0 ? general[0] : null);
     } catch (error) {
@@ -89,6 +104,9 @@ export const SystemSettingsProvider = ({ children }) => {
         designSettings,
         systemTexts,
         leadStatuses,
+        taskStatuses,
+        courseStatuses,
+        leadSources,
         automationSettings,
         generalSettings,
         loading,

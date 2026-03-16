@@ -90,7 +90,8 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
         email: editingSubscriber.email || '', whatsapp: editingSubscriber.whatsapp || '',
         name: editingSubscriber.name || '', job_title: editingSubscriber.job_title || '',
         company: editingSubscriber.company || '', notes: editingSubscriber.notes || '',
-        group: editingSubscriber.group, subscribed: editingSubscriber.subscribed
+        group: editingSubscriber.group, subscribed: editingSubscriber.subscribed,
+        marketing_consent: editingSubscriber.marketing_consent || false
       });
       alert(t('המנוי עודכן בהצלחה!', 'Subscriber updated!'));
       setShowEditSubscriber(false); setEditingSubscriber(null); onReload();
@@ -238,10 +239,10 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
                 <label className="text-sm font-medium text-gray-700">{t('מנוי פעיל', 'Active Subscriber')}</label>
               </div>
               <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
-                <input type="checkbox" checked={editingSubscriber.marketing_consent || false} disabled className="w-4 h-4" />
+                <input type="checkbox" checked={editingSubscriber.marketing_consent || false} onChange={(e) => setEditingSubscriber({...editingSubscriber, marketing_consent: e.target.checked})} className="w-4 h-4" />
                 <label className="text-sm font-medium text-gray-700">{t('אושר מדיניות הפרטיות והסכמה לקבל עדכונים במייל ובוואטסאפ', 'Privacy policy and marketing consent approved')}</label>
               </div>
-              <p className="text-xs text-gray-500 -mt-2">{t('שדה זה מתעדכן אוטומטית בלבד', 'This field is updated automatically only')}</p>
+              <p className="text-xs text-gray-500 -mt-2">{t('שדה זה מתעדכן אוטומטית מטופס האתר, אך ניתן לעדכן גם ידנית', 'Updated automatically from website form, but can also be updated manually')}</p>
               <div className="flex gap-3 pt-4">
                 <button onClick={handleUpdateSubscriber} disabled={updatingSubscriber} className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2">
                   {updatingSubscriber ? <><Loader2 className="w-5 h-5 animate-spin" />{t('מעדכן...', 'Updating...')}</> : <><CheckCircle className="w-5 h-5" />{t('עדכן', 'Update')}</>}

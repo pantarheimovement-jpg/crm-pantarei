@@ -1010,13 +1010,12 @@ export default function Students() {
                     checked={formData.marketing_consent || false}
                     onChange={(e) => setFormData({...formData, marketing_consent: e.target.checked})}
                     className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
-                    disabled
                   />
                   <label htmlFor="marketing-consent" className="text-sm font-medium text-gray-700 cursor-pointer">
                     אושר מדיניות הפרטיות והסכמה לקבל עדכונים במייל ובוואטסאפ
                   </label>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">שדה זה מתעדכן אוטומטית בלבד כאשר הלקוח/ה ממלא/ה את הצ'קבוקס בטופס באתר</p>
+                <p className="text-xs text-gray-500 mt-1">שדה זה מתעדכן אוטומטית מטופס האתר, אך ניתן לעדכן גם ידנית</p>
               </div>
 
               <div>

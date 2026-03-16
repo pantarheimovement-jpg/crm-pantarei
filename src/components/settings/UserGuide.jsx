@@ -152,10 +152,12 @@ export default function UserGuide() {
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li><strong>רשימת משתתפים</strong> — בתצוגת כרטיסים או טבלה</li>
                 <li><strong>חיפוש</strong> — לפי שם, טלפון, מייל</li>
-                <li><strong>סינון</strong> — לפי סטטוס (הכל / לידים בטיפול / רשומים) ולפי קורס</li>
+                <li><strong>סינון</strong> — לפי סטטוס (הכל / לידים חדשים / רשומים) ולפי קורס</li>
                 <li><strong>הוספה / עריכה / מחיקה</strong> — ניהול מלא של כרטיס משתתף</li>
                 <li><strong>ייבוא מ-Summit</strong> — העלאת קובץ HTML מהמערכת החיצונית</li>
-                <li><strong>היסטוריית משימות</strong> — לכל משתתף ניתן לראות את כל השיחות והמשימות שלו (בלחיצה על ״הצג היסטוריית משימות״)</li>
+                <li><strong>היסטוריית שיחות</strong> — לכל משתתף ניתן לראות את כל השיחות שלו (בלחיצה על ״הצג היסטוריית שיחות״)</li>
+                <li><strong>תאריך כניסת ליד</strong> — נקבע אוטומטית בכניסת ליד (מוואטסאפ, אתר, Gmail) וניתן לעריכה ידנית</li>
+                <li><strong>מקורות ליד</strong> — אתר / וואטסאפ / פייסבוק / ידני / אחר</li>
                 <li><strong>מחיקה מרובה</strong> — סימון מספר משתתפים ומחיקה בו-זמנית</li>
               </ul>
             </div>
@@ -167,15 +169,17 @@ export default function UserGuide() {
           question="מה הסטטוסים של משתתפים ומה המשמעות של כל אחד?"
           answer={
             <div>
-              <p className="mb-3">הסטטוסים מוגדרים בהגדרות CRM (לשונית ״סטטוסים ושלבים״) וניתנים לעריכה. אלה הסטטוסים הנפוצים:</p>
+              <p className="mb-3">הסטטוסים מוגדרים בהגדרות CRM (לשונית ״סטטוסים ושלבים״) וניתנים לעריכה. אלה הסטטוסים הפעילים:</p>
               <div className="space-y-2">
                 <StatusBadge name="ליד חדש" color="#6D436D" description="משתתף שנכנס למערכת — מוואטסאפ, אתר, או ידני. טרם נוצר קשר." />
                 <StatusBadge name="הודעה מוואטסאפ לבדיקה" color="#D29486" description="הודעה שנכנסה מוואטסאפ שלא עברה סף התעניינות ברור — צריך לבדוק ידנית אם רלוונטי." />
-                <StatusBadge name="במעקב ראשוני" color="#FAD980" description="נוצר קשר ראשוני, ממתינים לתגובה או שיעור ניסיון." />
-                <StatusBadge name="ניסיון" color="#4ECDC4" description="המשתתף הגיע לשיעור ניסיון." />
+                <StatusBadge name="במעקב ראשוני" color="#FAD980" description="נוצר קשר ראשוני, ממתינים לתגובה. מתעדכן אוטומטית כששיחה עוברת ל״בבדיקה״." />
                 <StatusBadge name="רשום / נרשם" color="#2ECC71" description="המשתתף רשום ומשלם — נספר במונה הקורס." />
                 <StatusBadge name="היה ביום היכרות" color="#8B5CF6" description="הלקוח השתתף ביום היכרות." />
-                <StatusBadge name="לא רלוונטי" color="#95A5A6" description="ליד שלא מעוניין, לא מוצג בסינון 'לידים בטיפול'." />
+                <StatusBadge name="לא רלוונטי" color="#95A5A6" description="ליד שלא מעוניין. מתעדכן אוטומטית כששיחה עוברת ל״לא רלוונטי״ או ל״אבוד״." />
+              </div>
+              <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
+                ❌ <strong>סטטוסים שהוסרו:</strong> ניסיון נקבע, ניסיון בוצע, ניסיון מתוכנן, אבוד, נוצר משיחה — כבר לא קיימים במערכת.
               </div>
             </div>
           }
@@ -198,14 +202,22 @@ export default function UserGuide() {
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
-                  <span className="text-sm"><strong>נוצר משיחה</strong> — כשיוצרים משימה/שיחה עם שם שלא קיים, נוצר משתתף חדש עם סטטוס זה</span>
+                  <span className="text-sm"><strong>במעקב ראשוני</strong> — מתעדכן אוטומטית כששיחה עוברת לסטטוס ״בבדיקה״</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>לא רלוונטי</strong> — מתעדכן אוטומטית כששיחה עוברת ל״לא רלוונטי״ או ל״אבוד״</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>תאריך כניסת ליד</strong> — נקבע אוטומטית בכל כניסת ליד (וואטסאפ, אתר, Gmail)</span>
                 </div>
               </div>
               <p className="font-semibold mb-2">שינויים ידניים:</p>
               <div className="space-y-1.5">
                 <div className="flex items-start gap-2">
                   <ManualBadge>ידני</ManualBadge>
-                  <span className="text-sm"><strong>במעקב ראשוני, ניסיון, רשום, לא רלוונטי</strong> — כל אלה צריכים להתעדכן ידנית דרך עריכת המשתתף</span>
+                  <span className="text-sm"><strong>רשום, היה ביום היכרות</strong> — צריכים להתעדכן ידנית דרך עריכת המשתתף</span>
                 </div>
               </div>
             </div>
@@ -347,13 +359,13 @@ export default function UserGuide() {
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li><strong>רשימת שיחות</strong> — עם שם, תיאור, משתתף מקושר, סטטוס, ותאריך מתוזמן</li>
                 <li><strong>סינון</strong> — לפי סטטוס, משתתף, וחיפוש חופשי</li>
-                <li><strong>סטטיסטיקות</strong> — כמה ענתה, לא ענתה, הושלמו, ומתוזמנות</li>
+                <li><strong>סטטיסטיקות לחיצות</strong> — ניסיון לשיחה, בבדיקה, הושלמו, ומתוזמנות — לחיצה על כל סטטיסטיקה מסננת את הרשימה</li>
                 <li><strong>מעבר על הכרטיס</strong> (hover) — מציג כרטיס מהיר של המשתתף עם טלפון, מייל וקורס</li>
                 <li><strong>יצירת משתתף חדש</strong> — ניתן ליצור משתתף חדש ישירות מתוך השיחה</li>
                 <li><strong>ייבוא / ייצוא CSV</strong></li>
               </ul>
               <p className="mt-3 p-3 bg-blue-50 rounded-lg text-sm">
-                💡 <strong>חשוב:</strong> השיחות מופיעות גם בדף המשתתפים! כל משתתף יכול לראות את היסטוריית השיחות שלו דרך כפתור ״הצג היסטוריית משימות״.
+                💡 <strong>חשוב:</strong> השיחות מופיעות גם בדף המשתתפים! כל משתתף יכול לראות את היסטוריית השיחות שלו דרך כפתור ״הצג היסטוריית שיחות״.
               </p>
             </div>
           }
@@ -365,20 +377,30 @@ export default function UserGuide() {
           answer={
             <div className="space-y-2">
               <StatusBadge name="ממתין" color="#F39C12" description="השיחה טרם בוצעה, ממתינה לטיפול." />
-              <StatusBadge name="בבדיקה" color="#3498DB" description="נמצאת בתהליך, עדיין לא הושלמה." />
-              <StatusBadge name="ענתה" color="#2ECC71" description="התקשרת והמשתתפת ענתה." />
-              <StatusBadge name="לא ענתה" color="#E74C3C" description="התקשרת אבל לא ענתה — צריך לנסות שוב." />
+              <StatusBadge name="ניסיון לשיחה" color="#E74C3C" description="נעשה ניסיון ליצור קשר — צריך לנסות שוב." />
+              <StatusBadge name="בבדיקה" color="#3498DB" description="נמצאת בתהליך בדיקה, עדיין לא הושלמה." />
               <StatusBadge name="הושלם" color="#6D436D" description="השיחה/משימה טופלה בהצלחה." />
-              <StatusBadge name="לא רלוונטי" color="#BDC3C7" description="לא רלוונטי יותר." />
-              <StatusBadge name="אבוד" color="#7F8C8D" description="הליד אבד, לא הצלחנו ליצור קשר." />
+              <StatusBadge name="לא רלוונטי" color="#BDC3C7" description="לא רלוונטי יותר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
+              <StatusBadge name="אבוד" color="#7F8C8D" description="הליד אבד, לא הצלחנו ליצור קשר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
+              <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
+                ❌ <strong>סטטוסים שהוסרו:</strong> ״ענתה״ כבר לא קיים. ״לא ענתה״ שונה ל<strong>״ניסיון לשיחה״</strong>.
+              </div>
               <div className="mt-3 space-y-1.5">
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
                   <span className="text-sm"><strong>שיחת היכרות</strong> נוצרת אוטומטית כשליד חדש נכנס מוואטסאפ או מטופס Elementor</span>
                 </div>
                 <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm">שינוי שיחה ל<strong>״בבדיקה״</strong> → לקוח עובר אוטומטית ל״במעקב ראשוני״</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm">שינוי שיחה ל<strong>״לא רלוונטי״</strong> או <strong>״אבוד״</strong> → לקוח עובר אוטומטית ל״לא רלוונטי״</span>
+                </div>
+                <div className="flex items-start gap-2">
                   <ManualBadge>ידני</ManualBadge>
-                  <span className="text-sm">כל שינויי הסטטוס של שיחות הם ידניים (ענתה, לא ענתה, הושלם וכו׳)</span>
+                  <span className="text-sm">שינוי סטטוס שיחה ל״ניסיון לשיחה״, ״הושלם״ — צריך לעדכן ידנית</span>
                 </div>
               </div>
             </div>
@@ -391,7 +413,7 @@ export default function UserGuide() {
             <div>
               <ul className="list-disc list-inside space-y-1">
                 <li><strong>דף שיחות ופגישות</strong> — הרשימה המלאה</li>
-                <li><strong>דף משתתפים</strong> — בלחיצה על ״הצג היסטוריית משימות״ בכרטיס משתתף, מופיעות כל השיחות שלו</li>
+                <li><strong>דף משתתפים</strong> — בלחיצה על ״הצג היסטוריית שיחות״ בכרטיס משתתף, מופיעות כל השיחות שלו</li>
                 <li><strong>דשבורד</strong> — שיחות להיום, שיחות מתוזמנות, ושיחות היכרות ללידים חדשים</li>
                 <li>שיחה שמתוזמנת להיום ולא הושלמה מוצגת <strong>באדום בדשבורד</strong></li>
               </ul>
@@ -493,10 +515,11 @@ export default function UserGuide() {
                 </div>
 
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                  <p className="font-bold text-yellow-800 mb-1">🔄 יצירת שיחה עם שם חדש → יצירת משתתף</p>
+                  <p className="font-bold text-yellow-800 mb-1">🔄 שינוי סטטוס שיחה → עדכון אוטומטי של סטטוס לקוח</p>
                   <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
-                    <li>בדף השיחות, אם כותבים שם שלא קיים במערכת — נוצר <strong>משתתף חדש</strong> אוטומטית עם סטטוס ״נוצר משיחה״</li>
-                    <li>אם השם כבר קיים — מקשר אוטומטית לאותו משתתף</li>
+                    <li>שיחה עוברת ל<strong>״בבדיקה״</strong> → הלקוח המקושר עובר אוטומטית ל<strong>״במעקב ראשוני״</strong></li>
+                    <li>שיחה עוברת ל<strong>״לא רלוונטי״</strong> → הלקוח עובר אוטומטית ל<strong>״לא רלוונטי״</strong></li>
+                    <li>שיחה עוברת ל<strong>״אבוד״</strong> → הלקוח עובר אוטומטית ל<strong>״לא רלוונטי״</strong></li>
                   </ul>
                 </div>
 
@@ -720,7 +743,7 @@ export default function UserGuide() {
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
-                <span className="text-sm">מתקשרת → מעדכנת ״לא ענתה״</span>
+                <span className="text-sm">מתקשרת → מעדכנת ״ניסיון לשיחה״</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>

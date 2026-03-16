@@ -6,7 +6,6 @@ import { useSystemSettings } from '../components/SystemSettingsContext';
 import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar, MapPin, DollarSign, Grid, List, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useSystemSettings } from '../components/SystemSettingsContext';
 
 const APP_BASE_URL = window.location.origin;
 

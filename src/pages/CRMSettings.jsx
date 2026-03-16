@@ -3,6 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { Settings, Save, Loader2, Palette, Type, Image as ImageIcon, FileText, Tag, Zap, Plus, Trash2, GripVertical, MessageCircle, Copy, Check, Mail, BookOpen } from 'lucide-react';
 import EmailTemplateEditor from '../components/settings/EmailTemplateEditor';
 import UserGuide from '../components/settings/UserGuide';
+import StatusManager from '../components/settings/StatusManager';
+import SourceManager from '../components/settings/SourceManager';
 
 export default function CRMSettings() {
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('crmSettings_tab') || 'crm-general');
@@ -22,17 +24,28 @@ export default function CRMSettings() {
   const [designSettings, setDesignSettings] = useState(null);
   const [newStatus, setNewStatus] = useState({ name: '', color: '#6D436D', order_index: 0 });
   const [copiedLink, setCopiedLink] = useState(false);
+  const [taskStatuses, setTaskStatuses] = useState([]);
+  const [courseStatuses, setCourseStatuses] = useState([]);
+  const [leadSources, setLeadSources] = useState([]);
 
   useEffect(() => {
     loadSystemTexts();
     loadLeadStatuses();
+    loadTaskStatuses();
+    loadCourseStatuses();
+    loadLeadSources();
     loadAutomationSettings();
     loadGeneralSettings();
     loadDesignSettings();
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'statuses') loadLeadStatuses();
+    if (activeTab === 'statuses') {
+      loadLeadStatuses();
+      loadTaskStatuses();
+      loadCourseStatuses();
+      loadLeadSources();
+    }
   }, [activeTab]);
 
   const loadSystemTexts = async () => {
@@ -52,6 +65,33 @@ export default function CRMSettings() {
       setLeadStatuses(data || []);
     } catch (error) {
       console.error('Error loading statuses:', error);
+    }
+  };
+
+  const loadTaskStatuses = async () => {
+    try {
+      const data = await base44.entities.TaskStatuses.list();
+      setTaskStatuses(data || []);
+    } catch (error) {
+      console.error('Error loading task statuses:', error);
+    }
+  };
+
+  const loadCourseStatuses = async () => {
+    try {
+      const data = await base44.entities.CourseStatuses.list();
+      setCourseStatuses(data || []);
+    } catch (error) {
+      console.error('Error loading course statuses:', error);
+    }
+  };
+
+  const loadLeadSources = async () => {
+    try {
+      const data = await base44.entities.LeadSources.list();
+      setLeadSources(data || []);
+    } catch (error) {
+      console.error('Error loading lead sources:', error);
     }
   };
 

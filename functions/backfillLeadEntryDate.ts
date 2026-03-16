@@ -25,7 +25,6 @@ Deno.serve(async (req) => {
 
     for (const student of allStudents) {
       if (!student.lead_entry_date) {
-        // Use created_date as lead_entry_date
         const entryDate = new Date(student.created_date).toISOString().split('T')[0];
         
         await base44.asServiceRole.entities.Student.update(student.id, {
@@ -34,6 +33,9 @@ Deno.serve(async (req) => {
         
         updatedCount++;
         console.log(`✅ ${student.full_name}: set lead_entry_date = ${entryDate}`);
+        
+        // Small delay to avoid rate limits
+        await new Promise(r => setTimeout(r, 300));
       } else {
         skippedCount++;
       }

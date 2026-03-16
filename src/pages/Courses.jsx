@@ -6,12 +6,13 @@ import { useSystemSettings } from '../components/SystemSettingsContext';
 import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar, MapPin, DollarSign, Grid, List, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useSystemSettings } from '../components/SystemSettingsContext';
 
 const APP_BASE_URL = window.location.origin;
 
 export default function Courses() {
   const navigate = useNavigate();
-  const { systemTexts } = useSystemSettings();
+  const { systemTexts, courseStatuses } = useSystemSettings();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -210,13 +211,15 @@ export default function Courses() {
   };
 
   const getStatusColor = (status) => {
-    const colors = {
+    const match = (courseStatuses || []).find(s => s.name === status);
+    if (match) return match.color;
+    const fallback = {
       'פתוח להרשמה': '#297058',
       'מלא': '#D29486',
       'בתהליך': '#FAD980',
       'הסתיים': '#9E9E9E'
     };
-    return colors[status] || '#6D436D';
+    return fallback[status] || '#6D436D';
   };
 
   if (loading) {
@@ -558,10 +561,17 @@ export default function Courses() {
                     onChange={(e) => setFormData({...formData, status: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   >
-                    <option value="פתוח להרשמה">פתוח להרשמה</option>
-                    <option value="מלא">מלא</option>
-                    <option value="בתהליך">בתהליך</option>
-                    <option value="הסתיים">הסתיים</option>
+                    {(courseStatuses || []).filter(s => s.is_active !== false).sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                    {(!courseStatuses || courseStatuses.length === 0) && (
+                      <>
+                        <option value="פתוח להרשמה">פתוח להרשמה</option>
+                        <option value="מלא">מלא</option>
+                        <option value="בתהליך">בתהליך</option>
+                        <option value="הסתיים">הסתיים</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 <div>

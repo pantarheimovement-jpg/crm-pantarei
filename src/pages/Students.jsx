@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
-import { Users, Plus, Search, Filter, Phone, Mail, Tag, Calendar, Trash2, Edit, X, Loader2, Grid, List, Upload } from 'lucide-react';
+import { Users, Plus, Search, Phone, Mail, Tag, Calendar, Trash2, Edit, X, Loader2, Grid, List, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ImportStudents from '../components/students/ImportStudents';
 
 export default function Students() {
-  const { systemTexts, leadStatuses } = useSystemSettings();
+  const { systemTexts, leadStatuses, leadSources } = useSystemSettings();
   const [students, setStudents] = useState([]);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -881,11 +881,18 @@ export default function Students() {
                     onChange={(e) => setFormData({...formData, lead_source: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   >
-                    <option value="אתר">אתר</option>
-                    <option value="וואטסאפ">וואטסאפ</option>
-                    <option value="פייסבוק">פייסבוק</option>
-                    <option value="ידני">ידני</option>
-                    <option value="אחר">אחר</option>
+                    {(leadSources || []).filter(s => s.is_active !== false).sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                    {(!leadSources || leadSources.length === 0) && (
+                      <>
+                        <option value="אתר">אתר</option>
+                        <option value="וואטסאפ">וואטסאפ</option>
+                        <option value="פייסבוק">פייסבוק</option>
+                        <option value="ידני">ידני</option>
+                        <option value="אחר">אחר</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 <div className="md:col-span-2">

@@ -334,10 +334,28 @@ export default function Students() {
   };
 
   const filteredStudents = students.filter(student => {
-    // חיפוש
-    const matchesSearch = student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.phone?.includes(searchTerm) ||
-                         student.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const term = searchTerm.toLowerCase();
+    
+    // חיפוש חופשי — שם, טלפון, מייל, הערות, תחום עניין, שם קורס, סטטוס, מקור, תאריכים
+    let matchesSearch = true;
+    if (term) {
+      const courseNames = (student.courses || []).map(c => c.course_name?.toLowerCase() || '').join(' ');
+      const mainCourseName = student.course_name?.toLowerCase() || '';
+      
+      matchesSearch = 
+        student.full_name?.toLowerCase().includes(term) ||
+        student.phone?.includes(term) ||
+        student.email?.toLowerCase().includes(term) ||
+        student.notes?.toLowerCase().includes(term) ||
+        student.interest_area?.toLowerCase().includes(term) ||
+        student.status?.toLowerCase().includes(term) ||
+        student.lead_source?.toLowerCase().includes(term) ||
+        courseNames.includes(term) ||
+        mainCourseName.includes(term) ||
+        student.lead_entry_date?.includes(searchTerm) ||
+        student.registration_date?.includes(searchTerm) ||
+        (student.tags || []).some(t => t.toLowerCase().includes(term));
+    }
     
     // סינון לפי סטטוס
     let matchesStatus = true;
@@ -349,8 +367,12 @@ export default function Students() {
       matchesStatus = student.status === statusFilter;
     }
     
-    // סינון לפי קורס
-    const matchesCourse = !courseFilter || student.course_id === courseFilter;
+    // סינון לפי קורס (dropdown)
+    let matchesCourse = true;
+    if (courseFilter) {
+      const hasInArray = (student.courses || []).some(c => c.course_id === courseFilter);
+      matchesCourse = student.course_id === courseFilter || hasInArray;
+    }
     
     // סינון לפי תאריך (מה-URL)
     const urlParams = new URLSearchParams(window.location.search);
@@ -359,14 +381,14 @@ export default function Students() {
     
     if (dateParam === 'today') {
       const today = new Date().toDateString();
-      const studentDate = student.registration_date || student.created_date;
+      const studentDate = student.lead_entry_date || student.registration_date || student.created_date;
       matchesDate = studentDate && new Date(studentDate).toDateString() === today;
     } else if (dateParam === 'week') {
       const now = new Date();
       const weekStart = new Date(now);
       weekStart.setDate(now.getDate() - now.getDay());
       weekStart.setHours(0, 0, 0, 0);
-      const studentDate = student.registration_date || student.created_date;
+      const studentDate = student.lead_entry_date || student.registration_date || student.created_date;
       matchesDate = studentDate && new Date(studentDate) >= weekStart;
     }
     

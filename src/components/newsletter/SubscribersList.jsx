@@ -327,7 +327,7 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
                   </td>
                   <td className="px-4 py-4 text-sm">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => { setEditingSubscriber({ id: sub.id, email: sub.email, whatsapp: sub.whatsapp || '', name: sub.name || '', job_title: sub.job_title || '', company: sub.company || '', notes: sub.notes || '', group: sub.group, subscribed: sub.subscribed }); setShowEditSubscriber(true); }} className="text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 p-2 hover:bg-[var(--crm-primary)]/10 rounded-lg">
+                      <button onClick={() => { setEditingSubscriber({ id: sub.id, email: sub.email, whatsapp: sub.whatsapp || '', name: sub.name || '', job_title: sub.job_title || '', company: sub.company || '', notes: sub.notes || '', group: sub.group, subscribed: sub.subscribed, marketing_consent: sub.marketing_consent || false }); setShowEditSubscriber(true); }} className="text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 p-2 hover:bg-[var(--crm-primary)]/10 rounded-lg">
                         <Edit3 className="w-4 h-4" />
                       </button>
                       <button onClick={() => deleteSubscriber(sub.id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg">

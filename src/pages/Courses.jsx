@@ -445,7 +445,8 @@ export default function Courses() {
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">לוז</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מיקום</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מחיר</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">משתתפים</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">רשומים</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">לידים</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות</th>
                   </tr>
                 </thead>
@@ -466,7 +467,11 @@ export default function Courses() {
                           className="w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded"
                         />
                       </td>
-                      <td className="px-4 py-3 text-sm font-medium text-[var(--crm-text)]">{course.name}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-[var(--crm-text)]">
+                        <Link to={`/CourseView/${course.id}`} className="hover:text-[var(--crm-primary)] hover:underline">
+                          {course.name}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{course.type}</td>
                       <td className="px-4 py-3">
                         <span
@@ -479,13 +484,11 @@ export default function Courses() {
                       <td className="px-4 py-3 text-sm text-gray-600">{course.schedule || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{course.location || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{course.price ? `₪${course.price}` : '-'}</td>
-                      <td className="px-4 py-3">
-                        <Link 
-                          to={createPageUrl('Students') + '?course=' + course.id}
-                          className="text-sm text-[var(--crm-primary)] hover:underline font-medium"
-                        >
-                          {course.current_students || 0} / {course.max_students || '∞'}
-                        </Link>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {course.current_students || 0} {course.max_students ? `/ ${course.max_students}` : ''}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[var(--crm-primary)]">
+                        {course.leads_count || 0}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
@@ -618,6 +621,19 @@ export default function Courses() {
                     onChange={(e) => setFormData({...formData, end_date: e.target.value})}
                   />
                 </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-2">אימייל מורה (לגישה לדף קורס ייעודי)</label>
+                <Input
+                  type="email"
+                  value={formData.teacher_email || ''}
+                  onChange={(e) => setFormData({...formData, teacher_email: e.target.value})}
+                  placeholder="teacher@email.com"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  המורה תוכל לגשת לדף הקורס הייעודי דרך הלינק: /CourseView/{editingCourse?.id || '[id]'}
+                </p>
               </div>
 
               <div>

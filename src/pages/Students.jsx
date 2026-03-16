@@ -333,28 +333,29 @@ export default function Students() {
     }
   };
 
+  // חיפוש וסינון משתתפים
   const filteredStudents = students.filter(student => {
-    const term = searchTerm.toLowerCase();
+    const term = (searchTerm || '').trim().toLowerCase();
     
     // חיפוש חופשי — שם, טלפון, מייל, הערות, תחום עניין, שם קורס, סטטוס, מקור, תאריכים
     let matchesSearch = true;
-    if (term) {
-      const courseNames = (student.courses || []).map(c => c.course_name?.toLowerCase() || '').join(' ');
-      const mainCourseName = student.course_name?.toLowerCase() || '';
+    if (term.length > 0) {
+      const courseNames = (student.courses || []).map(c => (c.course_name || '').toLowerCase()).join(' ');
+      const mainCourseName = (student.course_name || '').toLowerCase();
       
       matchesSearch = 
-        student.full_name?.toLowerCase().includes(term) ||
-        student.phone?.includes(term) ||
-        student.email?.toLowerCase().includes(term) ||
-        student.notes?.toLowerCase().includes(term) ||
-        student.interest_area?.toLowerCase().includes(term) ||
-        student.status?.toLowerCase().includes(term) ||
-        student.lead_source?.toLowerCase().includes(term) ||
+        (student.full_name || '').toLowerCase().includes(term) ||
+        (student.phone || '').includes(term) ||
+        (student.email || '').toLowerCase().includes(term) ||
+        (student.notes || '').toLowerCase().includes(term) ||
+        (student.interest_area || '').toLowerCase().includes(term) ||
+        (student.status || '').toLowerCase().includes(term) ||
+        (student.lead_source || '').toLowerCase().includes(term) ||
         courseNames.includes(term) ||
         mainCourseName.includes(term) ||
-        student.lead_entry_date?.includes(searchTerm) ||
-        student.registration_date?.includes(searchTerm) ||
-        (student.tags || []).some(t => t.toLowerCase().includes(term));
+        (student.lead_entry_date || '').includes(term) ||
+        (student.registration_date || '').includes(term) ||
+        (student.tags || []).some(t => (t || '').toLowerCase().includes(term));
     }
     
     // סינון לפי סטטוס

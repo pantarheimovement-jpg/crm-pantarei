@@ -7,8 +7,10 @@ import {
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import ImportModal from '../components/shared/ImportModal';
+import { useSystemSettings } from '../components/SystemSettingsContext';
 
 export default function Tasks() {
+  const { taskStatuses } = useSystemSettings();
   const [tasks, setTasks] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -511,12 +513,9 @@ export default function Tasks() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
             >
               <option value="all">כל הסטטוסים</option>
-              <option value="ממתין">ממתין</option>
-              <option value="ניסיון לשיחה">ניסיון לשיחה</option>
-              <option value="בבדיקה">בבדיקה</option>
-              <option value="הושלם">הושלם</option>
-              <option value="לא רלוונטי">לא רלוונטי</option>
-              <option value="אבוד">אבוד</option>
+              {(taskStatuses || []).filter(s => s.is_active !== false).sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map(s => (
+                <option key={s.id} value={s.name}>{s.name}</option>
+              ))}
             </select>
 
             <select
@@ -792,12 +791,9 @@ export default function Tasks() {
                       onChange={(e) => setFormData({...formData, status: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
                     >
-                      <option value="ממתין">ממתין</option>
-                      <option value="ניסיון לשיחה">ניסיון לשיחה</option>
-                      <option value="בבדיקה">בבדיקה</option>
-                      <option value="הושלם">הושלם</option>
-                      <option value="לא רלוונטי">לא רלוונטי</option>
-                      <option value="אבוד">אבוד</option>
+                      {(taskStatuses || []).filter(s => s.is_active !== false).sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map(s => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                      ))}
                     </select>
                   </div>
 

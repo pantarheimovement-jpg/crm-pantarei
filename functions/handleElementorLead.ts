@@ -44,6 +44,11 @@ Deno.serve(async (req) => {
     const phone = extractField(rawPayload, ['phone', 'טלפון', 'telephone']) || '';
     const message = extractField(rawPayload, ['message', 'הודעה', 'תוכן']) || '';
     
+    // חילוץ הסכמה לדיוור ופרטיות
+    const privacyRaw = extractField(rawPayload, ['privacyagree', 'privacy_agree', 'privacy', 'marketing_consent', 'opt_in']);
+    const marketingConsent = !!(privacyRaw && privacyRaw !== 'false' && privacyRaw !== '0' && privacyRaw !== 'no');
+    console.log('✅ Marketing consent:', marketingConsent, '(raw:', privacyRaw, ')');
+    
     console.log('🔎 After extractField:', { first_name, last_name, phone: phone || 'MISSING' });
     
     // חילוץ מייל

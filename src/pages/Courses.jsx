@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
@@ -7,7 +7,10 @@ import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar,
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
+const APP_BASE_URL = window.location.origin;
+
 export default function Courses() {
+  const navigate = useNavigate();
   const { systemTexts } = useSystemSettings();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -320,8 +323,9 @@ export default function Courses() {
             <div
               id={`course-${course.id}`}
               key={course.id}
-              className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all relative"
+              className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all relative cursor-pointer"
               style={{ borderRadius: 'var(--crm-border-radius)' }}
+              onClick={() => navigate(`/CourseView/${course.id}`)}
             >
               <input
                 type="checkbox"
@@ -333,6 +337,7 @@ export default function Courses() {
                     setSelectedIds(selectedIds.filter(id => id !== course.id));
                   }
                 }}
+                onClick={(e) => e.stopPropagation()}
                 className="absolute top-4 left-4 w-5 h-5 text-[var(--crm-primary)] border-gray-300 rounded z-10"
               />
               {course.image_url && (
@@ -345,11 +350,9 @@ export default function Courses() {
               <div className="p-6">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
-                    <Link to={`/CourseView/${course.id}`} className="hover:text-[var(--crm-primary)] transition-colors">
-                      <h3 className="text-xl font-bold text-[var(--crm-text)] mb-2">
-                        {course.name}
-                      </h3>
-                    </Link>
+                    <h3 className="text-xl font-bold text-[var(--crm-text)] mb-2">
+                      {course.name}
+                    </h3>
                     <span
                       className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
                       style={{ backgroundColor: getStatusColor(course.status) }}
@@ -359,13 +362,13 @@ export default function Courses() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => openModal(course)}
+                      onClick={(e) => { e.stopPropagation(); openModal(course); }}
                       className="text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(course.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(course.id); }}
                       className="text-red-500 hover:text-red-700"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -409,14 +412,6 @@ export default function Courses() {
                       </span>
                     )}
                   </div>
-                  <Link 
-                    to={`/CourseView/${course.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1 text-xs text-[var(--crm-primary)] hover:underline"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    דף קורס
-                  </Link>
                 </div>
               </div>
             </div>
@@ -452,8 +447,8 @@ export default function Courses() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {filteredCourses.map(course => (
-                    <tr key={course.id} id={`course-${course.id}`} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-center">
+                    <tr key={course.id} id={`course-${course.id}`} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/CourseView/${course.id}`)}>
+                      <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(course.id)}
@@ -468,9 +463,7 @@ export default function Courses() {
                         />
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-[var(--crm-text)]">
-                        <Link to={`/CourseView/${course.id}`} className="hover:text-[var(--crm-primary)] hover:underline">
-                          {course.name}
-                        </Link>
+                        {course.name}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{course.type}</td>
                       <td className="px-4 py-3">
@@ -490,7 +483,7 @@ export default function Courses() {
                       <td className="px-4 py-3 text-sm text-[var(--crm-primary)]">
                         {course.leads_count || 0}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-2">
                           <button
                             onClick={() => openModal(course)}
@@ -631,9 +624,19 @@ export default function Courses() {
                   onChange={(e) => setFormData({...formData, teacher_email: e.target.value})}
                   placeholder="teacher@email.com"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  המורה תוכל לגשת לדף הקורס הייעודי דרך הלינק: /CourseView/{editingCourse?.id || '[id]'}
-                </p>
+                {editingCourse?.id && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-gray-500">לינק לדף הקורס:</span>
+                    <code className="text-xs bg-gray-100 px-2 py-1 rounded select-all break-all">
+                      {APP_BASE_URL}/CourseView/{editingCourse.id}
+                    </code>
+                  </div>
+                )}
+                {!editingCourse && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    הלינק הייעודי ייווצר לאחר שמירת הקורס
+                  </p>
+                )}
               </div>
 
               <div>

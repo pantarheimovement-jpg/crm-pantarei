@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   ChevronDown, ChevronUp, BookOpen, LayoutDashboard, Users, GraduationCap, 
   CheckSquare, Mail, Zap, Settings, Search, ArrowRight,
-  Sparkles, AlertCircle, RefreshCw, MessageSquare
+  Sparkles, AlertCircle, RefreshCw, MessageSquare, ClipboardList, ShieldCheck
 } from 'lucide-react';
 
 function FAQItem({ question, answer, icon: Icon, color = '#6D436D' }) {
@@ -238,9 +238,12 @@ export default function UserGuide() {
               <ul className="list-disc list-inside space-y-1">
                 <li><strong>רשימת קורסים</strong> — בתצוגת כרטיסים או טבלה</li>
                 <li><strong>פרטי קורס</strong> — שם, סוג, לוח זמנים, מיקום, מחיר, תאריכי התחלה וסיום</li>
-                <li><strong>מונה משתתפים</strong> — מספר רשומים מתעדכן אוטומטית בכל שינוי סטטוס בדף המשתתפים</li>
+                <li><strong>מונה רשומים</strong> — מספר רשומים מתעדכן אוטומטית בכל שינוי סטטוס בדף המשתתפים</li>
+                <li><strong>מונה לידים משויכים</strong> — כמה לידים (עדיין לא רשומים) משויכים לכל קורס</li>
                 <li><strong>סטטוס קורס</strong> — פתוח להרשמה, מלא, בתהליך, הסתיים</li>
-                <li>לחיצה על מספר הנרשמים מפנה לרשימת המשתתפים המסוננת לקורס הזה</li>
+                <li><strong>אימייל מורה</strong> — ניתן לשייך מורה לקורס דרך כתובת מייל (בעריכת קורס)</li>
+                <li><strong>לינק ישיר לדף קורס</strong> — לחיצה על שם הקורס או כפתור ״דף קורס״ פותחת את דף הקורס הייעודי</li>
+                <li><strong>ייצוא CSV</strong> — כפתור לייצוא רשימת הקורסים עם כל הנתונים לקובץ CSV</li>
               </ul>
             </div>
           }
@@ -256,6 +259,78 @@ export default function UserGuide() {
               <StatusBadge name="בתהליך" color="#3498DB" description="הקורס פעיל כרגע." />
               <StatusBadge name="הסתיים" color="#95A5A6" description="הקורס סיים את פעילותו." />
               <p className="mt-2"><ManualBadge>ידני</ManualBadge> <span className="text-sm">כל הסטטוסים של קורסים מתעדכנים ידנית.</span></p>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ShieldCheck}
+          color="#4ECDC4"
+          question="איך משייכים מורה לקורס?"
+          answer={
+            <div>
+              <ul className="list-disc list-inside space-y-1">
+                <li>בדף הקורסים → לחצי על <strong>עריכה</strong> (אייקון העיפרון) של הקורס</li>
+                <li>גללי למטה לשדה <strong>״אימייל מורה״</strong></li>
+                <li>הזיני את כתובת המייל של המורה ושמרי</li>
+                <li>כעת המורה תוכל להיכנס ל<strong>דף הקורס הייעודי</strong> דרך הלינק הייחודי</li>
+                <li>הלינק מופיע מתחת לשדה אימייל המורה בחלון העריכה</li>
+              </ul>
+              <p className="mt-3 p-3 bg-teal-50 rounded-lg text-sm">
+                💡 <strong>חשוב:</strong> המורה צריכה להיות רשומה כמשתמשת במערכת (עם אותה כתובת מייל). היא תראה רק את הקורס שמשויך אליה — לא שאר המערכת.
+              </p>
+            </div>
+          }
+        />
+      </Section>
+
+      {/* דף קורס ייעודי */}
+      <Section title="דף קורס ייעודי (למורה)" icon={ClipboardList} color="#2ECC71">
+        <FAQItem
+          icon={ClipboardList}
+          question="מה זה דף קורס ייעודי?"
+          answer={
+            <div>
+              <p>כל קורס במערכת מקבל <strong>URL ייחודי</strong> (כתובת אינטרנט) שניתן לשתף עם המורה:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li><strong>פרטי הקורס</strong> — שם, לוז, מיקום, מחיר, תאריכים</li>
+                <li><strong>מונים</strong> — כמה רשומים וכמה לידים משויכים</li>
+                <li><strong>מעקב נוכחות</strong> — סימון נוכחות לכל משתתף לפי תאריך מפגש</li>
+                <li><strong>רשימת משתתפים</strong> — כל המשתתפים הרשומים עם טלפון ומייל</li>
+              </ul>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={Users}
+          color="#2ECC71"
+          question="איך עובד מעקב הנוכחות?"
+          answer={
+            <div>
+              <ul className="list-disc list-inside space-y-1">
+                <li>בוחרים <strong>תאריך מפגש</strong> בשדה התאריך למעלה</li>
+                <li>לכל משתתף מופיעות 3 אפשרויות: <strong>נוכח/ת</strong>, <strong>נעדר/ת</strong>, <strong>איחור</strong></li>
+                <li>לוחצים על הכפתור המתאים — הנוכחות נשמרת מיד</li>
+                <li>כפתור <strong>״סמן כולם נוכחים״</strong> — מסמן את כל המשתתפים כנוכחים בלחיצה אחת</li>
+                <li><strong>מפגשים קודמים</strong> — כפתורי תאריכים מהירים מאפשרים לחזור ולראות/לערוך נוכחות ממפגשים קודמים</li>
+              </ul>
+              <p className="mt-3 p-3 bg-green-50 rounded-lg text-sm">
+                💡 <strong>טיפ:</strong> נתוני הנוכחות נשמרים לפי קורס + תאריך + משתתף. ניתן לערוך נוכחות בכל עת.
+              </p>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ShieldCheck}
+          color="#2ECC71"
+          question="מי יכול לגשת לדף הקורס?"
+          answer={
+            <div>
+              <ul className="list-disc list-inside space-y-1">
+                <li><strong>אדמין</strong> — יכול לגשת לכל דף קורס ללא הגבלה</li>
+                <li><strong>מורה (משתמשת רגילה)</strong> — יכולה לגשת רק לקורס שבו האימייל שלה מוגדר בשדה ״אימייל מורה״</li>
+                <li>אם מישהו מנסה לגשת לקורס שלא שייך אליו — תופיע הודעת <strong>״גישה נדחתה״</strong></li>
+                <li>כדי לתת למורה גישה: הוסיפי אותה כמשתמשת במערכת + הזיני את המייל שלה בשדה אימייל מורה בקורס</li>
+              </ul>
             </div>
           }
         />
@@ -670,6 +745,49 @@ export default function UserGuide() {
                 <li>ניתן לסנן לפי תאריך</li>
                 <li>המערכת בודקת כפילויות — מציגה למשתמשת אפשרויות: דלג, צור חדש, או מזג</li>
                 <li>בסיום מציגה סיכום: כמה נוספו, כמה מוזגו, כמה דולגו</li>
+              </ul>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ArrowRight}
+          color="#F39C12"
+          question="איך שולחים למורה לינק לקורס שלה?"
+          answer={
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">1</span>
+                <span className="text-sm">ודאי שהמורה רשומה כמשתמשת במערכת (הזמנה דרך הגדרות)</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">2</span>
+                <span className="text-sm">בדף הקורסים → ערכי את הקורס → הזיני את המייל של המורה בשדה ״אימייל מורה״</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
+                <span className="text-sm">העתיקי את הלינק שמופיע מתחת לשדה (או לחצי ״דף קורס״ בכרטיס הקורס)</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
+                <span className="text-sm">שלחי את הלינק למורה → היא תתחבר עם המייל שלה ותראה רק את הקורס</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
+                <span className="text-sm">המורה תוכל לסמן נוכחות ולראות את רשימת המשתתפים הרשומים</span>
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ArrowRight}
+          color="#F39C12"
+          question="איך מייצאים רשימת קורסים ל-CSV?"
+          answer={
+            <div>
+              <ul className="list-disc list-inside space-y-1">
+                <li>בדף הקורסים → כפתור <strong>״ייצוא CSV״</strong> בפינה הימנית העליונה</li>
+                <li>הקובץ יכלול: שם קורס, סוג, סטטוס, לוז, מיקום, מחיר, רשומים, לידים, מקסימום, ואימייל מורה</li>
+                <li>הייצוא כולל רק את הקורסים המוצגים (אחרי חיפוש/סינון)</li>
               </ul>
             </div>
           }

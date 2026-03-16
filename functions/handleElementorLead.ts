@@ -170,7 +170,8 @@ Deno.serve(async (req) => {
       lead_source: 'אתר',
       lead_entry_date: new Date().toISOString().split('T')[0],
       last_contact_date: new Date().toISOString(),
-      notes: [...validationNotes, message].filter(Boolean).join('\n')
+      notes: [...validationNotes, message].filter(Boolean).join('\n'),
+      marketing_consent: marketingConsent
     };
     
     let student;
@@ -350,6 +351,35 @@ Deno.serve(async (req) => {
       }
     }
     
+    // יצירת/עדכון מנוי ב-Subscribers (אם יש הסכמה לדיוור)
+    if (marketingConsent && email) {
+      try {
+        const existingSubs = await base44.asServiceRole.entities.Subscribers.filter({ email });
+        if (existingSubs && existingSubs.length > 0) {
+          await base44.asServiceRole.entities.Subscribers.update(existingSubs[0].id, {
+            marketing_consent: true,
+            subscribed: true,
+            name: full_name,
+            whatsapp: cleanPhone ? (cleanPhone.startsWith('0') ? '972' + cleanPhone.substring(1) : cleanPhone) : undefined,
+            source: 'טופס אתר'
+          });
+          console.log('✅ Subscriber updated with marketing consent');
+        } else {
+          await base44.asServiceRole.entities.Subscribers.create({
+            email,
+            name: full_name,
+            whatsapp: cleanPhone ? (cleanPhone.startsWith('0') ? '972' + cleanPhone.substring(1) : cleanPhone) : '',
+            subscribed: true,
+            marketing_consent: true,
+            source: 'טופס אתר'
+          });
+          console.log('✅ New subscriber created with marketing consent');
+        }
+      } catch (subError) {
+        console.error('⚠️ Failed to create/update subscriber:', subError.message);
+      }
+    }
+
     console.log('✅ Webhook completed successfully');
     
     return Response.json({

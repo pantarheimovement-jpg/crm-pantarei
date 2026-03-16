@@ -212,6 +212,10 @@ export default function UserGuide() {
                   <AutoBadge>אוטומטי</AutoBadge>
                   <span className="text-sm"><strong>תאריך כניסת ליד</strong> — נקבע אוטומטית בכל כניסת ליד (וואטסאפ, אתר, Gmail)</span>
                 </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>אושר מדיניות הפרטיות</strong> — מסומן אוטומטית כשמשתתף ממלא טופס באתר וסימן את צ׳קבוקס ההסכמה. ניתן גם לעדכן ידנית</span>
+                </div>
               </div>
               <p className="font-semibold mb-2">שינויים ידניים:</p>
               <div className="space-y-1.5">
@@ -511,6 +515,7 @@ export default function UserGuide() {
                     <li>נוצרת <strong>שיחת היכרות</strong> (מתוזמנת ליומיים קדימה)</li>
                     <li>נשלחת <strong>הודעת וואטסאפ אוטומטית</strong> אם הוגדר מספר טלפון</li>
                     <li>אם המשתתף כבר קיים — מעדכן קורס/סטטוס</li>
+                    <li>אם סומן צ׳קבוקס <strong>הסכמה לדיוור</strong> (מדיניות פרטיות) בטופס → שדה <strong>״אושר מדיניות הפרטיות״</strong> מסומן אוטומטית על המשתתף ועל המנוי בניוזלטר</li>
                   </ul>
                 </div>
 

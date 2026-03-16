@@ -345,9 +345,11 @@ export default function Courses() {
               <div className="p-6">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
-                    <h3 className="text-xl font-bold text-[var(--crm-text)] mb-2">
-                      {course.name}
-                    </h3>
+                    <Link to={`/CourseView/${course.id}`} className="hover:text-[var(--crm-primary)] transition-colors">
+                      <h3 className="text-xl font-bold text-[var(--crm-text)] mb-2">
+                        {course.name}
+                      </h3>
+                    </Link>
                     <span
                       className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
                       style={{ backgroundColor: getStatusColor(course.status) }}
@@ -396,18 +398,25 @@ export default function Courses() {
                       ₪{course.price}
                     </div>
                   )}
-                  {(course.max_students || course.current_students) && (
-                    <Link 
-                      to={createPageUrl('Students') + '?course=' + course.id}
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-2 text-[var(--crm-text)] opacity-80 hover:text-[var(--crm-primary)] hover:opacity-100 transition-all"
-                    >
-                      <Users className="w-4 h-4" />
-                      <span className="font-medium underline">
-                        {course.current_students || 0} / {course.max_students || '∞'}
+                  <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-80">
+                    <Users className="w-4 h-4" />
+                    <span className="font-medium">
+                      {course.current_students || 0} רשומים {course.max_students ? `/ ${course.max_students}` : ''}
+                    </span>
+                    {course.leads_count > 0 && (
+                      <span className="text-xs text-[var(--crm-primary)] font-medium">
+                        + {course.leads_count} לידים
                       </span>
-                    </Link>
-                  )}
+                    )}
+                  </div>
+                  <Link 
+                    to={`/CourseView/${course.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1 text-xs text-[var(--crm-primary)] hover:underline"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    דף קורס
+                  </Link>
                 </div>
               </div>
             </div>

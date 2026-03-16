@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Calendar, Check, X, Clock, Loader2, Plus } from 'lucide-react';
+import { Calendar, Check, X, Clock, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -10,6 +10,8 @@ export default function AttendanceManager({ courseId, students }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingDates, setExistingDates] = useState([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyData, setHistoryData] = useState({});
 
   useEffect(() => {
     loadAttendanceDates();
@@ -25,6 +27,17 @@ export default function AttendanceManager({ courseId, students }) {
     const allAttendance = await base44.entities.Attendance.filter({ course_id: courseId });
     const dates = [...new Set((allAttendance || []).map(a => a.date))].sort().reverse();
     setExistingDates(dates);
+
+    // Build history summary: { date: { total, present, absent, late } }
+    const summary = {};
+    (allAttendance || []).forEach(a => {
+      if (!summary[a.date]) summary[a.date] = { total: 0, present: 0, absent: 0, late: 0 };
+      summary[a.date].total++;
+      if (a.status === 'נוכח/ת') summary[a.date].present++;
+      else if (a.status === 'נעדר/ת') summary[a.date].absent++;
+      else if (a.status === 'איחור') summary[a.date].late++;
+    });
+    setHistoryData(summary);
   };
 
   const loadAttendanceForDate = async (date) => {
@@ -140,23 +153,60 @@ export default function AttendanceManager({ courseId, students }) {
         </div>
       </div>
 
-      {/* Quick date buttons */}
-      {existingDates.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          <span className="text-xs text-gray-500 self-center">מפגשים קודמים:</span>
-          {existingDates.slice(0, 10).map(date => (
-            <button
-              key={date}
-              onClick={() => setSelectedDate(date)}
-              className={`px-3 py-1 text-xs rounded-full border transition-all ${
-                selectedDate === date 
-                  ? 'bg-[var(--crm-primary)] text-white border-[var(--crm-primary)]' 
-                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
-              }`}
-            >
-              {new Date(date).toLocaleDateString('he-IL')}
-            </button>
-          ))}
+      {/* History Section */}
+      {existingDates.filter(d => d !== selectedDate).length > 0 && (
+        <div className="mb-4 border border-gray-200 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setHistoryOpen(!historyOpen)}
+            className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-[var(--crm-primary)]" />
+              <span className="text-sm font-medium text-[var(--crm-text)]">
+                היסטוריית נוכחות ({existingDates.filter(d => d !== selectedDate).length} מפגשים)
+              </span>
+            </div>
+            {historyOpen ? (
+              <ChevronUp className="w-4 h-4 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-500" />
+            )}
+          </button>
+          {historyOpen && (
+            <div className="divide-y divide-gray-100">
+              {existingDates.filter(d => d !== selectedDate).map(date => {
+                const info = historyData[date] || {};
+                return (
+                  <button
+                    key={date}
+                    onClick={() => { setSelectedDate(date); setHistoryOpen(false); }}
+                    className="w-full flex items-center justify-between p-3 hover:bg-[var(--crm-primary)]/5 transition-colors text-right"
+                  >
+                    <span className="text-sm font-medium text-[var(--crm-text)]">
+                      {new Date(date).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                    <div className="flex items-center gap-3 text-xs">
+                      {info.present > 0 && (
+                        <span className="flex items-center gap-1 text-green-600">
+                          <Check className="w-3 h-3" /> {info.present}
+                        </span>
+                      )}
+                      {info.absent > 0 && (
+                        <span className="flex items-center gap-1 text-red-500">
+                          <X className="w-3 h-3" /> {info.absent}
+                        </span>
+                      )}
+                      {info.late > 0 && (
+                        <span className="flex items-center gap-1 text-yellow-600">
+                          <Clock className="w-3 h-3" /> {info.late}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

@@ -188,6 +188,24 @@ export default function Courses() {
     course.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const exportToCSV = () => {
+    const headers = ['שם הקורס', 'סוג', 'סטטוס', 'לוז', 'מיקום', 'מחיר', 'רשומים', 'לידים', 'מקסימום', 'אימייל מורה'];
+    const rows = filteredCourses.map(c => [
+      c.name, c.type, c.status, c.schedule || '', c.location || '',
+      c.price || '', c.current_students || 0, c.leads_count || 0,
+      c.max_students || '', c.teacher_email || ''
+    ]);
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `courses_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
   const getStatusColor = (status) => {
     const colors = {
       'פתוח להרשמה': '#297058',
@@ -234,6 +252,15 @@ export default function Courses() {
                 מחק {selectedIds.length}
               </Button>
             )}
+            <Button
+              onClick={exportToCSV}
+              variant="outline"
+              className="border-[var(--crm-primary)] text-[var(--crm-primary)] hover:bg-[var(--crm-primary)]/10"
+              style={{ borderRadius: 'var(--crm-button-radius)' }}
+            >
+              <Download className="w-5 h-5 mr-2" />
+              ייצוא CSV
+            </Button>
             <Button
               onClick={() => openModal()}
               className="bg-[var(--crm-action)] text-[var(--crm-text)] hover:bg-[var(--crm-action)]/90"

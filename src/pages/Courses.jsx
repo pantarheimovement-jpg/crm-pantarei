@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
-import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar, MapPin, DollarSign, Grid, List } from 'lucide-react';
+import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar, MapPin, DollarSign, Grid, List, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -28,7 +28,8 @@ export default function Courses() {
     start_date: '',
     end_date: '',
     status: 'פתוח להרשמה',
-    image_url: ''
+    image_url: '',
+    teacher_email: ''
   });
 
   useEffect(() => {
@@ -58,27 +59,39 @@ export default function Courses() {
         base44.entities.Student.list()
       ]);
       
-      // חישוב דינמי של מספר המשתתפים הרשומים בכל קורס
+      // חישוב דינמי של מספר המשתתפים הרשומים + לידים בכל קורס
       const coursesWithCounts = (coursesData || []).map(course => {
         let registeredCount = 0;
+        let leadsCount = 0;
         
         (studentsData || []).forEach(student => {
-          // בדיקה במערך courses
+          let isLinked = false;
+          let courseStatus = null;
+
           if (student.courses && Array.isArray(student.courses)) {
             const courseEntry = student.courses.find(c => c.course_id === course.id);
-            if (courseEntry && (courseEntry.status === 'נרשם' || courseEntry.status === 'רשום')) {
-              registeredCount++;
+            if (courseEntry) {
+              isLinked = true;
+              courseStatus = courseEntry.status;
             }
-          } 
-          // fallback למבנה ישן
-          else if (student.course_id === course.id && (student.status === 'נרשם' || student.status === 'רשום')) {
-            registeredCount++;
+          } else if (student.course_id === course.id) {
+            isLinked = true;
+            courseStatus = student.status;
+          }
+
+          if (isLinked) {
+            if (courseStatus === 'נרשם' || courseStatus === 'רשום') {
+              registeredCount++;
+            } else {
+              leadsCount++;
+            }
           }
         });
         
         return {
           ...course,
-          current_students: registeredCount
+          current_students: registeredCount,
+          leads_count: leadsCount
         };
       });
       
@@ -158,7 +171,8 @@ export default function Courses() {
         start_date: '',
         end_date: '',
         status: 'פתוח להרשמה',
-        image_url: ''
+        image_url: '',
+        teacher_email: ''
       });
     }
     setShowModal(true);

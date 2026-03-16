@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
         console.log(`✅ ${student.full_name}: set lead_entry_date = ${entryDate}`);
         
         // Small delay to avoid rate limits
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 600));
       } else {
         skippedCount++;
       }

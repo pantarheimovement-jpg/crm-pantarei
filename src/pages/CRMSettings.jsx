@@ -754,59 +754,45 @@ export default function CRMSettings() {
 
             {/* Statuses Tab */}
             {activeTab === 'statuses' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">סטטוסים קיימים</h3>
-                  <div className="space-y-3">
-                    {leadStatuses.sort((a, b) => a.order_index - b.order_index).map(status => (
-                      <div key={status.id} className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
-                        <GripVertical className="w-5 h-5 text-gray-400" />
-                        <div
-                          className="w-8 h-8 rounded"
-                          style={{ backgroundColor: status.color }}
-                        />
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">{status.name}</p>
-                          {status.description && (
-                            <p className="text-sm text-gray-600">{status.description}</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleDeleteStatus(status.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <div className="space-y-8">
+                <StatusManager
+                  title="סטטוסי משתתפים (לידים)"
+                  description="סטטוסים של משתתפים בפייפליין — משמשים בדף משתתפים ובדשבורד"
+                  items={leadStatuses}
+                  entityName="LeadStatuses"
+                  onReload={loadLeadStatuses}
+                  protectedNames={['ליד חדש', 'הודעה מוואטסאפ לבדיקה', 'במעקב ראשוני', 'לא רלוונטי', 'רשום', 'נרשם']}
+                />
 
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">הוסף סטטוס חדש</h3>
-                  <div className="flex gap-3">
-                    <input
-                      type="text"
-                      value={newStatus.name}
-                      onChange={(e) => setNewStatus({...newStatus, name: e.target.value})}
-                      placeholder="שם סטטוס (למשל: ליד חדש)"
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
-                    />
-                    <input
-                      type="color"
-                      value={newStatus.color}
-                      onChange={(e) => setNewStatus({...newStatus, color: e.target.value})}
-                      className="w-20 h-10 rounded border border-gray-300"
-                    />
-                    <button
-                      onClick={handleAddStatus}
-                      className="px-6 py-2 bg-[#6D436D] text-white rounded-lg font-semibold hover:bg-[#5a365a] flex items-center gap-2"
-                    >
-                      <Plus className="w-5 h-5" />
-                      הוסף
-                    </button>
-                  </div>
-                </div>
+                <hr className="border-gray-200" />
+
+                <StatusManager
+                  title="סטטוסי שיחות ומשימות"
+                  description="סטטוסים של שיחות ופגישות — משמשים בדף שיחות ובאוטומציות"
+                  items={taskStatuses}
+                  entityName="TaskStatuses"
+                  onReload={loadTaskStatuses}
+                  protectedNames={['ממתין', 'בבדיקה', 'הושלם', 'לא רלוונטי', 'אבוד']}
+                />
+
+                <hr className="border-gray-200" />
+
+                <StatusManager
+                  title="סטטוסי קורסים"
+                  description="סטטוסים של קורסים וסדנאות"
+                  items={courseStatuses}
+                  entityName="CourseStatuses"
+                  onReload={loadCourseStatuses}
+                  protectedNames={[]}
+                />
+
+                <hr className="border-gray-200" />
+
+                <SourceManager
+                  items={leadSources}
+                  onReload={loadLeadSources}
+                  protectedNames={['וואטסאפ', 'אתר']}
+                />
               </div>
             )}
 

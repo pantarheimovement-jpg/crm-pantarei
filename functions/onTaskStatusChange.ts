@@ -36,8 +36,13 @@ Deno.serve(async (req) => {
 
     let newStudentStatus = null;
 
-    // Rule 1: Task "בבדיקה" → Student "מעקב ראשוני"
+    // Rule 1: Task "בבדיקה" → Student "במעקב ראשוני"
     if (newStatus === 'בבדיקה') {
+      newStudentStatus = 'במעקב ראשוני';
+    }
+
+    // Rule 1b: Task "לא ענתה" → Student "במעקב ראשוני"
+    if (newStatus === 'לא ענתה') {
       newStudentStatus = 'במעקב ראשוני';
     }
 

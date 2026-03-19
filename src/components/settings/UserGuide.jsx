@@ -382,13 +382,11 @@ export default function UserGuide() {
             <div className="space-y-2">
               <StatusBadge name="ממתין" color="#F39C12" description="השיחה טרם בוצעה, ממתינה לטיפול." />
               <StatusBadge name="ניסיון לשיחה" color="#E74C3C" description="נעשה ניסיון ליצור קשר — צריך לנסות שוב." />
+              <StatusBadge name="לא ענתה" color="#F39C12" description="התקשרנו והמשתתפת לא ענתה. → הלקוחה עוברת אוטומטית ל״במעקב ראשוני״." />
               <StatusBadge name="בבדיקה" color="#3498DB" description="נמצאת בתהליך בדיקה, עדיין לא הושלמה." />
               <StatusBadge name="הושלם" color="#6D436D" description="השיחה/משימה טופלה בהצלחה." />
               <StatusBadge name="לא רלוונטי" color="#BDC3C7" description="לא רלוונטי יותר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
               <StatusBadge name="אבוד" color="#7F8C8D" description="הליד אבד, לא הצלחנו ליצור קשר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
-              <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
-                ❌ <strong>סטטוסים שהוסרו:</strong> ״ענתה״ כבר לא קיים. ״לא ענתה״ שונה ל<strong>״ניסיון לשיחה״</strong>.
-              </div>
               <div className="mt-3 space-y-1.5">
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
@@ -397,6 +395,10 @@ export default function UserGuide() {
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
                   <span className="text-sm">שינוי שיחה ל<strong>״בבדיקה״</strong> → לקוח עובר אוטומטית ל״במעקב ראשוני״</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm">שינוי שיחה ל<strong>״לא ענתה״</strong> → לקוחה עוברת אוטומטית ל<strong>״במעקב ראשוני״</strong></span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>

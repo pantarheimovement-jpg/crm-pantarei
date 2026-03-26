@@ -314,6 +314,29 @@ Deno.serve(async (req) => {
           await base44.asServiceRole.entities.Student.update(existingStudent.id, updateData);
           console.log(`✅ Student updated with new interest`);
 
+          // יצירת שיחת היכרות גם לאיש קשר קיים עם קורס חדש
+          const scheduledDate = new Date();
+          scheduledDate.setDate(scheduledDate.getDate() + 2);
+
+          // בדיקה שאין כבר שיחת היכרות פתוחה לאותו סטודנט
+          const existingIntroTasks = await base44.asServiceRole.entities.Task.filter({
+            student_id: existingStudent.id,
+            name: 'שיחת היכרות'
+          });
+          const hasOpenIntroTask = existingIntroTasks.some(t => t.status !== 'הושלם' && t.status !== 'אבוד');
+
+          if (!hasOpenIntroTask) {
+            await base44.asServiceRole.entities.Task.create({
+              name: 'שיחת היכרות',
+              description: `התעניינות חדשה מוואטסאפ: ${existingStudent.full_name}\nקורס: ${identifiedCourse || 'לא צוין'}\nהודעה: ${messageText}`,
+              status: 'ממתין',
+              scheduled_date: scheduledDate.toISOString().split('T')[0],
+              student_id: existingStudent.id,
+              student_name: existingStudent.full_name
+            });
+            console.log('✅ Introduction task created for existing student with new course');
+          }
+
           const autoReplySent = await sendAutoReply(base44, chatId, senderName, 'existing_new_course');
 
           return Response.json({
@@ -322,6 +345,7 @@ Deno.serve(async (req) => {
             student_name: existingStudent.full_name,
             identified_course: identifiedCourse,
             auto_reply: autoReplySent,
+            intro_task_created: !hasOpenIntroTask,
             intent: intent.debugInfo
           });
 

@@ -691,6 +691,37 @@ export default function PipelineDashboard() {
                 )}
               </div>
 
+              {/* לחזור לקראת הרשמה */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-gray-600">לחזור לקראת הרשמה</h4>
+                  <Link
+                    to={createPageUrl('Tasks') + '?status=לחזור לקראת הרשמה'}
+                    className="text-xs text-[var(--crm-primary)] hover:underline"
+                  >
+                    צפה
+                  </Link>
+                </div>
+                {tasks.filter(t => t.status === 'לחזור לקראת הרשמה').length === 0 ? (
+                  <p className="text-xs text-gray-400">אין שיחות ממתינות</p>
+                ) : (
+                  <div className="space-y-2">
+                    {tasks.filter(t => t.status === 'לחזור לקראת הרשמה').slice(0, 3).map(task => (
+                      <div 
+                        key={task.id}
+                        onClick={() => window.location.href = createPageUrl('Tasks') + '?highlight=' + task.id}
+                        className="p-2 bg-purple-50 rounded-lg text-xs flex justify-between items-center hover:bg-purple-100 transition-colors cursor-pointer"
+                      >
+                        <span className="font-medium text-purple-800">{task.student_name || task.name}</span>
+                        <span className="text-purple-400 text-xs">
+                          {task.scheduled_date ? new Date(task.scheduled_date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' }) : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* שיחות היכרות ללידים חדשים */}
               <div>
                 <div className="flex items-center justify-between mb-2">

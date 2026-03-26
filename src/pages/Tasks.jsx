@@ -7,6 +7,7 @@ import {
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import ImportModal from '../components/shared/ImportModal';
+import StudentCoursesEditor from '../components/shared/StudentCoursesEditor';
 import { useSystemSettings } from '../components/SystemSettingsContext';
 
 export default function Tasks() {
@@ -45,6 +46,14 @@ export default function Tasks() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlStatus = urlParams.get('status');
+    if (urlStatus) {
+      setFilterStatus(urlStatus);
+    }
   }, []);
 
   useEffect(() => {
@@ -364,7 +373,8 @@ export default function Tasks() {
     tryCall: tasks.filter(t => t.status === 'ניסיון לשיחה').length,
     inReview: tasks.filter(t => t.status === 'בבדיקה').length,
     completed: tasks.filter(t => t.status === 'הושלם').length,
-    scheduled: tasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) >= new Date() && t.status !== 'הושלם').length
+    scheduled: tasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) >= new Date() && t.status !== 'הושלם').length,
+    waitingRegistration: tasks.filter(t => t.status === 'לחזור לקראת הרשמה').length
   };
 
   return (
@@ -417,7 +427,7 @@ export default function Tasks() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <div 
             className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-md transition-shadow" 
             style={{ borderRadius: 'var(--crm-border-radius)' }}
@@ -460,6 +470,21 @@ export default function Tasks() {
               </div>
               <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-primary)' }}>
                 <CheckSquare size={24} style={{ color: 'white' }} />
+              </div>
+            </div>
+          </div>
+          <div 
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-md transition-shadow" 
+            style={{ borderRadius: 'var(--crm-border-radius)' }}
+            onClick={() => setFilterStatus('לחזור לקראת הרשמה')}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">לחזור לקראת הרשמה</p>
+                <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{stats.waitingRegistration}</p>
+              </div>
+              <div className="p-3 rounded-xl" style={{ backgroundColor: '#9B59B6' }}>
+                <Calendar size={24} style={{ color: 'white' }} />
               </div>
             </div>
           </div>
@@ -646,6 +671,7 @@ export default function Tasks() {
                         task.status === 'הושלם' ? 'bg-green-100 text-green-800' :
                         task.status === 'לא רלוונטי' ? 'bg-gray-100 text-gray-800' :
                         task.status === 'אבוד' ? 'bg-gray-100 text-gray-800' :
+                        task.status === 'לחזור לקראת הרשמה' ? 'bg-purple-100 text-purple-800' :
                         'bg-yellow-100 text-yellow-800'
                       }`}>
                         {task.status}
@@ -1033,21 +1059,17 @@ export default function Tasks() {
                   </div>
                 )}
 
-                {viewingStudent.courses && viewingStudent.courses.length > 0 && (
-                  <div className="md:col-span-2 bg-gray-50 p-4 rounded-lg">
-                    <label className="text-xs font-medium text-gray-500 mb-2 block">קורסים</label>
-                    <div className="space-y-2">
-                      {viewingStudent.courses.map((course, idx) => (
-                        <div key={idx} className="flex items-center justify-between bg-white p-3 rounded-lg">
-                          <span className="font-medium">{course.course_name}</span>
-                          <span className="px-3 py-1 rounded-full text-xs font-medium text-white bg-[#6D436D]">
-                            {course.status}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div className="md:col-span-2 bg-gray-50 p-4 rounded-lg">
+                  <StudentCoursesEditor
+                    student={viewingStudent}
+                    onUpdated={async () => {
+                      const allStudents = await base44.entities.Student.list();
+                      setStudents(allStudents || []);
+                      const updated = (allStudents || []).find(s => s.id === viewingStudent.id);
+                      if (updated) setViewingStudent(updated);
+                    }}
+                  />
+                </div>
               </div>
 
               {viewingStudent.notes && (

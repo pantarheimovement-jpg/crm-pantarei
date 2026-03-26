@@ -7,6 +7,7 @@ import { Users, Plus, Search, Phone, Mail, Tag, Calendar, Trash2, Edit, X, Loade
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ImportStudents from '../components/students/ImportStudents';
+import CourseCombobox from '../components/shared/CourseCombobox';
 
 export default function Students() {
   const { systemTexts, leadStatuses, leadSources } = useSystemSettings();
@@ -920,23 +921,11 @@ export default function Students() {
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium mb-2">קורס ראשי (לתצוגה)</label>
-                  <select
+                  <CourseCombobox
+                    courses={courses}
                     value={formData.course_id}
-                    onChange={(e) => {
-                      const course = courses.find(c => c.id === e.target.value);
-                      setFormData({
-                        ...formData,
-                        course_id: e.target.value,
-                        course_name: course?.name || ''
-                      });
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="">בחר קורס</option>
-                    {courses.map(course => (
-                      <option key={course.id} value={course.id}>{course.name}</option>
-                    ))}
-                  </select>
+                    onChange={(id, name) => setFormData({ ...formData, course_id: id, course_name: name })}
+                  />
                   <p className="text-xs text-gray-500 mt-1">
                     זהו הקורס שיוצג בתצוגה הכללית. מערך הקורסים המלא מתנהל אוטומטית על ידי המערכת
                   </p>

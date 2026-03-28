@@ -213,6 +213,7 @@ export default function Courses() {
     const match = (courseStatuses || []).find(s => s.name === status);
     if (match) return match.color;
     const fallback = {
+      'לא פתוח להרשמה': '#7B8794',
       'פתוח להרשמה': '#297058',
       'מלא': '#D29486',
       'בתהליך': '#FAD980',
@@ -565,6 +566,7 @@ export default function Courses() {
                     ))}
                     {(!courseStatuses || courseStatuses.length === 0) && (
                       <>
+                        <option value="לא פתוח להרשמה">לא פתוח להרשמה</option>
                         <option value="פתוח להרשמה">פתוח להרשמה</option>
                         <option value="מלא">מלא</option>
                         <option value="בתהליך">בתהליך</option>

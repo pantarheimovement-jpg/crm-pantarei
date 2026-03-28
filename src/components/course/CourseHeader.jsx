@@ -6,6 +6,7 @@ import { GraduationCap, Calendar, MapPin, DollarSign, Users, Clock } from 'lucid
 export default function CourseHeader({ course, registeredCount, leadsCount }) {
   const getStatusColor = (status) => {
     const colors = {
+      'לא פתוח להרשמה': '#7B8794',
       'פתוח להרשמה': '#297058',
       'מלא': '#D29486',
       'בתהליך': '#FAD980',

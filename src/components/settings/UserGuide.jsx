@@ -120,6 +120,7 @@ export default function UserGuide() {
                 <li><strong>יחס המרה</strong> — אחוז המשתתפים שהפכו מלידים לרשומים (עם גרף עוגה)</li>
                 <li><strong>טבלת קורסים</strong> — כל הקורסים עם מספר הרשומים, חדשים היום והשבוע, ואחוז מילוי</li>
                 <li><strong>שיחות היכרות</strong> — שיחות שעדיין לא בוצעו, כולל התראה על שיחות שעבר התאריך שלהן</li>
+                <li><strong>לחזור לקראת הרשמה</strong> — שיחות שממתינות לפתיחת הרשמה לקורס. לחיצה מסננת את דף השיחות לסטטוס זה</li>
                 <li><strong>התראות</strong> — קורסים שמתמלאים (90%+), קורסים שעומדים להתחיל</li>
               </ul>
             </div>
@@ -256,7 +257,8 @@ export default function UserGuide() {
                 <li><strong>פרטי קורס</strong> — שם, סוג, לוח זמנים, מיקום, מחיר, תאריכי התחלה וסיום</li>
                 <li><strong>מונה רשומים</strong> — מספר רשומים מתעדכן אוטומטית בכל שינוי סטטוס בדף המשתתפים</li>
                 <li><strong>מונה לידים משויכים</strong> — כמה לידים (עדיין לא רשומים) משויכים לכל קורס</li>
-                <li><strong>סטטוס קורס</strong> — פתוח להרשמה, מלא, בתהליך, הסתיים</li>
+                <li><strong>סטטוס קורס</strong> — לא פתוח להרשמה, פתוח להרשמה, מלא, בתהליך, הסתיים</li>
+                <li><strong>לחיצה על מספר הרשומים/לידים</strong> — מובילה ישירות לדף משתתפים מסונן לפי הקורס והסטטוס</li>
                 <li><strong>אימייל מורה</strong> — ניתן לשייך מורה לקורס דרך כתובת מייל (בעריכת קורס)</li>
                 <li><strong>לינק ישיר לדף קורס</strong> — לחיצה על שם הקורס או כפתור ״דף קורס״ פותחת את דף הקורס הייעודי</li>
                 <li><strong>ייצוא CSV</strong> — כפתור לייצוא רשימת הקורסים עם כל הנתונים לקובץ CSV</li>
@@ -270,11 +272,21 @@ export default function UserGuide() {
           question="מה הסטטוסים של קורסים?"
           answer={
             <div className="space-y-2">
+              <StatusBadge name="לא פתוח להרשמה" color="#7B8794" description="ברירת מחדל לקורס חדש. הקורס עדיין לא מקבל נרשמים. כשהסטטוס ישתנה ל״פתוח להרשמה״ — תיפעל אוטומציה (ראי בסעיף אוטומציות)." />
               <StatusBadge name="פתוח להרשמה" color="#2ECC71" description="הקורס מקבל נרשמים חדשים." />
               <StatusBadge name="מלא" color="#E74C3C" description="הגיע למקסימום משתתפים." />
               <StatusBadge name="בתהליך" color="#3498DB" description="הקורס פעיל כרגע." />
               <StatusBadge name="הסתיים" color="#95A5A6" description="הקורס סיים את פעילותו." />
-              <p className="mt-2"><ManualBadge>ידני</ManualBadge> <span className="text-sm">כל הסטטוסים של קורסים מתעדכנים ידנית.</span></p>
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm">כשקורס עובר מ<strong>״לא פתוח להרשמה״</strong> ל<strong>״פתוח להרשמה״</strong> → נוצרות אוטומטית <strong>שיחות בדיקה להרשמה</strong> ללידים שמשויכים לקורס עם סטטוס ״לחזור לקראת הרשמה״ + נשלח <strong>מייל התראה</strong> לאדמין</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <ManualBadge>ידני</ManualBadge>
+                  <span className="text-sm">שאר הסטטוסים (מלא, בתהליך, הסתיים) מתעדכנים ידנית</span>
+                </div>
+              </div>
             </div>
           }
         />
@@ -311,7 +323,8 @@ export default function UserGuide() {
                 <li><strong>פרטי הקורס</strong> — שם, לוז, מיקום, מחיר, תאריכים</li>
                 <li><strong>מונים</strong> — כמה רשומים וכמה לידים משויכים</li>
                 <li><strong>מעקב נוכחות</strong> — סימון נוכחות לכל משתתף לפי תאריך מפגש</li>
-                <li><strong>רשימת משתתפים</strong> — כל המשתתפים הרשומים עם טלפון ומייל</li>
+                <li><strong>רשימת משתתפים רשומים</strong> — כל המשתתפים הרשומים עם טלפון ומייל</li>
+                <li><strong>רשימת לידים</strong> — כל הלידים המשויכים לקורס (שעדיין לא רשומים) מוצגים בנפרד</li>
               </ul>
             </div>
           }
@@ -363,6 +376,7 @@ export default function UserGuide() {
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li><strong>רשימת שיחות</strong> — עם שם, תיאור, משתתף מקושר, סטטוס, ותאריך מתוזמן</li>
                 <li><strong>סינון</strong> — לפי סטטוס, משתתף, וחיפוש חופשי</li>
+                <li><strong>בחירת משתתף חכמה</strong> — Combobox עם חיפוש לפי שם, טלפון או מייל (גם ביצירת שיחה וגם בסינון)</li>
                 <li><strong>סטטיסטיקות לחיצות</strong> — ניסיון לשיחה, בבדיקה, הושלמו, ומתוזמנות — לחיצה על כל סטטיסטיקה מסננת את הרשימה</li>
                 <li><strong>מעבר על הכרטיס</strong> (hover) — מציג כרטיס מהיר של המשתתף עם טלפון, מייל וקורס</li>
                 <li><strong>יצירת משתתף חדש</strong> — ניתן ליצור משתתף חדש ישירות מתוך השיחה</li>
@@ -386,6 +400,7 @@ export default function UserGuide() {
               <StatusBadge name="בבדיקה" color="#3498DB" description="נמצאת בתהליך בדיקה, עדיין לא הושלמה." />
               <StatusBadge name="הושלם" color="#6D436D" description="השיחה/משימה טופלה בהצלחה." />
               <StatusBadge name="לא רלוונטי" color="#BDC3C7" description="לא רלוונטי יותר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
+              <StatusBadge name="לחזור לקראת הרשמה" color="#9B59B6" description="הליד מעוניין אך ממתין לפתיחת הרשמה לקורס. כשהקורס ייפתח להרשמה — תיווצר אוטומטית שיחת בדיקה." />
               <StatusBadge name="אבוד" color="#7F8C8D" description="הליד אבד, לא הצלחנו ליצור קשר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
               <div className="mt-3 space-y-1.5">
                 <div className="flex items-start gap-2">
@@ -527,6 +542,16 @@ export default function UserGuide() {
                     <li>שיחה עוברת ל<strong>״בבדיקה״</strong> → הלקוח המקושר עובר אוטומטית ל<strong>״במעקב ראשוני״</strong></li>
                     <li>שיחה עוברת ל<strong>״לא רלוונטי״</strong> → הלקוח עובר אוטומטית ל<strong>״לא רלוונטי״</strong></li>
                     <li>שיחה עוברת ל<strong>״אבוד״</strong> → הלקוח עובר אוטומטית ל<strong>״לא רלוונטי״</strong></li>
+                  </ul>
+                </div>
+
+                <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl">
+                  <p className="font-bold text-teal-800 mb-1">🎓 פתיחת הרשמה לקורס</p>
+                  <ul className="list-disc list-inside text-sm text-teal-700 space-y-1">
+                    <li>כשקורס עובר מ<strong>״לא פתוח להרשמה״</strong> ל<strong>״פתוח להרשמה״</strong>:</li>
+                    <li>המערכת מחפשת <strong>לידים משויכים</strong> לקורס שיש להם שיחות בסטטוס ״לחזור לקראת הרשמה״</li>
+                    <li>נוצרות אוטומטית <strong>שיחות בדיקה להרשמה</strong> לכל ליד רלוונטי (מתוזמנות ליום למחרת)</li>
+                    <li>נשלח <strong>מייל התראה</strong> לאדמין עם רשימת הלידים שהמערכת מצאה</li>
                   </ul>
                 </div>
 
@@ -805,6 +830,38 @@ export default function UserGuide() {
                 <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
                 <span className="text-sm">המורה תוכל לסמן נוכחות ולראות את רשימת המשתתפים הרשומים</span>
               </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ArrowRight}
+          color="#F39C12"
+          question="קורס נפתח להרשמה — מה קורה?"
+          answer={
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">1</span>
+                <span className="text-sm">בדף הקורסים → עורכת את הקורס → משנה סטטוס ל״פתוח להרשמה״</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">2</span>
+                <span className="text-sm">המערכת מחפשת אוטומטית לידים שמשויכים לקורס עם שיחות ״לחזור לקראת הרשמה״</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
+                <span className="text-sm">נוצרת אוטומטית שיחת ״בדיקה להרשמה״ לכל ליד רלוונטי (מתוזמנת ליום למחרת)</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
+                <span className="text-sm">נשלח מייל התראה לאדמין עם רשימת הלידים שנמצאו</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
+                <span className="text-sm">עוברת לדף השיחות → רואה את השיחות החדשות → מתקשרת ללידים</span>
+              </div>
+              <p className="mt-3 p-3 bg-teal-50 rounded-lg text-sm">
+                💡 <strong>טיפ:</strong> ודאי שסטטוס הלידים בשיחות הוא ״לחזור לקראת הרשמה״ לפני שמשנה את סטטוס הקורס — רק לידים כאלה יקבלו שיחת בדיקה אוטומטית.
+              </p>
             </div>
           }
         />

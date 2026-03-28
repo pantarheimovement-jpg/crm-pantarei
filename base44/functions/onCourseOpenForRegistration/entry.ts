@@ -42,6 +42,17 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${pendingTasks.length} tasks with "לחזור לקראת הרשמה" status`);
 
+    if (pendingTasks.length === 0) {
+      return Response.json({ status: 'success', message: 'No pending tasks found', course: courseName });
+    }
+
+    // Load ALL students once (instead of per-task filter which doesn't work with id)
+    const allStudents = await base44.asServiceRole.entities.Student.list();
+    const studentMap = {};
+    (allStudents || []).forEach(s => { studentMap[s.id] = s; });
+
+    console.log(`Loaded ${allStudents.length} students into map`);
+
     // Filter tasks where the linked student is interested in THIS course
     const relevantStudentIds = [];
     const relevantStudents = [];
@@ -49,10 +60,11 @@ Deno.serve(async (req) => {
     for (const task of pendingTasks) {
       if (!task.student_id) continue;
 
-      // Get the student to check their courses
-      const students = await base44.asServiceRole.entities.Student.filter({ id: task.student_id });
-      const student = students?.[0];
-      if (!student) continue;
+      const student = studentMap[task.student_id];
+      if (!student) {
+        console.log(`Student ${task.student_id} not found in map`);
+        continue;
+      }
 
       // Check if student has this course in their courses array
       const studentCourses = student.courses || [];
@@ -61,7 +73,13 @@ Deno.serve(async (req) => {
       // Also check the main course_id field
       const hasMainCourse = student.course_id === courseId;
 
-      if (hasCourse || hasMainCourse) {
+      // Also check interest_area for course name match
+      const hasInterest = student.interest_area && courseName && 
+        student.interest_area.toLowerCase().includes(courseName.toLowerCase());
+
+      console.log(`Checking student ${student.full_name}: hasCourse=${hasCourse}, hasMainCourse=${hasMainCourse}, hasInterest=${hasInterest}`);
+
+      if (hasCourse || hasMainCourse || hasInterest) {
         if (!relevantStudentIds.includes(student.id)) {
           relevantStudentIds.push(student.id);
           relevantStudents.push({ student, task });
@@ -124,6 +142,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Error:', error.message);
+    console.error('Stack:', error.stack);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

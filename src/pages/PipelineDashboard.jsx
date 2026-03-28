@@ -709,7 +709,7 @@ export default function PipelineDashboard() {
                     {tasks.filter(t => t.status === 'לחזור לקראת הרשמה').slice(0, 3).map(task => (
                       <div 
                         key={task.id}
-                        onClick={() => window.location.href = createPageUrl('Tasks') + '?highlight=' + task.id}
+                        onClick={() => window.location.href = createPageUrl('Tasks') + '?status=לחזור לקראת הרשמה&highlight=' + task.id}
                         className="p-2 bg-purple-50 rounded-lg text-xs flex justify-between items-center hover:bg-purple-100 transition-colors cursor-pointer"
                       >
                         <span className="font-medium text-purple-800">{task.student_name || task.name}</span>
@@ -740,7 +740,7 @@ export default function PipelineDashboard() {
                     {tasks.filter(t => t.name?.includes('שיחת היכרות') && t.status !== 'הושלם' && t.status !== 'אבוד').slice(0, 3).map(task => (
                       <div 
                         key={task.id}
-                        onClick={() => window.location.href = createPageUrl('Tasks') + '?highlight=' + task.id}
+                        onClick={() => window.location.href = createPageUrl('Tasks') + '?task_id=' + task.id + '&highlight=' + task.id}
                         className="p-2 bg-gray-50 rounded-lg text-xs flex justify-between items-center hover:bg-gray-100 transition-colors cursor-pointer"
                       >
                         <div className="flex-1">

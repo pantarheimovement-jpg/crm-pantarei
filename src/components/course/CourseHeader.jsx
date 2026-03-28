@@ -1,4 +1,6 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { GraduationCap, Calendar, MapPin, DollarSign, Users, Clock } from 'lucide-react';
 
 export default function CourseHeader({ course, registeredCount, leadsCount }) {
@@ -64,21 +66,21 @@ export default function CourseHeader({ course, registeredCount, leadsCount }) {
       </div>
 
       <div className="flex gap-6 mt-4 pt-4 border-t border-gray-100">
-        <div className="flex items-center gap-2">
+        <Link to={createPageUrl('Students') + '?course=' + course.id + '&status=רשום'} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <Users className="w-5 h-5 text-green-600" />
-          <span className="text-sm font-medium text-[var(--crm-text)]">
+          <span className="text-sm font-medium text-[var(--crm-text)] underline cursor-pointer">
             {registeredCount} רשומים
           </span>
           {course.max_students && (
             <span className="text-sm text-gray-400">/ {course.max_students}</span>
           )}
-        </div>
-        <div className="flex items-center gap-2">
+        </Link>
+        <Link to={createPageUrl('Students') + '?course=' + course.id} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <Users className="w-5 h-5 text-[var(--crm-primary)]" />
-          <span className="text-sm font-medium text-[var(--crm-text)]">
+          <span className="text-sm font-medium text-[var(--crm-text)] underline cursor-pointer">
             {leadsCount} לידים משויכים
           </span>
-        </div>
+        </Link>
       </div>
     </div>
   );

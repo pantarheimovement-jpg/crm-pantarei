@@ -10,6 +10,7 @@ export default function CourseView() {
   const { courseId } = useParams();
   const [course, setCourse] = useState(null);
   const [registeredStudents, setRegisteredStudents] = useState([]);
+  const [leadStudents, setLeadStudents] = useState([]);
   const [leadsCount, setLeadsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -54,6 +55,7 @@ export default function CourseView() {
     // Load students linked to this course
     const allStudents = await base44.entities.Student.list();
     let registered = [];
+    let leadStudentsList = [];
     let leads = 0;
 
     (allStudents || []).forEach(student => {
@@ -75,12 +77,14 @@ export default function CourseView() {
         if (courseStatus === 'נרשם' || courseStatus === 'רשום') {
           registered.push({ ...student, courseStatus });
         } else {
+          leadStudentsList.push({ ...student, courseStatus });
           leads++;
         }
       }
     });
 
     setRegisteredStudents(registered);
+    setLeadStudents(leadStudentsList);
     setLeadsCount(leads);
     setLoading(false);
   };
@@ -124,6 +128,13 @@ export default function CourseView() {
           students={registeredStudents}
           title="משתתפים רשומים"
         />
+
+        {leadStudents.length > 0 && (
+          <StudentsList 
+            students={leadStudents}
+            title="לידים משויכים"
+          />
+        )}
       </div>
     </div>
   );

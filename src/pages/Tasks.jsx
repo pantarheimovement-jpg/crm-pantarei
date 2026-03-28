@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import ImportModal from '../components/shared/ImportModal';
 import StudentCoursesEditor from '../components/shared/StudentCoursesEditor';
+import StudentCombobox from '../components/shared/StudentCombobox';
 import { useSystemSettings } from '../components/SystemSettingsContext';
 
 export default function Tasks() {
@@ -770,23 +771,16 @@ export default function Tasks() {
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">משתתף</label>
                     <div className="flex gap-2">
-                      <select
+                      <StudentCombobox
+                        students={students}
                         value={formData.student_id}
-                        onChange={(e) => {
-                          const selectedStudent = students.find(s => s.id === e.target.value);
-                          setFormData({
-                            ...formData, 
-                            student_id: e.target.value,
-                            student_name: selectedStudent ? selectedStudent.full_name : ''
-                          });
-                        }}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
-                      >
-                        <option value="">בחר משתתף</option>
-                        {students.map(student => (
-                          <option key={student.id} value={student.id}>{student.full_name}</option>
-                        ))}
-                      </select>
+                        onChange={(id, name) => setFormData({
+                          ...formData,
+                          student_id: id,
+                          student_name: name
+                        })}
+                        placeholder="חפש משתתף..."
+                      />
                       
                       {formData.student_id && (
                         <button

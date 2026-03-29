@@ -14,6 +14,17 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing required fields: to, subject, html_content' }, { status: 400 });
     }
 
+    // Check if newsletter sending is enabled
+    const automationSettingsList = await base44.asServiceRole.entities.AutomationSettings.list();
+    const automationSettings = automationSettingsList && automationSettingsList.length > 0 ? automationSettingsList[0] : null;
+    if (!automationSettings || !automationSettings.newsletter_sending_enabled) {
+      console.log('⚠️ Newsletter/email sending is disabled in AutomationSettings');
+      return Response.json({ 
+        error: 'מערכת הדיוור מושבתת. ניתן להפעיל בהגדרות CRM → אוטומציה',
+        disabled: true 
+      }, { status: 403 });
+    }
+
     const senderName = from_name || 'פנטהריי';
     const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY');
     let sent_via = null;

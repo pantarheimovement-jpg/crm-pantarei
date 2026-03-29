@@ -917,6 +917,30 @@ export default function CRMSettings() {
                 </div>
 
                 <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">📧 מערכת דיוור (ניוזלטרים)</h3>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-5 space-y-4 mb-6">
+                    <p className="text-sm text-gray-700">
+                      שליטה על שליחת ניוזלטרים ומיילים דרך Brevo ודרך Gmail כגיבוי. כשהמתג כבוי — לא יישלחו מיילים מהמערכת.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={automationSettings.newsletter_sending_enabled || false}
+                        onChange={(e) => setAutomationSettings({...automationSettings, newsletter_sending_enabled: e.target.checked})}
+                        className="w-5 h-5 text-blue-600"
+                      />
+                      <label className="text-sm font-medium text-gray-700">הפעל שליחת ניוזלטרים ומיילים (Brevo / Gmail)</label>
+                    </div>
+                    {!automationSettings.newsletter_sending_enabled && (
+                      <div className="flex items-center gap-2 text-orange-600 text-sm">
+                        <span>⚠️</span>
+                        <span>מערכת הדיוור מושבתת כרגע — לא יישלחו ניוזלטרים או מיילים שיווקיים</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">אינטגרציות</h3>
                   <div className="space-y-4">
                     <div>

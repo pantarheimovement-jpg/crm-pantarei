@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ImportStudents from '../components/students/ImportStudents';
 import CourseCombobox from '../components/shared/CourseCombobox';
+import StudentCoursesEditor from '../components/shared/StudentCoursesEditor';
 
 export default function Students() {
   const { systemTexts, leadStatuses, leadSources } = useSystemSettings();
@@ -931,28 +932,19 @@ export default function Students() {
                   </p>
                 </div>
 
-                {formData.courses && formData.courses.length > 0 && (
-                  <div className="md:col-span-2 bg-gray-50 p-4 rounded-lg">
-                    <label className="block text-sm font-medium mb-3">כל הקורסים והסטטוסים</label>
-                    <div className="space-y-2">
-                      {formData.courses.map((course, idx) => (
-                        <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-lg">
-                          <div className="flex-1">
-                            <div className="font-medium text-[var(--crm-text)]">{course.course_name}</div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {course.registration_date && `רישום: ${new Date(course.registration_date).toLocaleDateString('he-IL')}`}
-                              {course.trial_date && ` | ניסיון: ${new Date(course.trial_date).toLocaleDateString('he-IL')}`}
-                            </div>
-                          </div>
-                          <span
-                            className="px-3 py-1 rounded-full text-xs font-medium text-white"
-                            style={{ backgroundColor: getStatusColor(course.status) }}
-                          >
-                            {course.status}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                {editingStudent && (
+                  <div className="md:col-span-2">
+                    <StudentCoursesEditor
+                      student={editingStudent}
+                      onUpdated={async () => {
+                        await loadStudents();
+                        const updated = (await base44.entities.Student.list('-created_date')).find(s => s.id === editingStudent.id);
+                        if (updated) {
+                          setEditingStudent(updated);
+                          setFormData(prev => ({ ...prev, courses: updated.courses || [] }));
+                        }
+                      }}
+                    />
                   </div>
                 )}
                 <div>

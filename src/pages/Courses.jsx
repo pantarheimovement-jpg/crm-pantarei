@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
-import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar, MapPin, DollarSign, Grid, List, Download, ExternalLink } from 'lucide-react';
+import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar, MapPin, DollarSign, Grid, List, ExternalLink } from 'lucide-react';
+import ExportButtons from '../components/shared/ExportButtons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -191,23 +192,12 @@ export default function Courses() {
     course.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const exportToCSV = () => {
-    const headers = ['שם הקורס', 'סוג', 'סטטוס', 'לוז', 'מיקום', 'מחיר', 'רשומים', 'לידים', 'מקסימום', 'אימייל מורה'];
-    const rows = filteredCourses.map(c => [
-      c.name, c.type, c.status, c.schedule || '', c.location || '',
-      c.price || '', c.current_students || 0, c.leads_count || 0,
-      c.max_students || '', c.teacher_email || ''
-    ]);
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `courses_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-  };
+  const exportHeaders = ['שם הקורס', 'סוג', 'סטטוס', 'לוז', 'מיקום', 'מחיר', 'רשומים', 'לידים', 'מקסימום', 'אימייל מורה'];
+  const exportRows = filteredCourses.map(c => [
+    c.name, c.type, c.status, c.schedule || '', c.location || '',
+    c.price || '', c.current_students || 0, c.leads_count || 0,
+    c.max_students || '', c.teacher_email || ''
+  ]);
 
   const getStatusColor = (status) => {
     const match = (courseStatuses || []).find(s => s.name === status);
@@ -258,15 +248,12 @@ export default function Courses() {
                 מחק {selectedIds.length}
               </Button>
             )}
-            <Button
-              onClick={exportToCSV}
-              variant="outline"
-              className="border-[var(--crm-primary)] text-[var(--crm-primary)] hover:bg-[var(--crm-primary)]/10"
-              style={{ borderRadius: 'var(--crm-button-radius)' }}
-            >
-              <Download className="w-5 h-5 mr-2" />
-              ייצוא CSV
-            </Button>
+            <ExportButtons
+              headers={exportHeaders}
+              rows={exportRows}
+              fileName="courses"
+              sheetTitle="קורסים"
+            />
             <Button
               onClick={() => openModal()}
               className="bg-[var(--crm-action)] text-[var(--crm-text)] hover:bg-[var(--crm-action)]/90"

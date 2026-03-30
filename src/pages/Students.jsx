@@ -4,6 +4,7 @@ import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
 import { Users, Plus, Search, Phone, Mail, Tag, Calendar, Trash2, Edit, X, Loader2, Grid, List, Upload } from 'lucide-react';
+import ExportButtons from '../components/shared/ExportButtons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ImportStudents from '../components/students/ImportStudents';
@@ -427,7 +428,7 @@ export default function Students() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {selectedIds.length > 0 && (
               <Button
                 onClick={handleBulkDelete}
@@ -439,6 +440,18 @@ export default function Students() {
                 מחק {selectedIds.length}
               </Button>
             )}
+            <ExportButtons
+              headers={['שם', 'טלפון', 'מייל', 'סטטוס', 'קורס', 'מקור ליד', 'תאריך כניסה', 'תאריך רישום', 'תשלום', 'הערות']}
+              rows={filteredStudents.map(s => [
+                s.full_name || '', s.phone || '', s.email || '', s.status || '',
+                s.course_name || (s.courses || []).map(c => c.course_name).join(', ') || '',
+                s.lead_source || '', s.lead_entry_date || '', s.registration_date || '',
+                s.payment_number && s.total_payments ? `${s.payment_number}/${s.total_payments}` : '',
+                s.notes || ''
+              ])}
+              fileName="students"
+              sheetTitle="משתתפים"
+            />
             <Button
               onClick={() => setShowImportModal(true)}
               variant="outline"

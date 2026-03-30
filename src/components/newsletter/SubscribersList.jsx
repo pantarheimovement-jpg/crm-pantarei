@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Search, Plus, Trash2, Edit3, Loader2, X, CheckCircle } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
+import ExportButtons from '../shared/ExportButtons';
 
 const SUBSCRIBERS_PER_GROUP = 280;
 
@@ -166,13 +167,23 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
       )}
 
       {/* Actions row */}
-      <div className="flex justify-between items-center">
-        <div className="flex gap-2">
+      <div className="flex justify-between items-center flex-wrap gap-2">
+        <div className="flex gap-2 flex-wrap">
           {selectedIds.length > 0 && (
             <button onClick={handleBulkDelete} className="border-red-500 text-red-500 bg-white border px-4 py-2 font-semibold flex items-center gap-2" style={{ borderRadius: 'var(--crm-button-radius)' }}>
               <Trash2 className="w-5 h-5" />{t('מחק', 'Delete')} {selectedIds.length}
             </button>
           )}
+          <ExportButtons
+            headers={['מייל', 'וואטסאפ', 'שם', 'תפקיד', 'חברה', 'קבוצה', 'סטטוס', 'הסכמה', 'הערות']}
+            rows={filteredSubscribers.map(s => [
+              s.email || '', s.whatsapp || '', s.name || '', s.job_title || '',
+              s.company || '', s.group || '', s.subscribed ? 'פעיל' : 'לא פעיל',
+              s.marketing_consent ? 'כן' : 'לא', s.notes || ''
+            ])}
+            fileName="subscribers"
+            sheetTitle="מנויים"
+          />
           <button onClick={() => setShowAddSubscriber(true)} className="bg-[var(--crm-action)] text-[var(--crm-text)] px-4 py-2 font-semibold flex items-center gap-2" style={{ borderRadius: 'var(--crm-button-radius)' }}>
             <Plus className="w-5 h-5" />{t('הוסף מנוי', 'Add Subscriber')}
           </button>

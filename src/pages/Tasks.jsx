@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { 
   CheckSquare, Plus, Search, Edit2, Trash2, Calendar,
-  X, Loader2, CheckCircle, Circle, Download, AlertCircle, Upload, ExternalLink, Check, Phone, Mail, Tag, XCircle
+  X, Loader2, CheckCircle, Circle, AlertCircle, Upload, ExternalLink, Check, Phone, Mail, Tag, XCircle
 } from 'lucide-react';
+import ExportButtons from '../components/shared/ExportButtons';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import ImportModal from '../components/shared/ImportModal';
@@ -335,30 +336,6 @@ export default function Tasks() {
     loadData();
   };
 
-  const exportToCSV = () => {
-    const headers = ['שם המשימה', 'תיאור', 'משתתף', 'סטטוס', 'תאריך מתוזמן'];
-    const rows = filteredTasks.map(task => [
-      task.name,
-      task.description || '',
-      task.student_name || '',
-      task.status,
-      task.scheduled_date || ''
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `calls_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-  };
-
-
-
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = !searchTerm ||
       task.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -369,6 +346,12 @@ export default function Tasks() {
 
     return matchesSearch && matchesStatus;
   });
+
+  const taskExportHeaders = ['שם המשימה', 'תיאור', 'משתתף', 'סטטוס', 'תאריך מתוזמן'];
+  const taskExportRows = filteredTasks.map(task => [
+    task.name, task.description || '', task.student_name || '',
+    task.status, task.scheduled_date || ''
+  ]);
 
   const stats = {
     tryCall: tasks.filter(t => t.status === 'ניסיון לשיחה').length,
@@ -407,13 +390,12 @@ export default function Tasks() {
                 <Upload className="w-4 h-4" />
                 ייבוא
               </button>
-              <button
-                onClick={exportToCSV}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                ייצא CSV
-              </button>
+              <ExportButtons
+                headers={taskExportHeaders}
+                rows={taskExportRows}
+                fileName="calls"
+                sheetTitle="שיחות ופגישות"
+              />
               <button
                 onClick={() => setShowAddModal(true)}
                 className="px-4 py-2 text-sm font-medium text-white bg-[#005e6c] rounded-lg hover:bg-[#004a54] flex items-center gap-2"

@@ -212,22 +212,27 @@ ${ctaButtonsHtml}
         const batchRecipients = recipients.slice(batchIndex * BATCH_SIZE, Math.min((batchIndex + 1) * BATCH_SIZE, recipients.length));
 
         if (sendChannel === 'email' || sendChannel === 'both') {
-          const emailRecipients = batchRecipients.filter(r => r.email);
-          for (const recipient of emailRecipients) {
-            const personalizedHtml = finalEmailContent
+          const emailRecipients = batchRecipients.filter(r => r.email).map(recipient => ({
+            email: recipient.email,
+            name: recipient.name || '',
+            html_content: finalEmailContent
               .replace(/\{\{unsubscribe_link\}\}/g, `${window.location.origin}/Unsubscribe?token=${recipient.unsubscribe_token}`)
-              .replace(/\{\{name\}\}/g, recipient.name || '');
+              .replace(/\{\{name\}\}/g, recipient.name || '')
+          }));
+
+          if (emailRecipients.length > 0) {
             try {
-              await base44.functions.invoke('sendEmailGmail', {
-                to: recipient.email,
+              const result = await base44.functions.invoke('sendNewsletterMailerLite', {
+                recipients: emailRecipients,
                 subject,
-                html_content: personalizedHtml,
+                html_content: finalEmailContent,
                 from_name: 'פנטהריי'
               });
-              emailSuccessCount++;
+              emailSuccessCount += result.data?.success_count || 0;
+              emailErrorCount += result.data?.failed_count || 0;
             } catch (error) {
-              console.error('Gmail send error for', recipient.email, error);
-              emailErrorCount++;
+              console.error('Newsletter batch send error:', error);
+              emailErrorCount += emailRecipients.length;
             }
           }
         }
@@ -290,19 +295,18 @@ ${ctaButtonsHtml}
       }));
 
       let resendSuccess = 0, resendFailed = 0;
-      for (const recipient of emailRecipients) {
-        try {
-          await base44.functions.invoke('sendEmailGmail', {
-            to: recipient.email,
-            subject: resendSubject,
-            html_content: recipient.html_content || resendContent,
-            from_name: 'פנטהריי'
-          });
-          resendSuccess++;
-        } catch (error) {
-          console.error('Gmail resend error for', recipient.email, error);
-          resendFailed++;
-        }
+      try {
+        const result = await base44.functions.invoke('sendNewsletterMailerLite', {
+          recipients: emailRecipients,
+          subject: resendSubject,
+          html_content: resendContent,
+          from_name: 'פנטהריי'
+        });
+        resendSuccess = result.data?.success_count || 0;
+        resendFailed = result.data?.failed_count || 0;
+      } catch (error) {
+        console.error('Resend batch error:', error);
+        resendFailed = emailRecipients.length;
       }
 
       await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent, group: resendGroup, recipients_count: resendSuccess, status: resendFailed === 0 ? 'נשלח בהצלחה' : `נשלח חלקית (${resendFailed} שגיאות)`, sent_date: new Date().toISOString(), sent_by: 'Gmail (שליחה מחדש)' });

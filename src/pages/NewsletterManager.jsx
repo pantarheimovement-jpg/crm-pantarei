@@ -218,7 +218,7 @@ ${ctaButtonsHtml}
               .replace(/\{\{unsubscribe_link\}\}/g, `${window.location.origin}/Unsubscribe?token=${recipient.unsubscribe_token}`)
               .replace(/\{\{name\}\}/g, recipient.name || '');
             try {
-              await base44.functions.invoke('sendEmailGmail', {
+              await base44.functions.invoke('sendEmailSES', {
                 to: recipient.email,
                 subject,
                 html_content: personalizedHtml,
@@ -292,7 +292,7 @@ ${ctaButtonsHtml}
       let resendSuccess = 0, resendFailed = 0;
       for (const recipient of emailRecipients) {
         try {
-          await base44.functions.invoke('sendEmailGmail', {
+          await base44.functions.invoke('sendEmailSES', {
             to: recipient.email,
             subject: resendSubject,
             html_content: recipient.html_content || resendContent,

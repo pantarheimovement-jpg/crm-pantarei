@@ -18,7 +18,7 @@ export default function TestEmailModal({ htmlContent, subject, onClose }) {
 
     setSending(true);
     try {
-      await base44.functions.invoke('sendEmailGmail', {
+      await base44.functions.invoke('sendEmailSES', {
         to: email.trim(),
         subject: subject || 'מייל ניסיון מ-Pantarhei CRM',
         html_content: htmlContent,

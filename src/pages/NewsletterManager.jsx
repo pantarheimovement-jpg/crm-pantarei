@@ -213,20 +213,22 @@ ${ctaButtonsHtml}
 
         if (sendChannel === 'email' || sendChannel === 'both') {
           const emailRecipients = batchRecipients.filter(r => r.email);
+          let lastSentVia = 'SES';
           for (const recipient of emailRecipients) {
             const personalizedHtml = finalEmailContent
               .replace(/\{\{unsubscribe_link\}\}/g, `${window.location.origin}/Unsubscribe?token=${recipient.unsubscribe_token}`)
               .replace(/\{\{name\}\}/g, recipient.name || '');
             try {
-              await base44.functions.invoke('sendEmailSES', {
+              const res = await base44.functions.invoke('sendEmailSES', {
                 to: recipient.email,
                 subject,
                 html_content: personalizedHtml,
                 from_name: 'פנטהריי'
               });
+              if (res.data?.sent_via) lastSentVia = res.data.sent_via === 'gmail' ? 'Gmail' : 'SES';
               emailSuccessCount++;
             } catch (error) {
-              console.error('Gmail send error for', recipient.email, error);
+              console.error('Email send error for', recipient.email, error);
               emailErrorCount++;
             }
           }
@@ -247,13 +249,14 @@ ${ctaButtonsHtml}
       }
 
       const totalLogRecipients = (sendChannel !== 'whatsapp' ? emailSuccessCount : 0) + (sendChannel !== 'email' ? whatsappSuccessCount : 0);
+      const emailProvider = typeof lastSentVia !== 'undefined' ? lastSentVia : 'SES';
       await base44.entities.NewsletterLogs.create({
         subject: subject || t('הודעת וואטסאפ', 'WhatsApp Message'),
         content: finalEmailContent || whatsappMessage,
         group: selectedGroup, recipients_count: totalLogRecipients,
         status: (emailErrorCount + whatsappErrorCount) > 0 ? `נשלח חלקית (${emailErrorCount + whatsappErrorCount} שגיאות)` : 'נשלח בהצלחה',
         sent_date: new Date().toISOString(),
-        sent_by: sendChannel === 'both' ? 'Gmail + WhatsApp' : sendChannel === 'email' ? 'Gmail' : 'WhatsApp'
+        sent_by: sendChannel === 'both' ? `${emailProvider} + WhatsApp` : sendChannel === 'email' ? emailProvider : 'WhatsApp'
       });
 
       setSendStatus('success');
@@ -289,23 +292,24 @@ ${ctaButtonsHtml}
           .replace(/\{\{name\}\}/g, recipient.name || '')
       }));
 
-      let resendSuccess = 0, resendFailed = 0;
+      let resendSuccess = 0, resendFailed = 0, resendVia = 'SES';
       for (const recipient of emailRecipients) {
         try {
-          await base44.functions.invoke('sendEmailSES', {
+          const res = await base44.functions.invoke('sendEmailSES', {
             to: recipient.email,
             subject: resendSubject,
             html_content: recipient.html_content || resendContent,
             from_name: 'פנטהריי'
           });
+          if (res.data?.sent_via) resendVia = res.data.sent_via === 'gmail' ? 'Gmail' : 'SES';
           resendSuccess++;
         } catch (error) {
-          console.error('Gmail resend error for', recipient.email, error);
+          console.error('Email resend error for', recipient.email, error);
           resendFailed++;
         }
       }
 
-      await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent, group: resendGroup, recipients_count: resendSuccess, status: resendFailed === 0 ? 'נשלח בהצלחה' : `נשלח חלקית (${resendFailed} שגיאות)`, sent_date: new Date().toISOString(), sent_by: 'Gmail (שליחה מחדש)' });
+      await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent, group: resendGroup, recipients_count: resendSuccess, status: resendFailed === 0 ? 'נשלח בהצלחה' : `נשלח חלקית (${resendFailed} שגיאות)`, sent_date: new Date().toISOString(), sent_by: `${resendVia} (שליחה מחדש)` });
       alert(`הניוזלטר נשלח מחדש בהצלחה ל-${resendSuccess} מנויים!`);
       setShowResendModal(false); setResendData(null); setResendSubject(''); setResendGroup('קבוצה 1'); setResendContent('');
       loadLogs();

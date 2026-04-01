@@ -38,8 +38,9 @@ Deno.serve(async (req) => {
         });
 
         const command = new SendEmailCommand({
-          Source: `${senderName} <pantarhei.movement@gmail.com>`,
+          Source: `${senderName} <newsletter@pantarhei-studio.co.il>`,
           Destination: { ToAddresses: [to] },
+          ReplyToAddresses: ['pantarhei.movement@gmail.com'],
           Message: {
             Subject: { Data: subject, Charset: 'UTF-8' },
             Body: {

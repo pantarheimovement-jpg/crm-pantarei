@@ -458,7 +458,11 @@ ${ctaButtonsHtml}
                     <div className="flex items-center justify-between mb-2">
                       <label className="block text-sm font-medium text-gray-700">{t('נושא האימייל', 'Email Subject')}</label>
                       <AiSubjectSuggestions
-                        content={designMode === 'free' ? content : (designMode === 'html' ? htmlContent : '')}
+                        content={
+                          designMode === 'template'
+                            ? (emailTemplates.find(tmpl => tmpl.id === selectedTemplate)?.body || '')
+                            : designMode === 'free' ? content : htmlContent
+                        }
                         onSelect={(suggestion) => setSubject(suggestion)}
                       />
                     </div>

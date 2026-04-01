@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
           credentials: { accessKeyId, secretAccessKey },
         });
 
-        const command = new SendEmailCommand({
+        const commandParams = {
           Source: `${senderName} <newsletter@pantarhei-studio.co.il>`,
           Destination: { ToAddresses: [to] },
           ReplyToAddresses: ['pantarhei.movement@gmail.com'],
@@ -47,7 +47,15 @@ Deno.serve(async (req) => {
               Html: { Data: html_content, Charset: 'UTF-8' },
             },
           },
-        });
+        };
+
+        // Add Configuration Set for open/click tracking if configured
+        const configSetName = Deno.env.get('SES_CONFIGURATION_SET');
+        if (configSetName) {
+          commandParams.ConfigurationSetName = configSetName;
+        }
+
+        const command = new SendEmailCommand(commandParams);
 
         await client.send(command);
         console.log(`Email sent via Amazon SES to ${to}`);

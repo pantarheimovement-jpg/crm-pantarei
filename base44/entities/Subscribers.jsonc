@@ -1,0 +1,66 @@
+{
+  "name": "Subscribers",
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "\u05db\u05ea\u05d5\u05d1\u05ea \u05d4\u05de\u05d9\u05d9\u05dc \u05e9\u05dc \u05d4\u05de\u05e0\u05d5\u05d9/\u05d4"
+    },
+    "whatsapp": {
+      "type": "string",
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4 (\u05e4\u05d5\u05e8\u05de\u05d8 \u05d1\u05d9\u05e0\u05dc\u05d0\u05d5\u05de\u05d9: 972501234567)"
+    },
+    "name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05de\u05e0\u05d5\u05d9/\u05d4"
+    },
+    "job_title": {
+      "type": "string",
+      "description": "\u05ea\u05e4\u05e7\u05d9\u05d3 \u05d4\u05de\u05e0\u05d5\u05d9/\u05d4"
+    },
+    "company": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05d7\u05d1\u05e8\u05d4/\u05d0\u05e8\u05d2\u05d5\u05df"
+    },
+    "notes": {
+      "type": "string",
+      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05e0\u05d5\u05e1\u05e4\u05d5\u05ea"
+    },
+    "group": {
+      "type": "string",
+      "description": "\u05e7\u05d1\u05d5\u05e6\u05ea \u05d4\u05de\u05e0\u05d5\u05d9/\u05d4 \u05dc\u05e6\u05d5\u05e8\u05da \u05e4\u05d9\u05dc\u05d5\u05d7"
+    },
+    "subscribed": {
+      "type": "boolean",
+      "default": true,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05de\u05e0\u05d5\u05d9/\u05d4 \u05e4\u05e2\u05d9\u05dc/\u05d4 \u05d1\u05e8\u05e9\u05d9\u05de\u05ea \u05d4\u05ea\u05e4\u05d5\u05e6\u05d4"
+    },
+    "unsubscribe_token": {
+      "type": "string",
+      "description": "\u05d8\u05d5\u05e7\u05df \u05d9\u05d9\u05d7\u05d5\u05d3\u05d9 \u05dc\u05d4\u05e1\u05e8\u05d4 \u05de\u05d4\u05e8\u05e9\u05d9\u05de\u05d4"
+    },
+    "source": {
+      "type": "string",
+      "description": "\u05de\u05e7\u05d5\u05e8 \u05d4\u05d4\u05e8\u05e9\u05de\u05d4 (\u05d9\u05d9\u05d1\u05d5\u05d0, \u05d8\u05d5\u05e4\u05e1, CRM \u05d5\u05db\u05d5')"
+    },
+    "marketing_consent": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d0\u05d5\u05e9\u05e8 \u05de\u05d3\u05d9\u05e0\u05d9\u05d5\u05ea \u05d4\u05e4\u05e8\u05d8\u05d9\u05d5\u05ea \u05d5\u05d4\u05e1\u05db\u05de\u05d4 \u05dc\u05e7\u05d1\u05dc \u05e2\u05d3\u05db\u05d5\u05e0\u05d9\u05dd \u05d1\u05de\u05d9\u05d9\u05dc \u05d5\u05d1\u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4"
+    },
+    "last_opened_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05e4\u05ea\u05d9\u05d7\u05ea \u05de\u05d9\u05d9\u05dc \u05d0\u05d7\u05e8\u05d5\u05e0\u05d4"
+    },
+    "bounce_count": {
+      "type": "number",
+      "default": 0,
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05e9\u05d2\u05d9\u05d0\u05d5\u05ea bounce"
+    }
+  },
+  "required": [
+    "email"
+  ]
+}

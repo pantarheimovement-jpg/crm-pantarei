@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Search, Plus, Trash2, Edit3, Loader2, X, CheckCircle } from 'lucide-react';
+import { Search, Plus, Trash2, Edit3, Loader2, X, CheckCircle, MessageCircle } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import ExportButtons from '../shared/ExportButtons';
 
@@ -315,7 +315,22 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
                     <input type="checkbox" checked={selectedIds.includes(sub.id)} onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, sub.id] : selectedIds.filter(id => id !== sub.id))} className="w-5 h-5" />
                   </td>
                   <td className="px-4 py-4 text-sm font-medium" style={{ wordBreak: 'break-all' }}>{sub.email || '-'}</td>
-                  <td className="px-4 py-4 text-sm" style={{ wordBreak: 'break-all' }}>{sub.whatsapp || '-'}</td>
+                  <td className="px-4 py-4 text-sm" style={{ wordBreak: 'break-all' }}>
+                    {sub.whatsapp ? (
+                      <div className="flex items-center gap-2">
+                        <span>{sub.whatsapp}</span>
+                        <a
+                          href={`https://wa.me/${sub.whatsapp.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-green-600 hover:text-green-700 p-1 hover:bg-green-50 rounded-lg"
+                          title="WhatsApp"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </a>
+                      </div>
+                    ) : '-'}
+                  </td>
                   <td className="px-4 py-4 text-sm font-medium">{sub.name || '-'}</td>
                   <td className="px-4 py-4 text-sm text-gray-500">{sub.job_title || '-'}</td>
                   <td className="px-4 py-4 text-sm text-gray-500">{sub.company || '-'}</td>

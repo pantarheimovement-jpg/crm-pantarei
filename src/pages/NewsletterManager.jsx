@@ -8,6 +8,7 @@ import NewsletterLogs from '../components/newsletter/NewsletterLogs';
 import ImportSubscribers from '../components/newsletter/ImportSubscribers';
 import TestEmailModal from '../components/newsletter/TestEmailModal';
 import SubscribersList from '../components/newsletter/SubscribersList';
+import AiSubjectSuggestions from '../components/newsletter/AiSubjectSuggestions';
 
 const SUBSCRIBERS_PER_GROUP = 280;
 
@@ -454,7 +455,13 @@ ${ctaButtonsHtml}
 
                 {(sendChannel === 'email' || sendChannel === 'both') && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('נושא האימייל', 'Email Subject')}</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">{t('נושא האימייל', 'Email Subject')}</label>
+                      <AiSubjectSuggestions
+                        content={designMode === 'free' ? content : (designMode === 'html' ? htmlContent : '')}
+                        onSelect={(suggestion) => setSubject(suggestion)}
+                      />
+                    </div>
                     <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t('לדוגמה: עדכון חודשי', 'Example: Monthly Update')} className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
                   </div>
                 )}

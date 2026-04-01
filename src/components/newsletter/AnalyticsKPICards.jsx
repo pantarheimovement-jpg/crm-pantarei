@@ -15,7 +15,7 @@ export default function AnalyticsKPICards({ events }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {cards.map(({ key, label, icon: Icon, color }) => (
-        <div key={key} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+        <div key={key} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-md transition-shadow" style={{ borderRadius: 'var(--crm-border-radius)' }}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">{label}</p>

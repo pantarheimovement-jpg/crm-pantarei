@@ -5,7 +5,7 @@ import { useLanguage } from '../LanguageContext';
 import { useSiteSettings } from '../SiteSettingsContext';
 import { useSystemSettings } from '../SystemSettingsContext';
 import { base44 } from '@/api/base44Client';
-import { Menu, X, Globe, Settings, LogIn, LogOut, MoreVertical, LayoutDashboard, GraduationCap, Users, MessageSquare, CheckSquare, Mail } from 'lucide-react';
+import { Menu, X, Globe, Settings, LogIn, LogOut, MoreVertical, LayoutDashboard, GraduationCap, Users, MessageSquare, CheckSquare, Mail, BarChart3 } from 'lucide-react';
 
 // Hook לניהול משתמש
 function useUser() {
@@ -163,6 +163,14 @@ export default function Header() {
                 {isDesktopMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-100 py-1 z-50">
                     <Link
+                      to={createPageUrl('NewsletterAnalytics')}
+                      className="flex items-center gap-3 px-4 py-2 text-sm font-medium hover:text-[var(--primary-color)] hover:bg-gray-50 transition-colors duration-200"
+                      onClick={() => setIsDesktopMenuOpen(false)}
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                      {language === 'he' ? 'סטטיסטיקות ניוזלטר' : 'Newsletter Analytics'}
+                    </Link>
+                    <Link
                       to={createPageUrl('CRMSettings')}
                       className="flex items-center gap-3 px-4 py-2 text-sm font-medium hover:text-[var(--primary-color)] hover:bg-gray-50 transition-colors duration-200"
                       onClick={() => setIsDesktopMenuOpen(false)}
@@ -276,6 +284,14 @@ export default function Header() {
               })}
 
               <div className="border-t border-gray-100 pt-2 mt-2">
+                <Link
+                  to={createPageUrl('NewsletterAnalytics')}
+                  className="flex items-center gap-3 px-3 py-3 text-base font-medium text-[var(--text-color)] hover:text-[var(--primary-color)] hover:bg-gray-50 rounded-lg transition-colors duration-200 active:bg-gray-100"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <BarChart3 className="w-5 h-5 flex-shrink-0" />
+                  <span>{language === 'he' ? 'סטטיסטיקות ניוזלטר' : 'Newsletter Analytics'}</span>
+                </Link>
                 <Link
                   to={createPageUrl('CRMSettings')}
                   className="flex items-center gap-3 px-3 py-3 text-base font-medium text-[var(--text-color)] hover:text-[var(--primary-color)] hover:bg-gray-50 rounded-lg transition-colors duration-200 active:bg-gray-100"

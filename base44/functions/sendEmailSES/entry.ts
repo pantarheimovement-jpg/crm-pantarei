@@ -50,10 +50,7 @@ Deno.serve(async (req) => {
         };
 
         // Add Configuration Set for open/click tracking if configured
-        const configSetName = Deno.env.get('SES_CONFIGURATION_SET');
-        if (configSetName) {
-          commandParams.ConfigurationSetName = configSetName;
-        }
+        commandParams.ConfigurationSetName = Deno.env.get('SES_CONFIGURATION_SET') || 'pantarhei-tracking';
 
         const command = new SendEmailCommand(commandParams);
 

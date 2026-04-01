@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../components/LanguageContext';
 import { base44 } from '@/api/base44Client';
 import { useSiteSettings } from '../components/SiteSettingsContext';
-import { Mail, Upload, Users, Send, Loader2, CheckCircle, XCircle, Calendar, Plus, FileCode, Layout, Edit3, MessageCircle } from 'lucide-react';
+import { Mail, Upload, Users, Send, Loader2, CheckCircle, XCircle, Calendar, Plus, FileCode, Layout, Edit3, MessageCircle, BarChart3 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import RichTextEditor from '../components/admin/RichTextEditor';
 import NewsletterLogs from '../components/newsletter/NewsletterLogs';
 import ImportSubscribers from '../components/newsletter/ImportSubscribers';
@@ -336,6 +338,14 @@ ${ctaButtonsHtml}
               </p>
             </div>
           </div>
+          <Link
+            to={createPageUrl('NewsletterAnalytics')}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-[var(--crm-primary)] border-2 border-[var(--crm-primary)] hover:bg-[var(--crm-primary)]/10 transition-colors"
+            style={{ borderRadius: 'var(--crm-button-radius)' }}
+          >
+            <BarChart3 className="w-4 h-4" />
+            {t('📊 סטטיסטיקות', '📊 Analytics')}
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

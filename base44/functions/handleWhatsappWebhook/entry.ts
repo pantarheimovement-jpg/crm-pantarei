@@ -210,6 +210,21 @@ Deno.serve(async (req) => {
       return Response.json(result);
     }
 
+    // =============================================
+    // CHECK IF THIS IS A KNOWN CONTACT (SKIP)
+    // =============================================
+    const knownContacts = await base44.asServiceRole.entities.WhatsappKnownContacts.list();
+    const senderVariants = getPhoneVariants(phoneNumber);
+    const isKnownContact = (knownContacts || []).some(contact => {
+      const contactVariants = getPhoneVariants(contact.phone);
+      return senderVariants.some(v => contactVariants.includes(v));
+    });
+
+    if (isKnownContact) {
+      console.log(`⏭️ Known contact (${phoneNumber}) - skipping lead check`);
+      return Response.json({ status: 'ignored', reason: 'Known contact - not a lead' });
+    }
+
     // --- STEP 1: Load course names for intent analysis ---
     const courses = await base44.asServiceRole.entities.Course.list();
     const courseNames = (courses || []).map(c => c.name).filter(Boolean);

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Settings, Save, Loader2, Palette, Type, Image as ImageIcon, FileText, Tag, Zap, Plus, Trash2, GripVertical, MessageCircle, Copy, Check, Mail, BookOpen } from 'lucide-react';
+import { Settings, Save, Loader2, Palette, Type, Image as ImageIcon, FileText, Tag, Zap, Plus, Trash2, GripVertical, MessageCircle, Copy, Check, Mail, BookOpen, Phone } from 'lucide-react';
 import EmailTemplateEditor from '../components/settings/EmailTemplateEditor';
 import UserGuide from '../components/settings/UserGuide';
 import StatusManager from '../components/settings/StatusManager';
 import SourceManager from '../components/settings/SourceManager';
+import WhatsappKnownContactsManager from '../components/settings/WhatsappKnownContactsManager';
 
 export default function CRMSettings() {
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('crmSettings_tab') || 'crm-general');
@@ -277,6 +278,7 @@ export default function CRMSettings() {
                 { key: 'labels', icon: Tag, label: 'תוויות ושדות' },
                 { key: 'statuses', icon: GripVertical, label: 'סטטוסים ושלבים' },
                 { key: 'automation', icon: Zap, label: 'אוטומציה' },
+                { key: 'whatsapp-contacts', icon: Phone, label: 'אנשי קשר וואטסאפ' },
                 { key: 'email-templates', icon: Mail, label: 'תבניות מייל' },
                 { key: 'user-guide', icon: BookOpen, label: 'מדריך למשתמשת' },
               ].map(({ key, icon: Icon, label }) => (
@@ -991,6 +993,10 @@ export default function CRMSettings() {
               </div>
             )}
 
+
+            {activeTab === 'whatsapp-contacts' && (
+              <WhatsappKnownContactsManager />
+            )}
 
             <div style={{ display: activeTab === 'email-templates' ? 'block' : 'none' }}>
               <EmailTemplateEditor />

@@ -24,7 +24,7 @@ export default function NewsletterManager() {
 
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState('קבוצה 1');
+  const [selectedGroup, setSelectedGroup] = useState('');
   const [sending, setSending] = useState(false);
   const [sendStatus, setSendStatus] = useState(null);
   const [sendChannel, setSendChannel] = useState('email');
@@ -99,12 +99,19 @@ export default function NewsletterManager() {
     }, 0)
   };
 
-  const activeGroups = [...new Set(subscribers.map(s => s.group).filter(Boolean))].sort((a, b) => {
+  const activeGroups = ['כל הרשימה', ...[...new Set(subscribers.map(s => s.group).filter(Boolean))].sort((a, b) => {
     const numA = parseInt(a.replace('קבוצה ', ''));
     const numB = parseInt(b.replace('קבוצה ', ''));
     if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
     return a.localeCompare(b, language);
-  });
+  })];
+
+  // Set default group when activeGroups loads
+  useEffect(() => {
+    if (!selectedGroup && activeGroups.length > 0) {
+      setSelectedGroup(activeGroups[0]);
+    }
+  }, [activeGroups.length]);
 
   const addCtaButton = () => setCtaButtons([...ctaButtons, { text: '', link: '', imageUrl: '', style: 'primary' }]);
   const removeCtaButton = (index) => setCtaButtons(ctaButtons.filter((_, i) => i !== index));
@@ -314,7 +321,7 @@ ${ctaButtonsHtml}
 
       await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent, group: resendGroup, recipients_count: resendSuccess, status: resendFailed === 0 ? 'נשלח בהצלחה' : `נשלח חלקית (${resendFailed} שגיאות)`, sent_date: new Date().toISOString(), sent_by: `${resendVia} (שליחה מחדש)` });
       alert(`הניוזלטר נשלח מחדש בהצלחה ל-${resendSuccess} מנויים!`);
-      setShowResendModal(false); setResendData(null); setResendSubject(''); setResendGroup('קבוצה 1'); setResendContent('');
+      setShowResendModal(false); setResendData(null); setResendSubject(''); setResendGroup(activeGroups[0] || 'כל הרשימה'); setResendContent('');
       loadLogs();
     } catch (error) {
       alert(t('שגיאה בשליחה מחדש', 'Error resending'));

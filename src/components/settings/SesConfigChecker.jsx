@@ -13,9 +13,18 @@ export default function SesConfigChecker() {
     setResult(null);
     try {
       const res = await base44.functions.invoke('checkSesConfig', {});
-      setResult(res.data);
+      if (res.data?.error === 'missing_permissions') {
+        setResult(res.data);
+      } else {
+        setResult(res.data);
+      }
     } catch (err) {
-      setError(err.response?.data?.error || err.message);
+      const errData = err.response?.data;
+      if (errData?.error === 'missing_permissions') {
+        setResult(errData);
+      } else {
+        setError(errData?.error || err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -44,6 +53,19 @@ export default function SesConfigChecker() {
           <div>
             <p className="font-medium text-red-800">שגיאה</p>
             <p className="text-sm text-red-600">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {result?.error === 'missing_permissions' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+            <div>
+              <p className="font-medium text-yellow-800">{result.message}</p>
+              <p className="text-sm text-yellow-700 mt-2">כדי לאפשר בדיקה, הוסיפי את ההרשאה הבאה ל-IAM User ב-AWS Console:</p>
+              <pre className="mt-2 bg-white border border-yellow-300 rounded-lg p-3 text-xs overflow-auto" dir="ltr">{result.suggestion}</pre>
+            </div>
           </div>
         </div>
       )}

@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
     const region = Deno.env.get('AWS_REGION') || 'eu-north-1';
     const configSetName = Deno.env.get('SES_CONFIGURATION_SET') || 'pantarhei-tracking';
 
-    console.log(`checkSesConfig: region=${region}, configSet=${configSetName}, hasKey=${!!accessKeyId}, hasSecret=${!!secretAccessKey}`);
+    console.log(`checkSesConfig: region=${region}, configSet=${configSetName}, keyPrefix=${accessKeyId?.substring(0, 8)}...`);
 
     if (!accessKeyId || !secretAccessKey) {
       return Response.json({ error: 'AWS credentials not configured' }, { status: 400 });
@@ -22,16 +22,34 @@ Deno.serve(async (req) => {
 
     const client = new SESv2Client({
       region,
-      credentials: { accessKeyId, secretAccessKey },
+      credentials: {
+        accessKeyId: accessKeyId.trim(),
+        secretAccessKey: secretAccessKey.trim(),
+      },
     });
 
-    // Get configuration set info
-    const configResult = await client.send(new GetConfigurationSetCommand({
-      ConfigurationSetName: configSetName,
-    }));
+    let configResult, destResult;
 
-    // Get event destinations
-    const destResult = await client.send(new GetConfigurationSetEventDestinationsCommand({
+    try {
+      configResult = await client.send(new GetConfigurationSetCommand({
+        ConfigurationSetName: configSetName,
+      }));
+    } catch (configErr) {
+      console.error('GetConfigurationSet error:', configErr.name, configErr.message);
+      
+      // If access denied, return a helpful message
+      if (configErr.name === 'AccessDeniedException' || configErr.message?.includes('security token') || configErr.message?.includes('not authorized')) {
+        return Response.json({
+          error: 'missing_permissions',
+          message: `ה-IAM User שלך צריך הרשאה ses:GetConfigurationSet. כרגע יש לו רק הרשאת שליחה.`,
+          details: configErr.message,
+          suggestion: 'הוסיפי את ה-policy הבא ב-AWS IAM:\n{\n  "Effect": "Allow",\n  "Action": ["ses:GetConfigurationSet*", "ses:DescribeConfigurationSet"],\n  "Resource": "*"\n}'
+        }, { status: 403 });
+      }
+      throw configErr;
+    }
+
+    destResult = await client.send(new GetConfigurationSetEventDestinationsCommand({
       ConfigurationSetName: configSetName,
     }));
 
@@ -54,7 +72,7 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error checking SES config:', error.message);
+    console.error('checkSesConfig error:', error.name, error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
-import { SESClient, DescribeConfigurationSetCommand } from 'npm:@aws-sdk/client-ses@^3';
+import { SESv2Client, GetConfigurationSetCommand, GetConfigurationSetEventDestinationsCommand } from 'npm:@aws-sdk/client-sesv2@^3';
 
 Deno.serve(async (req) => {
   try {
@@ -14,35 +14,47 @@ Deno.serve(async (req) => {
     const region = Deno.env.get('AWS_REGION') || 'eu-north-1';
     const configSetName = Deno.env.get('SES_CONFIGURATION_SET') || 'pantarhei-tracking';
 
+    console.log(`checkSesConfig: region=${region}, configSet=${configSetName}, hasKey=${!!accessKeyId}, hasSecret=${!!secretAccessKey}`);
+
     if (!accessKeyId || !secretAccessKey) {
       return Response.json({ error: 'AWS credentials not configured' }, { status: 400 });
     }
 
-    const client = new SESClient({
+    const client = new SESv2Client({
       region,
       credentials: { accessKeyId, secretAccessKey },
     });
 
-    const result = await client.send(new DescribeConfigurationSetCommand({
+    // Get configuration set info
+    const configResult = await client.send(new GetConfigurationSetCommand({
       ConfigurationSetName: configSetName,
-      ConfigurationSetAttributeNames: ['eventDestinations', 'trackingOptions']
     }));
+
+    // Get event destinations
+    const destResult = await client.send(new GetConfigurationSetEventDestinationsCommand({
+      ConfigurationSetName: configSetName,
+    }));
+
+    const eventDestinations = (destResult.EventDestinations || []).map(dest => ({
+      name: dest.Name,
+      enabled: dest.Enabled,
+      matchingEventTypes: dest.MatchingEventTypes,
+      snsDestination: dest.SnsDestination || null,
+      cloudWatchDestination: dest.CloudWatchDestination || null,
+    }));
+
+    console.log('checkSesConfig: Success', JSON.stringify(eventDestinations));
 
     return Response.json({
       configurationSetName: configSetName,
       region,
-      trackingOptions: result.TrackingOptions || 'not configured',
-      eventDestinations: (result.EventDestinations || []).map(dest => ({
-        name: dest.Name,
-        enabled: dest.Enabled,
-        matchingEventTypes: dest.MatchingEventTypes,
-        snsDestination: dest.SNSDestination || null,
-        cloudWatchDestination: dest.CloudWatchDestination || null,
-      }))
+      trackingOptions: configResult.TrackingOptions || 'not configured',
+      sendingOptions: configResult.SendingOptions || null,
+      eventDestinations,
     });
 
   } catch (error) {
-    console.error('Error checking SES config:', error);
+    console.error('Error checking SES config:', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

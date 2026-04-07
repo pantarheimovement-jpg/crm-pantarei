@@ -6,6 +6,7 @@ import UserGuide from '../components/settings/UserGuide';
 import StatusManager from '../components/settings/StatusManager';
 import SourceManager from '../components/settings/SourceManager';
 import WhatsappKnownContactsManager from '../components/settings/WhatsappKnownContactsManager';
+import SesConfigChecker from '../components/settings/SesConfigChecker';
 
 export default function CRMSettings() {
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('crmSettings_tab') || 'crm-general');
@@ -917,6 +918,8 @@ export default function CRMSettings() {
                     </div>
                   </div>
                 </div>
+
+                <SesConfigChecker />
 
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">📧 מערכת דיוור (ניוזלטרים)</h3>

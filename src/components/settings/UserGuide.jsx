@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   ChevronDown, ChevronUp, BookOpen, LayoutDashboard, Users, GraduationCap, 
   CheckSquare, Mail, Zap, Settings, Search, ArrowRight,
-  Sparkles, AlertCircle, RefreshCw, MessageSquare, ClipboardList, ShieldCheck
+  Sparkles, AlertCircle, RefreshCw, MessageSquare, ClipboardList, ShieldCheck, BarChart3
 } from 'lucide-react';
 
 function FAQItem({ question, answer, icon: Icon, color = '#6D436D' }) {
@@ -118,11 +118,14 @@ export default function UserGuide() {
                 <li><strong>משתתפים רשומים</strong> — כמה נרשמו סה״כ, היום, והשבוע</li>
                 <li><strong>לידים חדשים</strong> — כמה לידים חדשים נכנסו</li>
                 <li><strong>יחס המרה</strong> — אחוז המשתתפים שהפכו מלידים לרשומים (עם גרף עוגה)</li>
-                <li><strong>טבלת קורסים</strong> — כל הקורסים עם מספר הרשומים, חדשים היום והשבוע, ואחוז מילוי</li>
-                <li><strong>שיחות היכרות</strong> — שיחות שעדיין לא בוצעו, כולל התראה על שיחות שעבר התאריך שלהן</li>
+                <li><strong>טבלת קורסים</strong> — כל הקורסים עם מספר הרשומים, חדשים היום והשבוע, ואחוז מילוי. לחיצה על קורס מעבירה לדף הקורס הייעודי</li>
+                <li><strong>שיחות היכרות מתוזמנות</strong> — שיחות בסטטוס ״ממתין״ או ״ניסיון לשיחה״ שמתוזמנות. שיחות שכבר עברו מסטטוס ״ממתין״ כבר לא מוצגות בדשבורד</li>
                 <li><strong>לחזור לקראת הרשמה</strong> — שיחות שממתינות לפתיחת הרשמה לקורס. לחיצה מסננת את דף השיחות לסטטוס זה</li>
                 <li><strong>התראות</strong> — קורסים שמתמלאים (90%+), קורסים שעומדים להתחיל</li>
               </ul>
+              <div className="mt-3 p-3 bg-purple-50 rounded-lg text-sm">
+                💡 <strong>כל המספרים בדשבורד הם לחיצות!</strong> לחיצה על כל מספר או סטטיסטיקה מפנה ישירות לרשימה המתאימה (דף משתתפים או דף שיחות) עם הסינון המתאים.
+              </div>
             </div>
           }
         />
@@ -133,9 +136,9 @@ export default function UserGuide() {
             <div>
               <ul className="list-disc list-inside space-y-1">
                 <li><strong>חיפוש</strong> — מאפשר למצוא משתתף לפי שם, לחיצה על Enter או ״חפש״ מעבירה ישירות לדף המשתתפים עם תוצאות החיפוש</li>
+                <li><strong>חיפוש קורס בדשבורד</strong> — מחפש בטבלת הקורסים ולוחץ על תוצאה → מעביר ישירות לדף הקורס הייעודי (ולא לרשימת המשתתפים)</li>
                 <li><strong>פילטר תאריכים</strong> (הכל / היום / השבוע / החודש) — מסנן את כל הנתונים בדשבורד לפי תקופת זמן</li>
                 <li><strong>פילטר קטגוריות קורסים</strong> — מסנן את טבלת הקורסים לפי סוג (קורס קבוע, סדנה, פרטי, אונליין)</li>
-                <li>לחיצה על כל מספר בדשבורד מפנה ישירות לרשימה המתאימה בדף המשתתפים</li>
               </ul>
             </div>
           }
@@ -156,10 +159,12 @@ export default function UserGuide() {
                 <li><strong>סינון</strong> — לפי סטטוס (הכל / לידים חדשים / רשומים) ולפי קורס</li>
                 <li><strong>הוספה / עריכה / מחיקה</strong> — ניהול מלא של כרטיס משתתף</li>
                 <li><strong>ייבוא מ-Summit</strong> — העלאת קובץ HTML מהמערכת החיצונית</li>
+                <li><strong>ייצוא CSV</strong> — ייצוא רשימת המשתתפים לקובץ</li>
                 <li><strong>היסטוריית שיחות</strong> — לכל משתתף ניתן לראות את כל השיחות שלו (בלחיצה על ״הצג היסטוריית שיחות״)</li>
                 <li><strong>תאריך כניסת ליד</strong> — נקבע אוטומטית בכניסת ליד (מוואטסאפ, אתר, Gmail) וניתן לעריכה ידנית</li>
                 <li><strong>מקורות ליד</strong> — אתר / וואטסאפ / פייסבוק / ידני / אחר</li>
                 <li><strong>מחיקה מרובה</strong> — סימון מספר משתתפים ומחיקה בו-זמנית</li>
+                <li><strong>שיוך לכמה קורסים</strong> — משתתף יכול להתעניין ולהירשם למספר קורסים במקביל</li>
               </ul>
             </div>
           }
@@ -173,10 +178,10 @@ export default function UserGuide() {
               <p className="mb-3">הסטטוסים מוגדרים בהגדרות CRM (לשונית ״סטטוסים ושלבים״) וניתנים לעריכה. אלה הסטטוסים הפעילים:</p>
               <div className="space-y-2">
                 <StatusBadge name="ליד חדש" color="#6D436D" description="משתתף שנכנס למערכת — מוואטסאפ, אתר, או ידני. טרם נוצר קשר." />
-                <StatusBadge name="הודעה מוואטסאפ לבדיקה" color="#D29486" description="הודעה שנכנסה מוואטסאפ שלא עברה סף התעניינות ברור — צריך לבדוק ידנית אם רלוונטי." />
+                <StatusBadge name="הודעה מוואטסאפ לבדיקה" color="#D29486" description="הודעה שנכנסה מוואטסאפ שלא עברה סף התעניינות ברור — צריך לבדוק ידנית אם רלוונטי. אופיר מקבלת התראה בוואטסאפ ומאשרת או דוחה." />
                 <StatusBadge name="במעקב ראשוני" color="#FAD980" description="נוצר קשר ראשוני, ממתינים לתגובה. מתעדכן אוטומטית כששיחה עוברת ל״בבדיקה״." />
-                <StatusBadge name="רשום / נרשם" color="#2ECC71" description="המשתתף רשום ומשלם — נספר במונה הקורס." />
                 <StatusBadge name="היה ביום היכרות" color="#8B5CF6" description="הלקוח השתתף ביום היכרות." />
+                <StatusBadge name="רשום / נרשם" color="#2ECC71" description="המשתתף רשום ומשלם — נספר במונה הקורס." />
                 <StatusBadge name="לא רלוונטי" color="#95A5A6" description="ליד שלא מעוניין. מתעדכן אוטומטית כששיחה עוברת ל״לא רלוונטי״ או ל״אבוד״." />
               </div>
               <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
@@ -195,11 +200,11 @@ export default function UserGuide() {
               <div className="space-y-1.5 mb-4">
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
-                  <span className="text-sm"><strong>ליד חדש</strong> — נקבע אוטומטית כשנכנסת הודעה מוואטסאפ עם ביטוי התעניינות ברור + הקשר לקורס</span>
+                  <span className="text-sm"><strong>ליד חדש</strong> — נקבע אוטומטית כשנכנסת הודעה מוואטסאפ עם ביטוי התעניינות ברור + הקשר לקורס, או מטופס Elementor באתר</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
-                  <span className="text-sm"><strong>הודעה מוואטסאפ לבדיקה</strong> — נקבע כשההודעה מכילה הקשר לקורס אבל ללא ביטוי התעניינות ברור</span>
+                  <span className="text-sm"><strong>הודעה מוואטסאפ לבדיקה</strong> — נקבע כשההודעה מכילה הקשר לקורס אבל ללא ביטוי התעניינות ברור. אופיר מקבלת התראה ומאשרת/דוחה</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
@@ -216,6 +221,14 @@ export default function UserGuide() {
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
                   <span className="text-sm"><strong>אושר מדיניות הפרטיות</strong> — מסומן אוטומטית כשמשתתף ממלא טופס באתר וסימן את צ׳קבוקס ההסכמה. ניתן גם לעדכן ידנית</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>שיחת היכרות</strong> — כשליד חדש (או קיים עם קורס חדש) נכנס מוואטסאפ/אתר, נוצרת אוטומטית שיחת היכרות מתוזמנת ליומיים קדימה</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>סגירת שיחה ברישום</strong> — כשמשתתף עובר לסטטוס ״רשום״, אם יש שיחה פתוחה מקושרת אליו — היא עוברת אוטומטית לסטטוס ״הושלם״</span>
                 </div>
               </div>
               <p className="font-semibold mb-2">שינויים ידניים:</p>
@@ -234,7 +247,7 @@ export default function UserGuide() {
           answer={
             <div>
               <ul className="list-disc list-inside space-y-1">
-                <li>שינוי סטטוס ל<strong>״רשום/נרשם״</strong> → מעלה אוטומטית את מונה הקורס +1</li>
+                <li>שינוי סטטוס ל<strong>״רשום/נרשם״</strong> → מעלה אוטומטית את מונה הקורס +1 + סוגר שיחות פתוחות מקושרות</li>
                 <li>שינוי סטטוס מ<strong>״רשום״</strong> למשהו אחר → מוריד את מונה הקורס -1</li>
                 <li>מחיקת משתתף רשום → מוריד אוטומטית את המונה בכל הקורסים שהוא רשום אליהם</li>
                 <li>הקורס הראשי (שדה course_id) → קובע איפה המשתתף מוצג בדשבורד</li>
@@ -253,14 +266,14 @@ export default function UserGuide() {
           answer={
             <div>
               <ul className="list-disc list-inside space-y-1">
-                <li><strong>רשימת קורסים</strong> — בתצוגת כרטיסים או טבלה</li>
+                <li><strong>רשימת קורסים</strong> — בתצוגת כרטיסים או טבלה. <strong>לחיצה על כל קורס (כרטיס או שורה)</strong> מעבירה ישירות לדף הקורס הייעודי</li>
                 <li><strong>פרטי קורס</strong> — שם, סוג, לוח זמנים, מיקום, מחיר, תאריכי התחלה וסיום</li>
                 <li><strong>מונה רשומים</strong> — מספר רשומים מתעדכן אוטומטית בכל שינוי סטטוס בדף המשתתפים</li>
                 <li><strong>מונה לידים משויכים</strong> — כמה לידים (עדיין לא רשומים) משויכים לכל קורס</li>
                 <li><strong>סטטוס קורס</strong> — לא פתוח להרשמה, פתוח להרשמה, מלא, בתהליך, הסתיים</li>
                 <li><strong>לחיצה על מספר הרשומים/לידים</strong> — מובילה ישירות לדף משתתפים מסונן לפי הקורס והסטטוס</li>
                 <li><strong>אימייל מורה</strong> — ניתן לשייך מורה לקורס דרך כתובת מייל (בעריכת קורס)</li>
-                <li><strong>לינק ישיר לדף קורס</strong> — לחיצה על שם הקורס או כפתור ״דף קורס״ פותחת את דף הקורס הייעודי</li>
+                <li><strong>לינק ישיר לדף קורס</strong> — בעריכת קורס מופיע URL מלא עם אפשרות העתקה</li>
                 <li><strong>ייצוא CSV</strong> — כפתור לייצוא רשימת הקורסים עם כל הנתונים לקובץ CSV</li>
               </ul>
             </div>
@@ -301,7 +314,7 @@ export default function UserGuide() {
                 <li>גללי למטה לשדה <strong>״אימייל מורה״</strong></li>
                 <li>הזיני את כתובת המייל של המורה ושמרי</li>
                 <li>כעת המורה תוכל להיכנס ל<strong>דף הקורס הייעודי</strong> דרך הלינק הייחודי</li>
-                <li>הלינק מופיע מתחת לשדה אימייל המורה בחלון העריכה</li>
+                <li>הלינק מופיע מתחת לשדה אימייל המורה בחלון העריכה — עם <strong>כפתור העתקה</strong> שמעתיק את ה-URL המלא</li>
               </ul>
               <p className="mt-3 p-3 bg-teal-50 rounded-lg text-sm">
                 💡 <strong>חשוב:</strong> המורה צריכה להיות רשומה כמשתמשת במערכת (עם אותה כתובת מייל). היא תראה רק את הקורס שמשויך אליה — לא שאר המערכת.
@@ -375,9 +388,11 @@ export default function UserGuide() {
               <p>הדף מנהל את כל השיחות, הפגישות והמעקבים:</p>
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li><strong>רשימת שיחות</strong> — עם שם, תיאור, משתתף מקושר, סטטוס, ותאריך מתוזמן</li>
-                <li><strong>סינון</strong> — לפי סטטוס, משתתף, וחיפוש חופשי</li>
+                <li><strong>צבעי סטטוסים</strong> — כל סטטוס מוצג בצבע שונה (כמו צבעי הסטטוסים של אנשי קשר) לזיהוי מהיר</li>
+                <li><strong>סינון לפי משתתף</strong> — בחירת משתתף ספציפי מסננת את כל השיחות לאותו משתתף</li>
+                <li><strong>סינון לפי סטטוס</strong> — בחירת סטטוס ספציפי או חיפוש חופשי</li>
                 <li><strong>בחירת משתתף חכמה</strong> — Combobox עם חיפוש לפי שם, טלפון או מייל (גם ביצירת שיחה וגם בסינון)</li>
-                <li><strong>סטטיסטיקות לחיצות</strong> — ניסיון לשיחה, בבדיקה, הושלמו, ומתוזמנות — לחיצה על כל סטטיסטיקה מסננת את הרשימה</li>
+                <li><strong>סטטיסטיקות לחיצות</strong> — ניסיון לשיחה, בבדיקה, הושלמו, ומתוזמנות — <strong>כל סטטיסטיקה לחיצה שמסננת את הרשימה</strong></li>
                 <li><strong>מעבר על הכרטיס</strong> (hover) — מציג כרטיס מהיר של המשתתף עם טלפון, מייל וקורס</li>
                 <li><strong>יצירת משתתף חדש</strong> — ניתן ליצור משתתף חדש ישירות מתוך השיחה</li>
                 <li><strong>ייבוא / ייצוא CSV</strong></li>
@@ -396,16 +411,18 @@ export default function UserGuide() {
             <div className="space-y-2">
               <StatusBadge name="ממתין" color="#F39C12" description="השיחה טרם בוצעה, ממתינה לטיפול." />
               <StatusBadge name="ניסיון לשיחה" color="#E74C3C" description="נעשה ניסיון ליצור קשר — צריך לנסות שוב." />
-              <StatusBadge name="לא ענתה" color="#F39C12" description="התקשרנו והמשתתפת לא ענתה. → הלקוחה עוברת אוטומטית ל״במעקב ראשוני״." />
-              <StatusBadge name="בבדיקה" color="#3498DB" description="נמצאת בתהליך בדיקה, עדיין לא הושלמה." />
+              <StatusBadge name="בבדיקה" color="#3498DB" description="נמצאת בתהליך בדיקה, עדיין לא הושלמה. → הלקוח עובר אוטומטית ל״במעקב ראשוני״." />
               <StatusBadge name="הושלם" color="#6D436D" description="השיחה/משימה טופלה בהצלחה." />
-              <StatusBadge name="לא רלוונטי" color="#BDC3C7" description="לא רלוונטי יותר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
               <StatusBadge name="לחזור לקראת הרשמה" color="#9B59B6" description="הליד מעוניין אך ממתין לפתיחת הרשמה לקורס. כשהקורס ייפתח להרשמה — תיווצר אוטומטית שיחת בדיקה." />
+              <StatusBadge name="לא רלוונטי" color="#BDC3C7" description="לא רלוונטי יותר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
               <StatusBadge name="אבוד" color="#7F8C8D" description="הליד אבד, לא הצלחנו ליצור קשר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
+              <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
+                ❌ <strong>סטטוסים שהוסרו:</strong> ענתה — הוסר. ״לא ענתה״ שונה ל״ניסיון לשיחה״. ״נוצר משיחה״ — כבר לא נוצר אוטומטית.
+              </div>
               <div className="mt-3 space-y-1.5">
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
-                  <span className="text-sm"><strong>שיחת היכרות</strong> נוצרת אוטומטית כשליד חדש נכנס מוואטסאפ או מטופס Elementor</span>
+                  <span className="text-sm"><strong>שיחת היכרות</strong> נוצרת אוטומטית כשליד חדש נכנס מוואטסאפ או מטופס Elementor. גם כשליד קיים מתעניין בקורס חדש</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
@@ -413,15 +430,15 @@ export default function UserGuide() {
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
-                  <span className="text-sm">שינוי שיחה ל<strong>״לא ענתה״</strong> → לקוחה עוברת אוטומטית ל<strong>״במעקב ראשוני״</strong></span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <AutoBadge>אוטומטי</AutoBadge>
                   <span className="text-sm">שינוי שיחה ל<strong>״לא רלוונטי״</strong> או <strong>״אבוד״</strong> → לקוח עובר אוטומטית ל״לא רלוונטי״</span>
                 </div>
                 <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm">כשמשתתף עובר ל<strong>״רשום״</strong> → שיחות פתוחות מקושרות נסגרות אוטומטית ל<strong>״הושלם״</strong></span>
+                </div>
+                <div className="flex items-start gap-2">
                   <ManualBadge>ידני</ManualBadge>
-                  <span className="text-sm">שינוי סטטוס שיחה ל״ניסיון לשיחה״, ״הושלם״ — צריך לעדכן ידנית</span>
+                  <span className="text-sm">שינוי סטטוס שיחה ל״ניסיון לשיחה״, ״הושלם״, ״לחזור לקראת הרשמה״ — צריך לעדכן ידנית</span>
                 </div>
               </div>
             </div>
@@ -435,8 +452,8 @@ export default function UserGuide() {
               <ul className="list-disc list-inside space-y-1">
                 <li><strong>דף שיחות ופגישות</strong> — הרשימה המלאה</li>
                 <li><strong>דף משתתפים</strong> — בלחיצה על ״הצג היסטוריית שיחות״ בכרטיס משתתף, מופיעות כל השיחות שלו</li>
-                <li><strong>דשבורד</strong> — שיחות להיום, שיחות מתוזמנות, ושיחות היכרות ללידים חדשים</li>
-                <li>שיחה שמתוזמנת להיום ולא הושלמה מוצגת <strong>באדום בדשבורד</strong></li>
+                <li><strong>דשבורד</strong> — שיחות מתוזמנות בסטטוס ״ממתין״ או ״ניסיון לשיחה״, ושיחות ״לחזור לקראת הרשמה״</li>
+                <li>שיחות שכבר עברו מסטטוס ״ממתין״ (למשל הושלם, אבוד) — <strong>לא מופיעות יותר בדשבורד</strong></li>
               </ul>
             </div>
           }
@@ -453,28 +470,53 @@ export default function UserGuide() {
               <p>מערכת דיוור מלאה עם ניהול מנויים ושליחת ניוזלטרים:</p>
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li><strong>ניהול מנויים</strong> — הוספה, עריכה, מחיקה, חלוקה לקבוצות</li>
-                <li><strong>כתיבת ניוזלטר</strong> — עורך תבניות מייל עם בלוקים (טקסט, תמונה, וידאו, כפתור)</li>
-                <li><strong>שליחת מייל</strong> — דרך Brevo (ספק המייל) לכל הרשימה או קבוצה ספציפית</li>
+                <li><strong>כתיבת ניוזלטר</strong> — 3 מצבים: תבנית מהירה, HTML מתקדם, עורך חופשי</li>
+                <li><strong>שליחת מייל</strong> — דרך Amazon SES (ספק המייל הראשי), עם Gmail כגיבוי</li>
                 <li><strong>שליחת וואטסאפ</strong> — ניוזלטר דרך וואטסאפ למנויים עם מספר טלפון</li>
+                <li><strong>שליחה משולבת</strong> — אפשרות לשלוח גם במייל וגם בוואטסאפ בו-זמנית</li>
+                <li><strong>כפתורי CTA</strong> — הוספת כפתורים עם קישורים ותמונות לניוזלטר</li>
+                <li><strong>הצעות AI לנושא</strong> — הצעות אוטומטיות לשורת נושא על בסיס תוכן הניוזלטר</li>
                 <li><strong>ייבוא מנויים</strong> — העתק-הדבק או קובץ CSV</li>
-                <li><strong>היסטוריית שליחות</strong> — מעקב על כל ניוזלטר ששלחת, כולל מספר נמענים וסטטוס</li>
+                <li><strong>היסטוריית שליחות</strong> — מעקב על כל ניוזלטר ששלחת, כולל מספר נמענים, סטטוס, ואפשרות שליחה מחדש</li>
                 <li><strong>שליחת מייל ניסיון</strong> — אפשרות לשלוח לעצמך לפני שליחה לכולם</li>
               </ul>
               <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm">
-                ⚠️ <strong>חשוב:</strong> מערכת הדיוור נשלטת על ידי <strong>מתג הפעלה</strong> בהגדרות CRM → לשונית אוטומציה. כשהמתג כבוי — לא יישלחו ניוזלטרים או מיילים שיווקיים (לא דרך Brevo ולא דרך Gmail). יש להפעיל את המתג לפני שליחה ראשונה.
+                ⚠️ <strong>חשוב:</strong> מערכת הדיוור נשלטת על ידי <strong>מתג הפעלה</strong> בהגדרות CRM → לשונית אוטומציה. כשהמתג כבוי — לא יישלחו ניוזלטרים או מיילים שיווקיים. יש להפעיל את המתג לפני שליחה ראשונה.
               </div>
             </div>
           }
         />
         <FAQItem
-          icon={AlertCircle}
+          icon={BarChart3}
           color="#9B59B6"
-          question="מה הסטטוסים של שליחת ניוזלטר?"
+          question="מה נמצא בדף סטטיסטיקות ניוזלטר?"
           answer={
-            <div className="space-y-2">
-              <StatusBadge name="נשלח בהצלחה" color="#2ECC71" description="הניוזלטר נשלח לכל הנמענים." />
-              <StatusBadge name="נכשל" color="#E74C3C" description="אירעה שגיאה בשליחה." />
-              <StatusBadge name="בתהליך" color="#F39C12" description="השליחה מתבצעת כעת." />
+            <div>
+              <p>דף סטטיסטיקות (נגיש מכפתור ״📊 סטטיסטיקות״ בדף הניוזלטר) מציג נתוני מעקב מ-Amazon SES:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li><strong>כרטיסי KPI</strong> — סה״כ פתיחות, קליקים, bounces, ותלונות</li>
+                <li><strong>טבלת ביצועי קמפיינים</strong> — לכל ניוזלטר שנשלח: כמה פתחו, כמה לחצו, כמה bounces</li>
+                <li><strong>גרף שעות</strong> — באיזה שעות ביום פותחים הכי הרבה מיילים</li>
+                <li><strong>אירועים אחרונים</strong> — טבלה עם 50 האירועים האחרונים (מי פתח, מתי, מאיפה)</li>
+              </ul>
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>פתיחה (Open)</strong> — נרשמת אוטומטית כשנמען פותח את המייל</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>קליק (Click)</strong> — נרשם אוטומטית כשנמען לוחץ על קישור במייל</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>Bounce</strong> — נרשם כשמייל לא מגיע ליעד (כתובת לא קיימת, תיבה מלאה). מונה ה-bounces של המנוי עולה אוטומטית</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>תלונה (Complaint)</strong> — נרשמת כשנמען מסמן את המייל כספאם</span>
+                </div>
+              </div>
             </div>
           }
         />
@@ -522,9 +564,10 @@ export default function UserGuide() {
                   <p className="font-bold text-green-800 mb-1">📱 הודעת וואטסאפ נכנסת → יצירת ליד</p>
                   <ul className="list-disc list-inside text-sm text-green-700 space-y-1">
                     <li>הודעה עם <strong>ביטוי התעניינות + הקשר לקורס</strong> → נוצר ליד חדש + שיחת היכרות + תגובה אוטומטית</li>
-                    <li>הודעה עם <strong>הקשר לקורס בלבד</strong> (ללא ביטוי ברור) → נוצר ליד ״הודעה מוואטסאפ לבדיקה״ ללא תגובה אוטומטית</li>
+                    <li>הודעה עם <strong>הקשר לקורס בלבד</strong> (ללא ביטוי ברור) → נוצר ליד ״הודעה מוואטסאפ לבדיקה״ + <strong>התראה לאופיר בוואטסאפ ומייל</strong>. אופיר יכולה לאשר (״כן [שם]״) או לדחות (״לא [שם]״)</li>
                     <li>הודעה <strong>ללא הקשר לקורס</strong> → מתעלמים (לא נוצר כלום)</li>
-                    <li>אם המשתתף <strong>כבר קיים</strong> → מעדכן פרטים + מוסיף קורס חדש אם רלוונטי</li>
+                    <li>אם המשתתף <strong>כבר קיים</strong> → מעדכן פרטים + מוסיף קורס חדש אם רלוונטי + יוצר שיחת היכרות חדשה לקורס החדש</li>
+                    <li><strong>אנשי קשר מוכרים</strong> (מוגדרים בהגדרות CRM) מתעלמים ולא נחשבים כלידים</li>
                   </ul>
                 </div>
 
@@ -548,6 +591,14 @@ export default function UserGuide() {
                   </ul>
                 </div>
 
+                <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
+                  <p className="font-bold text-indigo-800 mb-1">✅ משתתף הופך ל״רשום״ → סגירת שיחות</p>
+                  <ul className="list-disc list-inside text-sm text-indigo-700 space-y-1">
+                    <li>כשמשתתף עובר לסטטוס <strong>״רשום״</strong> — כל השיחות הפתוחות שמקושרות אליו עוברות אוטומטית ל<strong>״הושלם״</strong></li>
+                    <li>מונה הרשומים בקורס עולה ב-1</li>
+                  </ul>
+                </div>
+
                 <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl">
                   <p className="font-bold text-teal-800 mb-1">🎓 פתיחת הרשמה לקורס</p>
                   <ul className="list-disc list-inside text-sm text-teal-700 space-y-1">
@@ -566,6 +617,18 @@ export default function UserGuide() {
                     <li>מחיקת משתתף רשום → <strong>מעדכן את המונה בכל הקורסים שלו</strong></li>
                   </ul>
                 </div>
+
+                <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl">
+                  <p className="font-bold text-sky-800 mb-1">📧 מעקב מיילים (SES Tracking)</p>
+                  <ul className="list-disc list-inside text-sm text-sky-700 space-y-1">
+                    <li>כל מייל שנשלח דרך Amazon SES מקבל <strong>מעקב אוטומטי</strong> על פתיחות וקליקים</li>
+                    <li><strong>פתיחה</strong> — נרשמת כשנמען פותח את המייל</li>
+                    <li><strong>קליק</strong> — נרשם כשנמען לוחץ על קישור במייל</li>
+                    <li><strong>Bounce</strong> — נרשם כשמייל לא מגיע ליעד. מונה bounces של המנוי עולה אוטומטית</li>
+                    <li><strong>תלונה</strong> — נרשמת כשנמען מסמן כספאם</li>
+                    <li>כל האירועים נצברים ומוצגים בדף <strong>סטטיסטיקות ניוזלטר</strong></li>
+                  </ul>
+                </div>
               </div>
             </div>
           }
@@ -580,18 +643,20 @@ export default function UserGuide() {
                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
                   <p className="font-bold text-gray-800 mb-2">🟢 Green API (וואטסאפ)</p>
                   <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                    <li>מקבל הודעות נכנסות ומנתח אותן</li>
-                    <li>שולח הודעות תגובה אוטומטיות</li>
+                    <li>מקבל הודעות נכנסות ומנתח אותן (ביטויי התעניינות + שמות קורסים)</li>
+                    <li>שולח הודעות תגובה אוטומטיות ללידים חדשים</li>
+                    <li>שולח התראות לאופיר על הודעות ״לבדיקה״</li>
                     <li>שולח ניוזלטרים דרך וואטסאפ</li>
+                    <li>מזהה אנשי קשר מוכרים (הגדרות CRM) ומתעלם מהם</li>
                   </ul>
                 </div>
 
                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                  <p className="font-bold text-gray-800 mb-2">📧 Brevo + Gmail (דיוור)</p>
+                  <p className="font-bold text-gray-800 mb-2">📧 Amazon SES + Gmail (דיוור)</p>
                   <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                    <li>שליחת ניוזלטרים במייל דרך Brevo</li>
-                    <li>שליחת מיילים בודדים</li>
-                    <li>אם Brevo לא זמין — נופל אוטומטית ל-Gmail API כגיבוי</li>
+                    <li>שליחת ניוזלטרים ומיילים דרך <strong>Amazon SES</strong> (ספק ראשי)</li>
+                    <li>אם SES לא זמין — נופל אוטומטית ל-<strong>Gmail API</strong> כגיבוי</li>
+                    <li><strong>מעקב פתיחות וקליקים</strong> — SES Configuration Set + SNS → נתונים מגיעים אוטומטית למערכת</li>
                     <li>⚠️ <strong>נשלט על ידי מתג הפעלה</strong> בהגדרות CRM → אוטומציה. כשהמתג כבוי — לא נשלחים מיילים</li>
                   </ul>
                 </div>
@@ -605,10 +670,26 @@ export default function UserGuide() {
                 </div>
 
                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                  <p className="font-bold text-gray-800 mb-2">📬 Gmail Lead Watcher (רשת ביטחון)</p>
+                  <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                    <li>בודק כל 30 דקות אם הגיעו מיילים חדשים מ-Elementor עם לידים שלא נקלטו דרך webhook</li>
+                    <li>אם נמצא ליד שלא קיים במערכת — יוצר אותו אוטומטית</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
                   <p className="font-bold text-gray-800 mb-2">💳 Summit (תשלומים)</p>
                   <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
                     <li>חיבור למערכת התשלומים</li>
                     <li>ייבוא נתונים מ-Summit לתוך המערכת</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                  <p className="font-bold text-gray-800 mb-2">💾 גיבויים אוטומטיים</p>
+                  <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                    <li><strong>גיבוי שבועי למייל</strong> — כל יום ראשון בשעה 10:00 נשלח גיבוי מלא של כל הנתונים למייל</li>
+                    <li><strong>גיבוי שבועי ל-Google Drive</strong> — כל יום ראשון בחצות נשמר גיבוי אוטומטי בדרייב</li>
                   </ul>
                 </div>
 
@@ -633,8 +714,31 @@ export default function UserGuide() {
                 <li>ניתן <strong>להפעיל/לכבות</strong> את התגובה האוטומטית</li>
                 <li>ניתן <strong>לערוך את הטקסט</strong> — השתמשי ב-{`{{name}}`} כדי להכניס את שם השולח</li>
                 <li>התגובה נשלחת רק <strong>ללידים חדשים</strong> שזוהו כהתעניינות ברורה</li>
-                <li>הודעות ש״לבדיקה״ <strong>לא מקבלות תגובה אוטומטית</strong></li>
+                <li>הודעות ש״לבדיקה״ <strong>לא מקבלות תגובה אוטומטית</strong> — אופיר מקבלת התראה ומאשרת/דוחה</li>
               </ul>
+            </div>
+          }
+        />
+      </Section>
+
+      {/* סוכן AI */}
+      <Section title="סוכן AI לוואטסאפ" icon={MessageSquare} color="#25D366">
+        <FAQItem
+          icon={MessageSquare}
+          question="מה הסוכן AI יכול לעשות?"
+          answer={
+            <div>
+              <p>סוכן ה-AI מחובר לוואטסאפ ומאפשר לנהל את המערכת דרך הודעות:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li><strong>ליצור ולעדכן משתתפים</strong> — הוספת ליד חדש, שינוי סטטוס, עדכון פרטים</li>
+                <li><strong>ליצור ולעדכן קורסים</strong> — הוספת קורס, שינוי סטטוס, עדכון פרטים</li>
+                <li><strong>ליצור ולעדכן שיחות</strong> — יצירת שיחת היכרות, עדכון סטטוס, תיזמון</li>
+                <li><strong>לקרוא נתונים</strong> — שאלות כמו ״כמה לידים יש?״, ״מה הסטטוס של קורס X?״, ״איזה שיחות מתוזמנות להיום?״</li>
+                <li><strong>להסביר על המערכת</strong> — שאלות כמו ״מה זה סטטוס במעקב ראשוני?״, ״איך עובדת האוטומציה?״</li>
+              </ul>
+              <p className="mt-3 p-3 bg-green-50 rounded-lg text-sm">
+                💡 <strong>חיבור:</strong> ניתן לחבר את הסוכן בהגדרות CRM → לשונית אוטומציה → כפתור ״חבר לוואטסאפ״.
+              </p>
             </div>
           }
         />
@@ -651,9 +755,10 @@ export default function UserGuide() {
                 <li><strong>הגדרות כלליות</strong> — שם מערכת, טלפון, מייל, כתובת, לוגו, משך ניסיון ברירת מחדל, ימים למעקב אוטומטי</li>
                 <li><strong>עיצוב ומיתוג</strong> — צבעי המערכת (רקע, ראשי, הדגשה, פעולה, טקסט), פונטים, עגלות פינות וכפתורים</li>
                 <li><strong>תוויות ושדות</strong> — שינוי שמות דפי הניווט, תוויות ישויות (משתתף/קורס), ותוויות שדות</li>
-                <li><strong>סטטוסים ושלבים</strong> — הוספה, מחיקה ועריכת צבע של סטטוסי לידים ומשתתפים</li>
-                <li><strong>אוטומציה</strong> — הגדרות וואטסאפ, תגובה אוטומטית, חיבור סוכן AI, <strong>מתג הפעלת דיוור (Brevo/Gmail)</strong>, Webhook, קישור תשלום</li>
-                <li><strong>תבניות מייל</strong> — עורך תבניות לניוזלטרים עם גרירה ושחרור</li>
+                <li><strong>סטטוסים ושלבים</strong> — הוספה, מחיקה ועריכת צבע של סטטוסי לידים, שיחות, קורסים, ומקורות ליד. סטטוסים מוגנים (משמשים באוטומציות) לא ניתנים למחיקה</li>
+                <li><strong>אוטומציה</strong> — הגדרות וואטסאפ, תגובה אוטומטית, חיבור סוכן AI, <strong>מתג הפעלת דיוור (SES/Gmail)</strong>, <strong>בדיקת SES Configuration Set</strong>, Webhook, קישור תשלום</li>
+                <li><strong>אנשי קשר וואטסאפ</strong> — ניהול מספרי טלפון מוכרים שלא ייחשבו כלידים חדשים</li>
+                <li><strong>תבניות מייל</strong> — עורך תבניות לניוזלטרים עם בלוקים (טקסט, תמונה, וידאו, כפתור, מידע קשר, רשתות חברתיות)</li>
                 <li><strong>מדריך למשתמשת</strong> — הדף הזה! הסברים מפורטים על כל חלקי המערכת</li>
               </ul>
             </div>
@@ -692,16 +797,41 @@ export default function UserGuide() {
                 <span className="text-sm">המערכת מנתחת: האם יש ביטוי התעניינות? הקשר לקורס?</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
-                <span className="text-sm">אם כן → נוצר ליד חדש + שיחת היכרות (מתוזמנת ליומיים)</span>
+                <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">3a</span>
+                <span className="text-sm"><strong>התעניינות ברורה:</strong> נוצר ליד חדש + שיחת היכרות (מתוזמנת ליומיים) + תגובה אוטומטית</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
-                <span className="text-sm">נשלחת תגובה אוטומטית (אם מופעלת)</span>
+                <span className="bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">3b</span>
+                <span className="text-sm"><strong>הקשר לקורס בלבד:</strong> נוצר ליד ״לבדיקה״ + אופיר מקבלת התראה בוואטסאפ ומייל. אופיר עונה ״כן [שם]״ לאישור או ״לא [שם]״ לדחייה</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
+                <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
                 <span className="text-sm">את מקבלת התראה בדשבורד → עוברת לשיחות → מתקשרת → מעדכנת סטטוס</span>
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ArrowRight}
+          color="#F39C12"
+          question="ליד קיים מתעניין בקורס נוסף — מה קורה?"
+          answer={
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">1</span>
+                <span className="text-sm">ליד ששולח הודעה בוואטסאפ/ממלא טופס עם קורס שהוא לא משויך אליו</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">2</span>
+                <span className="text-sm">המערכת מזהה שזה ליד קיים → מוסיפה את הקורס החדש למערך הקורסים שלו</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
+                <span className="text-sm">נוצרת <strong>שיחת היכרות חדשה</strong> מקושרת אליו (אם אין שיחה פתוחה)</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
+                <span className="text-sm">נשלחת תגובה אוטומטית ללקוח</span>
               </div>
             </div>
           }
@@ -722,7 +852,7 @@ export default function UserGuide() {
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
-                <span className="text-sm">משנה סטטוס ל״רשום/נרשם״ → מונה הקורס עולה אוטומטית</span>
+                <span className="text-sm">משנה סטטוס ל״רשום/נרשם״ → מונה הקורס עולה אוטומטית + שיחות פתוחות נסגרות</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
@@ -747,23 +877,27 @@ export default function UserGuide() {
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full">1</span>
-                <span className="text-sm">עוברת לדף ניוזלטר → לשונית ״כתיבת ניוזלטר״</span>
+                <span className="text-sm">עוברת לדף ניוזלטר → לשונית ״שליחת ניוזלטר״</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full">2</span>
-                <span className="text-sm">בוחרת תבנית מוכנה או יוצרת חדשה עם בלוקים (טקסט, תמונה, כפתור)</span>
+                <span className="text-sm">בוחרת ערוץ שליחה (מייל / וואטסאפ / שניהם)</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
-                <span className="text-sm">בוחרת קבוצת נמענים או ״כל המנויים״</span>
+                <span className="text-sm">בוחרת תבנית מוכנה, HTML מתקדם, או עורך חופשי. ניתן להוסיף כפתורי CTA</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
-                <span className="text-sm">שולחת מייל ניסיון לעצמך לבדיקה</span>
+                <span className="text-sm">בוחרת קבוצת נמענים. ניתן להשתמש בהצעות AI לשורת נושא</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
-                <span className="text-sm">לוחצת ״שלח לכולם״ → הניוזלטר נשלח + נרשם בהיסטוריה</span>
+                <span className="text-sm">שולחת מייל ניסיון לעצמך לבדיקה</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full">6</span>
+                <span className="text-sm">לוחצת ״שלח ניוזלטר״ → הניוזלטר נשלח + נרשם בהיסטוריה + מעקב פתיחות וקליקים</span>
               </div>
             </div>
           }
@@ -776,11 +910,11 @@ export default function UserGuide() {
             <div className="space-y-2">
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">1</span>
-                <span className="text-sm">בדשבורד — רואה ״שיחות היכרות פתוחות״ באדום</span>
+                <span className="text-sm">בדשבורד — רואה שיחות מתוזמנות בסטטוס ״ניסיון לשיחה״</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">2</span>
-                <span className="text-sm">לוחצת ״צפה במשימות״ → עוברת לדף השיחות</span>
+                <span className="text-sm">לוחצת על הסטטיסטיקה → עוברת לדף השיחות מסונן</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
@@ -792,52 +926,7 @@ export default function UserGuide() {
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
-                <span className="text-sm">אם אחרי כמה נסיונות אין מענה → משנה ל״אבוד״</span>
-              </div>
-            </div>
-          }
-        />
-        <FAQItem
-          icon={ArrowRight}
-          color="#F39C12"
-          question="איך מייבאים משתתפים מ-Summit?"
-          answer={
-            <div>
-              <ul className="list-disc list-inside space-y-1">
-                <li>בדף המשתתפים → כפתור ״ייבוא מ-Summit״</li>
-                <li>מעלים קובץ HTML שיוצא מ-Summit</li>
-                <li>ניתן לסנן לפי תאריך</li>
-                <li>המערכת בודקת כפילויות — מציגה למשתמשת אפשרויות: דלג, צור חדש, או מזג</li>
-                <li>בסיום מציגה סיכום: כמה נוספו, כמה מוזגו, כמה דולגו</li>
-              </ul>
-            </div>
-          }
-        />
-        <FAQItem
-          icon={ArrowRight}
-          color="#F39C12"
-          question="איך שולחים למורה לינק לקורס שלה?"
-          answer={
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">1</span>
-                <span className="text-sm">ודאי שהמורה רשומה כמשתמשת במערכת (הזמנה דרך הגדרות)</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">2</span>
-                <span className="text-sm">בדף הקורסים → ערכי את הקורס → הזיני את המייל של המורה בשדה ״אימייל מורה״</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
-                <span className="text-sm">העתיקי את הלינק שמופיע מתחת לשדה (או לחצי ״דף קורס״ בכרטיס הקורס)</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
-                <span className="text-sm">שלחי את הלינק למורה → היא תתחבר עם המייל שלה ותראה רק את הקורס</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
-                <span className="text-sm">המורה תוכל לסמן נוכחות ולראות את רשימת המשתתפים הרשומים</span>
+                <span className="text-sm">אם אחרי כמה נסיונות אין מענה → משנה ל״אבוד״ → הלקוח עובר אוטומטית ל״לא רלוונטי״</span>
               </div>
             </div>
           }
@@ -877,13 +966,58 @@ export default function UserGuide() {
         <FAQItem
           icon={ArrowRight}
           color="#F39C12"
-          question="איך מייצאים רשימת קורסים ל-CSV?"
+          question="איך מייבאים משתתפים מ-Summit?"
           answer={
             <div>
               <ul className="list-disc list-inside space-y-1">
-                <li>בדף הקורסים → כפתור <strong>״ייצוא CSV״</strong> בפינה הימנית העליונה</li>
-                <li>הקובץ יכלול: שם קורס, סוג, סטטוס, לוז, מיקום, מחיר, רשומים, לידים, מקסימום, ואימייל מורה</li>
-                <li>הייצוא כולל רק את הקורסים המוצגים (אחרי חיפוש/סינון)</li>
+                <li>בדף המשתתפים → כפתור ״ייבוא מ-Summit״</li>
+                <li>מעלים קובץ HTML שיוצא מ-Summit</li>
+                <li>ניתן לסנן לפי תאריך</li>
+                <li>המערכת בודקת כפילויות — מציגה למשתמשת אפשרויות: דלג, צור חדש, או מזג</li>
+                <li>בסיום מציגה סיכום: כמה נוספו, כמה מוזגו, כמה דולגו</li>
+              </ul>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ArrowRight}
+          color="#F39C12"
+          question="איך שולחים למורה לינק לקורס שלה?"
+          answer={
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">1</span>
+                <span className="text-sm">ודאי שהמורה רשומה כמשתמשת במערכת (הזמנה דרך הגדרות)</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">2</span>
+                <span className="text-sm">בדף הקורסים → ערכי את הקורס → הזיני את המייל של המורה בשדה ״אימייל מורה״</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
+                <span className="text-sm">העתיקי את הלינק שמופיע מתחת לשדה (כפתור העתקה שמעתיק URL מלא)</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
+                <span className="text-sm">שלחי את הלינק למורה → היא תתחבר עם המייל שלה ותראה רק את הקורס</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
+                <span className="text-sm">המורה תוכל לסמן נוכחות ולראות את רשימת המשתתפים הרשומים</span>
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ArrowRight}
+          color="#F39C12"
+          question="איך מייצאים רשימת קורסים או משתתפים?"
+          answer={
+            <div>
+              <ul className="list-disc list-inside space-y-1">
+                <li><strong>קורסים:</strong> בדף הקורסים → כפתור ״ייצוא CSV״ בפינה — יכלול שם, סוג, סטטוס, לוז, מיקום, מחיר, רשומים, לידים, מקסימום, ואימייל מורה</li>
+                <li><strong>משתתפים:</strong> בדף המשתתפים → כפתור ייצוא — יכלול את כל הנתונים המוצגים</li>
+                <li>הייצוא כולל רק את הרשומות המוצגות (אחרי חיפוש/סינון)</li>
               </ul>
             </div>
           }

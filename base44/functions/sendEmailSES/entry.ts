@@ -60,12 +60,14 @@ Deno.serve(async (req) => {
         };
 
         // Add Configuration Set for open/click tracking if configured
-        commandParams.ConfigurationSetName = Deno.env.get('SES_CONFIGURATION_SET') || 'pantarhei-tracking';
+        const configSet = Deno.env.get('SES_CONFIGURATION_SET') || 'pantarhei-tracking';
+        commandParams.ConfigurationSetName = configSet;
+        console.log(`sendEmailSES: Sending via SES to ${to}, ConfigurationSet: ${configSet}`);
 
         const command = new SendEmailCommand(commandParams);
 
         await client.send(command);
-        console.log(`Email sent via Amazon SES to ${to}`);
+        console.log(`✅ Email sent via Amazon SES to ${to} (ConfigSet: ${configSet})`);
         return Response.json({ success: true, sent_via: 'ses' });
 
       } catch (sesError) {

@@ -2,9 +2,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    
-    // Clone request body since we need it for parsing
+    // IMPORTANT: Read body FIRST, before createClientFromRequest,
+    // because SNS webhooks don't have base44 auth headers.
+    // We clone the request so the SDK can still read headers if needed.
     const body = await req.text();
     console.log('handleSesEvents: Received request, body length:', body.length);
     
@@ -19,7 +19,8 @@ Deno.serve(async (req) => {
 
     console.log('handleSesEvents: Message Type:', message.Type);
 
-    // Handle SNS SubscriptionConfirmation
+    // Handle SNS SubscriptionConfirmation BEFORE creating base44 client
+    // (no DB access needed for this)
     if (message.Type === 'SubscriptionConfirmation') {
       console.log('SNS SubscriptionConfirmation received, confirming...');
       const confirmResponse = await fetch(message.SubscribeURL);
@@ -30,6 +31,14 @@ Deno.serve(async (req) => {
       console.error('Failed to confirm SNS subscription');
       return Response.json({ error: 'Failed to confirm' }, { status: 500 });
     }
+
+    // Create base44 client using a reconstructed request with the original headers
+    // This works for SNS webhooks — we only use asServiceRole (no user auth needed)
+    const reconstructedReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+    });
+    const base44 = createClientFromRequest(reconstructedReq);
 
     // Handle SNS Notification (actual SES events)
     if (message.Type === 'Notification') {

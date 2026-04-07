@@ -71,7 +71,9 @@ Deno.serve(async (req) => {
         return Response.json({ success: true, sent_via: 'ses' });
 
       } catch (sesError) {
-        console.warn(`SES failed for ${to}: ${sesError.message}. Falling back to Gmail.`);
+        console.error(`❌ SES FAILED for ${to}: ${sesError.name} - ${sesError.message}`);
+        console.error(`SES Error details: ${JSON.stringify(sesError.$metadata || {})}`);
+        console.warn(`Falling back to Gmail for ${to}...`);
       }
     } else {
       console.log('No AWS credentials configured. Using Gmail directly.');

@@ -205,10 +205,10 @@ ${ctaButtonsHtml}
     if ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) { alert(t('אנא מלאי תוכן לאימייל', 'Please fill in email content')); return; }
 
     let filter = { subscribed: true };
-    if (selectedGroup !== 'כל הרשימה') filter.group = selectedGroup;
+    if (selectedGroup && selectedGroup !== 'כל הרשימה') filter.group = selectedGroup;
     const recipients = await base44.entities.Subscribers.filter(filter);
     if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים פעילים בקבוצה זו', 'No active subscribers found')); return; }
-    if (!confirm(t(`לשלוח ל-${recipients.length} מנויים בקבוצה "${selectedGroup}"?`, `Send to ${recipients.length} subscribers in "${selectedGroup}"?`))) return;
+    if (!confirm(t(`לשלוח ל-${recipients.length} מנויים בקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send to ${recipients.length} subscribers in "${selectedGroup || 'All'}"?`))) return;
 
     setSending(true); setSendStatus(null);
     const finalEmailContent = buildFinalEmailContent();
@@ -288,7 +288,7 @@ ${ctaButtonsHtml}
   const handleConfirmResend = async () => {
     if (!resendSubject.trim()) { alert(t('אנא הזיני נושא', 'Please enter a subject')); return; }
     let filter = { subscribed: true };
-    if (resendGroup !== 'כל הרשימה') filter.group = resendGroup;
+    if (resendGroup && resendGroup !== 'כל הרשימה') filter.group = resendGroup;
     const recipients = await base44.entities.Subscribers.filter(filter);
     if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים', 'No active subscribers')); return; }
     if (!confirm(t(`לשלוח מחדש ל-${recipients.length} מנויים?`, `Resend to ${recipients.length} subscribers?`))) return;

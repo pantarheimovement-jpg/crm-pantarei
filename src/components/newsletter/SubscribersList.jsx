@@ -296,76 +296,125 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
       ) : filteredSubscribers.length === 0 ? (
         <div className="text-center py-12 text-gray-500">{t('לא נמצאו מנויים', 'No subscribers found')}</div>
       ) : (
-        <div className="overflow-x-auto bg-white rounded-2xl shadow-sm border border-gray-100" style={{ borderRadius: 'var(--crm-border-radius)' }}>
-          <table className="w-full">
-            <thead className="bg-gray-50/50 border-b border-gray-100">
-              <tr>
-                <th className="px-4 py-3 text-center w-12">
-                  <input type="checkbox" checked={selectedIds.length === filteredSubscribers.length && filteredSubscribers.length > 0} onChange={() => setSelectedIds(selectedIds.length === filteredSubscribers.length ? [] : filteredSubscribers.map(s => s.id))} className="w-5 h-5" />
-                </th>
-                {[t('מייל', 'Email'), t('וואטסאפ', 'WhatsApp'), t('שם', 'Name'), t('תפקיד', 'Job Title'), t('חברה', 'Company'), t('קבוצה', 'Group'), t('הסכמה', 'Consent'), t('סטטוס', 'Status'), t('פעולות', 'Actions')].map(h => (
-                  <th key={h} className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredSubscribers.map((sub) => (
-                <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-4 py-4 text-center">
+        <>
+          {/* Mobile card view */}
+          <div className="md:hidden space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <input type="checkbox" checked={selectedIds.length === filteredSubscribers.length && filteredSubscribers.length > 0} onChange={() => setSelectedIds(selectedIds.length === filteredSubscribers.length ? [] : filteredSubscribers.map(s => s.id))} className="w-5 h-5" />
+              <span className="text-xs text-gray-400">{t('בחר הכל', 'Select All')}</span>
+            </div>
+            {filteredSubscribers.map((sub) => (
+              <div key={sub.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
                     <input type="checkbox" checked={selectedIds.includes(sub.id)} onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, sub.id] : selectedIds.filter(id => id !== sub.id))} className="w-5 h-5" />
-                  </td>
-                  <td className="px-4 py-4 text-sm font-medium" style={{ wordBreak: 'break-all' }}>{sub.email || '-'}</td>
-                  <td className="px-4 py-4 text-sm" style={{ wordBreak: 'break-all' }}>
-                    {sub.whatsapp ? (
-                      <div className="flex items-center gap-2">
-                        <span>{sub.whatsapp}</span>
-                        <a
-                          href={`https://wa.me/${sub.whatsapp.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-green-600 hover:text-green-700 p-1 hover:bg-green-50 rounded-lg"
-                          title="WhatsApp"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </a>
-                      </div>
-                    ) : '-'}
-                  </td>
-                  <td className="px-4 py-4 text-sm font-medium">{sub.name || '-'}</td>
-                  <td className="px-4 py-4 text-sm text-gray-500">{sub.job_title || '-'}</td>
-                  <td className="px-4 py-4 text-sm text-gray-500">{sub.company || '-'}</td>
-                  <td className="px-4 py-4 text-sm">
-                    <select value={sub.group} onChange={(e) => handleUpdateSubscriberGroup(sub.id, e.target.value)} className="w-full px-3 py-1.5 text-xs font-medium rounded-full text-white border-0" style={{ backgroundColor: 'var(--crm-primary)', borderRadius: 'var(--crm-button-radius)' }}>
-                      {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-4 py-4 text-sm text-center">
-                    {sub.marketing_consent
-                      ? <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">✓</span>
-                      : <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-400">✗</span>
-                    }
-                  </td>
-                  <td className="px-4 py-4 text-sm">
+                    <span className="font-semibold text-[var(--crm-text)]">{sub.name || t('ללא שם', 'No name')}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
                     {sub.subscribed
-                      ? <span className="px-3 py-1 text-xs font-medium rounded-full text-white" style={{ backgroundColor: 'var(--crm-accent)' }}>{t('פעיל', 'Active')}</span>
-                      : <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-600">{t('לא פעיל', 'Inactive')}</span>
+                      ? <span className="px-2 py-0.5 text-xs font-medium rounded-full text-white" style={{ backgroundColor: 'var(--crm-accent)' }}>{t('פעיל', 'Active')}</span>
+                      : <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-200 text-gray-600">{t('לא פעיל', 'Inactive')}</span>
                     }
-                  </td>
-                  <td className="px-4 py-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => { setEditingSubscriber({ id: sub.id, email: sub.email, whatsapp: sub.whatsapp || '', name: sub.name || '', job_title: sub.job_title || '', company: sub.company || '', notes: sub.notes || '', group: sub.group, subscribed: sub.subscribed, marketing_consent: sub.marketing_consent || false }); setShowEditSubscriber(true); }} className="text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 p-2 hover:bg-[var(--crm-primary)]/10 rounded-lg">
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => deleteSubscriber(sub.id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    {sub.marketing_consent && <span className="px-1.5 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">✓</span>}
+                  </div>
+                </div>
+                <div className="space-y-1.5 text-sm text-gray-600">
+                  {sub.email && <div className="truncate" dir="ltr"><span className="text-gray-400 text-xs">{t('מייל', 'Email')}: </span>{sub.email}</div>}
+                  {sub.whatsapp && (
+                    <div className="flex items-center gap-2" dir="ltr">
+                      <span className="text-gray-400 text-xs">{t('וואטסאפ', 'WA')}: </span>
+                      <span>{sub.whatsapp}</span>
+                      <a href={`https://wa.me/${sub.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-600 p-0.5">
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
                     </div>
-                  </td>
+                  )}
+                  {sub.job_title && <div><span className="text-gray-400 text-xs">{t('תפקיד', 'Title')}: </span>{sub.job_title}</div>}
+                  {sub.company && <div><span className="text-gray-400 text-xs">{t('חברה', 'Co')}: </span>{sub.company}</div>}
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                  <select value={sub.group} onChange={(e) => handleUpdateSubscriberGroup(sub.id, e.target.value)} className="px-3 py-1.5 text-xs font-medium rounded-full text-white border-0" style={{ backgroundColor: 'var(--crm-primary)', borderRadius: 'var(--crm-button-radius)' }}>
+                    {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
+                  </select>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => { setEditingSubscriber({ id: sub.id, email: sub.email, whatsapp: sub.whatsapp || '', name: sub.name || '', job_title: sub.job_title || '', company: sub.company || '', notes: sub.notes || '', group: sub.group, subscribed: sub.subscribed, marketing_consent: sub.marketing_consent || false }); setShowEditSubscriber(true); }} className="text-[var(--crm-primary)] p-2 hover:bg-[var(--crm-primary)]/10 rounded-lg">
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => deleteSubscriber(sub.id)} className="text-red-500 p-2 hover:bg-red-50 rounded-lg">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table view */}
+          <div className="hidden md:block overflow-x-auto bg-white rounded-2xl shadow-sm border border-gray-100" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+            <table className="w-full">
+              <thead className="bg-gray-50/50 border-b border-gray-100">
+                <tr>
+                  <th className="px-4 py-3 text-center w-12">
+                    <input type="checkbox" checked={selectedIds.length === filteredSubscribers.length && filteredSubscribers.length > 0} onChange={() => setSelectedIds(selectedIds.length === filteredSubscribers.length ? [] : filteredSubscribers.map(s => s.id))} className="w-5 h-5" />
+                  </th>
+                  {[t('מייל', 'Email'), t('וואטסאפ', 'WhatsApp'), t('שם', 'Name'), t('תפקיד', 'Job Title'), t('חברה', 'Company'), t('קבוצה', 'Group'), t('הסכמה', 'Consent'), t('סטטוס', 'Status'), t('פעולות', 'Actions')].map(h => (
+                    <th key={h} className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredSubscribers.map((sub) => (
+                  <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-4 py-4 text-center">
+                      <input type="checkbox" checked={selectedIds.includes(sub.id)} onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, sub.id] : selectedIds.filter(id => id !== sub.id))} className="w-5 h-5" />
+                    </td>
+                    <td className="px-4 py-4 text-sm font-medium" style={{ wordBreak: 'break-all' }}>{sub.email || '-'}</td>
+                    <td className="px-4 py-4 text-sm" style={{ wordBreak: 'break-all' }}>
+                      {sub.whatsapp ? (
+                        <div className="flex items-center gap-2">
+                          <span>{sub.whatsapp}</span>
+                          <a href={`https://wa.me/${sub.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-green-600 hover:text-green-700 p-1 hover:bg-green-50 rounded-lg" title="WhatsApp">
+                            <MessageCircle className="w-4 h-4" />
+                          </a>
+                        </div>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-4 text-sm font-medium">{sub.name || '-'}</td>
+                    <td className="px-4 py-4 text-sm text-gray-500">{sub.job_title || '-'}</td>
+                    <td className="px-4 py-4 text-sm text-gray-500">{sub.company || '-'}</td>
+                    <td className="px-4 py-4 text-sm">
+                      <select value={sub.group} onChange={(e) => handleUpdateSubscriberGroup(sub.id, e.target.value)} className="w-full px-3 py-1.5 text-xs font-medium rounded-full text-white border-0" style={{ backgroundColor: 'var(--crm-primary)', borderRadius: 'var(--crm-button-radius)' }}>
+                        {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-4 py-4 text-sm text-center">
+                      {sub.marketing_consent
+                        ? <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">✓</span>
+                        : <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-400">✗</span>
+                      }
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      {sub.subscribed
+                        ? <span className="px-3 py-1 text-xs font-medium rounded-full text-white" style={{ backgroundColor: 'var(--crm-accent)' }}>{t('פעיל', 'Active')}</span>
+                        : <span className="px-3 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-600">{t('לא פעיל', 'Inactive')}</span>
+                      }
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { setEditingSubscriber({ id: sub.id, email: sub.email, whatsapp: sub.whatsapp || '', name: sub.name || '', job_title: sub.job_title || '', company: sub.company || '', notes: sub.notes || '', group: sub.group, subscribed: sub.subscribed, marketing_consent: sub.marketing_consent || false }); setShowEditSubscriber(true); }} className="text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 p-2 hover:bg-[var(--crm-primary)]/10 rounded-lg">
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => deleteSubscriber(sub.id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

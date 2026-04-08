@@ -272,7 +272,7 @@ export default function CRMSettings() {
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-sm mb-6">
           <div className="border-b border-gray-200">
-            <div className="flex overflow-x-auto">
+            <div className="flex overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
               {[
                 { key: 'crm-general', icon: Settings, label: 'הגדרות כלליות' },
                 { key: 'design', icon: Palette, label: 'עיצוב ומיתוג' },
@@ -284,15 +284,15 @@ export default function CRMSettings() {
                 { key: 'user-guide', icon: BookOpen, label: 'מדריך למשתמשת' },
               ].map(({ key, icon: Icon, label }) => (
                 <button key={key} onClick={() => switchTab(key)}
-                  className={`px-6 py-4 font-medium whitespace-nowrap flex items-center gap-2 ${activeTab === key ? 'border-b-2 border-[#6D436D] text-[#6D436D]' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-4 md:px-6 py-3 md:py-4 text-sm md:text-base font-medium whitespace-nowrap flex items-center gap-1.5 md:gap-2 flex-shrink-0 ${activeTab === key ? 'border-b-2 border-[#6D436D] text-[#6D436D]' : 'text-gray-500 hover:text-gray-700'}`}
                 >
-                  <Icon className="w-5 h-5" />{label}
+                  <Icon className="w-4 h-4 md:w-5 md:h-5" />{label}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {/* CRM General Tab */}
             {activeTab === 'crm-general' && generalSettings && (
               <div className="space-y-6">
@@ -344,15 +344,15 @@ export default function CRMSettings() {
 
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">לוגו מערכת</h3>
-                  <div className="flex gap-3 items-center">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                     <input
                       type="text"
                       value={generalSettings.logo_url || ''}
                       onChange={(e) => setGeneralSettings({...generalSettings, logo_url: e.target.value})}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg min-w-0"
                       placeholder="https://example.com/logo.png"
                     />
-                    <label className="bg-[#6D436D] text-white px-4 py-2 rounded-full font-semibold hover:bg-[#5a365a] cursor-pointer flex items-center gap-2 whitespace-nowrap">
+                    <label className="bg-[#6D436D] text-white px-4 py-2 rounded-full font-semibold hover:bg-[#5a365a] cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap">
                       {uploadingLogo ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
@@ -814,13 +814,13 @@ export default function CRMSettings() {
                         <p className="text-sm text-gray-700 mb-4">
                           חברי את הסוכן לווטסאפ כדי לנהל את ה-CRM דרך הודעות. הסוכן יכול להוסיף משתתפים, קורסים ומשימות.
                         </p>
-                        <div className="flex gap-3">
+                        <div className="flex flex-col sm:flex-row gap-3">
                           <button
                             onClick={() => {
                               const url = window.location.origin + base44.agents.getWhatsAppConnectURL('task_manager');
                               window.open(url, '_blank');
                             }}
-                            className="px-6 py-3 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 flex items-center gap-2"
+                            className="px-5 py-3 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 flex items-center justify-center gap-2"
                           >
                             <MessageCircle className="w-5 h-5" />
                             חבר לווטסאפ
@@ -832,7 +832,7 @@ export default function CRMSettings() {
                               setCopiedLink(true);
                               setTimeout(() => setCopiedLink(false), 2000);
                             }}
-                            className="px-6 py-3 border-2 border-green-600 text-green-700 rounded-full font-semibold hover:bg-green-50 flex items-center gap-2"
+                            className="px-5 py-3 border-2 border-green-600 text-green-700 rounded-full font-semibold hover:bg-green-50 flex items-center justify-center gap-2"
                           >
                             {copiedLink ? (
                               <>

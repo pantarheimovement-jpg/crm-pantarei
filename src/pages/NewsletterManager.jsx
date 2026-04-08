@@ -206,7 +206,9 @@ ${ctaButtonsHtml}
 
     let filter = { subscribed: true };
     if (selectedGroup && selectedGroup !== 'כל הרשימה') filter.group = selectedGroup;
+    console.log('Newsletter send - filter:', JSON.stringify(filter), 'selectedGroup:', selectedGroup);
     const recipients = await base44.entities.Subscribers.filter(filter);
+    console.log('Newsletter send - found recipients:', recipients?.length);
     if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים פעילים בקבוצה זו', 'No active subscribers found')); return; }
     if (!confirm(t(`לשלוח ל-${recipients.length} מנויים בקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send to ${recipients.length} subscribers in "${selectedGroup || 'All'}"?`))) return;
 
@@ -215,6 +217,7 @@ ${ctaButtonsHtml}
 
     try {
       let emailSuccessCount = 0, emailErrorCount = 0, whatsappSuccessCount = 0, whatsappErrorCount = 0;
+      let lastSentVia = 'SES';
       const BATCH_SIZE = SUBSCRIBERS_PER_GROUP;
       const totalBatches = Math.ceil(recipients.length / BATCH_SIZE);
 
@@ -223,7 +226,7 @@ ${ctaButtonsHtml}
 
         if (sendChannel === 'email' || sendChannel === 'both') {
           const emailRecipients = batchRecipients.filter(r => r.email);
-          let lastSentVia = 'SES';
+          console.log('Newsletter send - batch', batchIndex, 'emailRecipients:', emailRecipients.length);
           for (const recipient of emailRecipients) {
             const personalizedHtml = finalEmailContent
               .replace(/\{\{unsubscribe_link\}\}/g, `${window.location.origin}/Unsubscribe?token=${recipient.unsubscribe_token}`)
@@ -259,7 +262,8 @@ ${ctaButtonsHtml}
       }
 
       const totalLogRecipients = (sendChannel !== 'whatsapp' ? emailSuccessCount : 0) + (sendChannel !== 'email' ? whatsappSuccessCount : 0);
-      const emailProvider = typeof lastSentVia !== 'undefined' ? lastSentVia : 'SES';
+      const emailProvider = lastSentVia || 'SES';
+      console.log('Newsletter send complete - emails:', emailSuccessCount, 'errors:', emailErrorCount, 'whatsapp:', whatsappSuccessCount, 'via:', emailProvider);
       await base44.entities.NewsletterLogs.create({
         subject: subject || t('הודעת וואטסאפ', 'WhatsApp Message'),
         content: finalEmailContent || whatsappMessage,

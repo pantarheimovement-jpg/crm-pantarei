@@ -500,41 +500,72 @@ ${ctaButtonsHtml}
                     </select>
                   ) : (
                     <div className="space-y-2">
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={singleEmail}
-                          onChange={(e) => setSingleEmail(e.target.value)}
-                          placeholder={t('הקלידי שם או מייל לחיפוש...', 'Type name or email to search...')}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                          dir="auto"
-                        />
-                        {singleEmail.trim().length >= 2 && (() => {
-                          const q = singleEmail.trim().toLowerCase();
-                          const matches = subscribers.filter(s => s.email && s.subscribed && (
-                            s.email.toLowerCase().includes(q) || (s.name && s.name.toLowerCase().includes(q))
-                          )).slice(0, 8);
-                          return matches.length > 0 ? (
-                            <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                              {matches.map(s => (
-                                <button
-                                  key={s.id}
-                                  type="button"
-                                  onClick={() => setSingleEmail(s.email)}
-                                  className="w-full text-right px-4 py-2.5 hover:bg-gray-50 text-sm flex items-center justify-between gap-2 border-b border-gray-50 last:border-0"
-                                >
-                                  <span className="font-medium text-[var(--crm-text)]">{s.name || t('ללא שם', 'No name')}</span>
-                                  <span className="text-gray-400 text-xs truncate" dir="ltr">{s.email}</span>
-                                </button>
-                              ))}
-                            </div>
-                          ) : null;
-                        })()}
+                      <select
+                        value=""
+                        onChange={(e) => { if (e.target.value) setSingleEmail(e.target.value); }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="">{t('בחרי ממנוי קיים...', 'Pick from existing subscriber...')}</option>
+                        {subscribers.filter(s => s.email && s.subscribed).map(s => (
+                          <option key={s.id} value={s.email}>{s.name ? `${s.name} (${s.email})` : s.email}</option>
+                        ))}
+                      </select>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <div className="flex-1 border-t border-gray-200" />
+                        {t('או', 'or')}
+                        <div className="flex-1 border-t border-gray-200" />
                       </div>
-                      <p className="text-xs text-gray-400">{t('הקלידי לפחות 2 תווים כדי לחפש מנוי קיים, או הזיני מייל חדש', 'Type at least 2 characters to search subscribers, or enter a new email')}</p>
+                      <input
+                        type="email"
+                        value={singleEmail}
+                        onChange={(e) => setSingleEmail(e.target.value)}
+                        placeholder={t('הזיני כתובת מייל ידנית...', 'Enter email address manually...')}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        dir="ltr"
+                      />
                     </div>
                   )}
                 </div>
+
+                {(sendChannel === 'email' || sendChannel === 'both') && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">{t('נושא האימייל', 'Email Subject')}</label>
+                      <AiSubjectSuggestions
+                        content={
+                          designMode === 'template'
+                            ? (emailTemplates.find(tmpl => tmpl.id === selectedTemplate)?.body || '')
+                            : designMode === 'free' ? content : htmlContent
+                        }
+                        onSelect={(suggestion) => setSubject(suggestion)}
+                      />
+                    </div>
+                    <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t('לדוגמה: עדכון חודשי', 'Example: Monthly Update')} className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+                  </div>
+                )}
+
+                {(sendChannel === 'whatsapp' || sendChannel === 'both') && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                    <h3 className="font-semibold text-lg text-gray-900 mb-4 flex items-center gap-2"><MessageCircle className="w-6 h-6 text-green-600" />{t('הודעת וואטסאפ', 'WhatsApp Message')}</h3>
+                    <textarea value={whatsappMessage} onChange={(e) => setWhatsappMessage(e.target.value)} placeholder={t('היי {{name}}, זה הניוזלטר שלנו...', 'Hi {{name}}, this is our newsletter...')} rows="5" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+                    <p className="text-xs text-gray-600 mt-2">💡 {t('השתמשי ב-{{name}} לשם המנוי', 'Use {{name}} for subscriber name')}</p>
+                  </div>
+                )}
+
+                {(sendChannel === 'email' || sendChannel === 'both') && designMode === 'template' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{t('בחרי תבנית', 'Choose Template')}</label>
+                      <select value={selectedTemplate || ''} onChange={(e) => setSelectedTemplate(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        {emailTemplates.length === 0 ? <option value="">{t('אין תבניות זמינות', 'No templates available')}</option> :
+                          emailTemplates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <p className="text-sm text-yellow-800">💡 {t('ניתן לערוך את התבנית בהגדרות CRM', 'You can edit the template in CRM settings.')}</p>
+                    </div>
+                  </div>
+                )}
 
                 {(sendChannel === 'email' || sendChannel === 'both') && designMode === 'html' && (
                   <div>

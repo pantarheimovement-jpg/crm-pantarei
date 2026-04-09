@@ -11,6 +11,7 @@ import ImportSubscribers from '../components/newsletter/ImportSubscribers';
 import TestEmailModal from '../components/newsletter/TestEmailModal';
 import SubscribersList from '../components/newsletter/SubscribersList';
 import AiSubjectSuggestions from '../components/newsletter/AiSubjectSuggestions';
+import SingleRecipientPicker from '../components/newsletter/SingleRecipientPicker';
 
 const SUBSCRIBERS_PER_GROUP = 280;
 
@@ -28,6 +29,8 @@ export default function NewsletterManager() {
   const [sending, setSending] = useState(false);
   const [sendStatus, setSendStatus] = useState(null);
   const [sendChannel, setSendChannel] = useState('email');
+  const [sendMode, setSendMode] = useState('group');
+  const [singleRecipient, setSingleRecipient] = useState(null);
   const [whatsappMessage, setWhatsappMessage] = useState('');
 
   const [designMode, setDesignMode] = useState('free');
@@ -203,14 +206,22 @@ ${ctaButtonsHtml}
     if ((sendChannel === 'whatsapp' || sendChannel === 'both') && !whatsappMessage.trim()) { alert(t('אנא מלאי הודעת וואטסאפ', 'Please fill in WhatsApp message')); return; }
     if ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'html' && !htmlContent) { alert(t('אנא הדביקי את קוד ה-HTML', 'Please paste the HTML code')); return; }
     if ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) { alert(t('אנא מלאי תוכן לאימייל', 'Please fill in email content')); return; }
+    if (sendMode === 'single' && !singleRecipient?.email) { alert(t('אנא בחרי נמען', 'Please select a recipient')); return; }
 
-    let filter = { subscribed: true };
-    if (selectedGroup && selectedGroup !== 'כל הרשימה') filter.group = selectedGroup;
-    console.log('Newsletter send - filter:', JSON.stringify(filter), 'selectedGroup:', selectedGroup);
-    const recipients = await base44.entities.Subscribers.filter(filter);
-    console.log('Newsletter send - found recipients:', recipients?.length);
-    if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים פעילים בקבוצה זו', 'No active subscribers found')); return; }
-    if (!confirm(t(`לשלוח ל-${recipients.length} מנויים בקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send to ${recipients.length} subscribers in "${selectedGroup || 'All'}"?`))) return;
+    let recipients;
+    if (sendMode === 'single') {
+      const matchingSub = subscribers.find(s => s.email?.toLowerCase() === singleRecipient.email.toLowerCase());
+      recipients = [matchingSub || { email: singleRecipient.email, name: singleRecipient.name || '', unsubscribe_token: '' }];
+      if (!confirm(t(`לשלוח ל-${singleRecipient.email}?`, `Send to ${singleRecipient.email}?`))) return;
+    } else {
+      let filter = { subscribed: true };
+      if (selectedGroup && selectedGroup !== 'כל הרשימה') filter.group = selectedGroup;
+      console.log('Newsletter send - filter:', JSON.stringify(filter), 'selectedGroup:', selectedGroup);
+      recipients = await base44.entities.Subscribers.filter(filter);
+      console.log('Newsletter send - found recipients:', recipients?.length);
+      if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים פעילים בקבוצה זו', 'No active subscribers found')); return; }
+      if (!confirm(t(`לשלוח ל-${recipients.length} מנויים בקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send to ${recipients.length} subscribers in "${selectedGroup || 'All'}"?`))) return;
+    }
 
     setSending(true); setSendStatus(null);
     const finalEmailContent = buildFinalEmailContent();
@@ -275,7 +286,7 @@ ${ctaButtonsHtml}
 
       setSendStatus('success');
       alert(t(`✅ השליחה הושלמה!\n📧 אימיילים: ${emailSuccessCount}\n💬 וואטסאפ: ${whatsappSuccessCount}`, `✅ Done!\n📧 Emails: ${emailSuccessCount}\n💬 WhatsApp: ${whatsappSuccessCount}`));
-      setSubject(''); setContent(''); setHtmlContent(''); setWhatsappMessage(''); setCtaButtons([]);
+      setSubject(''); setContent(''); setHtmlContent(''); setWhatsappMessage(''); setCtaButtons([]); setSingleRecipient(null);
       loadLogs();
     } catch (error) {
       setSendStatus('error');
@@ -467,11 +478,44 @@ ${ctaButtonsHtml}
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('בחרי קבוצת יעד', 'Select Target Group')}</label>
-                  <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                    {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
-                  </select>
+                {/* Send mode: group or single */}
+                <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+                  <h3 className="font-semibold text-lg text-[var(--crm-text)] mb-4">{t('שלחי ל...', 'Send to...')}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <button onClick={() => { setSendMode('group'); setSingleRecipient(null); }}
+                      className={`p-4 rounded-xl border-2 transition-all ${sendMode === 'group' ? 'bg-[var(--crm-primary)]/10' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
+                      style={{ borderRadius: 'var(--crm-border-radius)', borderColor: sendMode === 'group' ? 'var(--crm-primary)' : undefined }}>
+                      <Users className="w-8 h-8 mx-auto mb-2" style={{ color: sendMode === 'group' ? 'var(--crm-primary)' : '#9CA3AF' }} />
+                      <p className="font-medium text-[var(--crm-text)]">{t('קבוצה', 'Group')}</p>
+                    </button>
+                    <button onClick={() => setSendMode('single')}
+                      className={`p-4 rounded-xl border-2 transition-all ${sendMode === 'single' ? 'bg-[var(--crm-primary)]/10' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
+                      style={{ borderRadius: 'var(--crm-border-radius)', borderColor: sendMode === 'single' ? 'var(--crm-primary)' : undefined }}>
+                      <Mail className="w-8 h-8 mx-auto mb-2" style={{ color: sendMode === 'single' ? 'var(--crm-primary)' : '#9CA3AF' }} />
+                      <p className="font-medium text-[var(--crm-text)]">{t('נמען יחיד', 'Single Recipient')}</p>
+                    </button>
+                  </div>
+
+                  {sendMode === 'group' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{t('בחרי קבוצת יעד', 'Select Target Group')}</label>
+                      <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
+                      </select>
+                    </div>
+                  )}
+
+                  {sendMode === 'single' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{t('בחרי נמען', 'Select Recipient')}</label>
+                      <SingleRecipientPicker
+                        subscribers={subscribers}
+                        selected={singleRecipient}
+                        onSelect={setSingleRecipient}
+                        t={t}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {(sendChannel === 'email' || sendChannel === 'both') && (
@@ -542,7 +586,7 @@ ${ctaButtonsHtml}
                 )}
 
                 <button onClick={handleSendNewsletter}
-                  disabled={sending || ((sendChannel === 'email' || sendChannel === 'both') && !subject) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'html' && !htmlContent) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) || ((sendChannel === 'whatsapp' || sendChannel === 'both') && !whatsappMessage.trim())}
+                  disabled={sending || ((sendChannel === 'email' || sendChannel === 'both') && !subject) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'html' && !htmlContent) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) || ((sendChannel === 'whatsapp' || sendChannel === 'both') && !whatsappMessage.trim()) || (sendMode === 'single' && !singleRecipient?.email)}
                   className="w-full bg-[var(--crm-primary)] text-white py-3 font-semibold hover:bg-[var(--crm-primary)]/90 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   style={{ borderRadius: 'var(--crm-button-radius)' }}
                 >

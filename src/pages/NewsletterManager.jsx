@@ -499,14 +499,31 @@ ${ctaButtonsHtml}
                       {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
                     </select>
                   ) : (
-                    <input
-                      type="email"
-                      value={singleEmail}
-                      onChange={(e) => setSingleEmail(e.target.value)}
-                      placeholder={t('הזיני כתובת מייל...', 'Enter email address...')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      dir="ltr"
-                    />
+                    <div className="space-y-2">
+                      <select
+                        value=""
+                        onChange={(e) => { if (e.target.value) setSingleEmail(e.target.value); }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="">{t('בחרי ממנוי קיים...', 'Pick from existing subscriber...')}</option>
+                        {subscribers.filter(s => s.email && s.subscribed).map(s => (
+                          <option key={s.id} value={s.email}>{s.name ? `${s.name} (${s.email})` : s.email}</option>
+                        ))}
+                      </select>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <div className="flex-1 border-t border-gray-200" />
+                        {t('או', 'or')}
+                        <div className="flex-1 border-t border-gray-200" />
+                      </div>
+                      <input
+                        type="email"
+                        value={singleEmail}
+                        onChange={(e) => setSingleEmail(e.target.value)}
+                        placeholder={t('הזיני כתובת מייל ידנית...', 'Enter email address manually...')}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        dir="ltr"
+                      />
+                    </div>
                   )}
                 </div>
 

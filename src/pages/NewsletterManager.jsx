@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../components/LanguageContext';
 import { base44 } from '@/api/base44Client';
 import { useSiteSettings } from '../components/SiteSettingsContext';
-import { Mail, Upload, Users, Send, Loader2, CheckCircle, XCircle, Calendar, Plus, FileCode, Layout, Edit3, MessageCircle, BarChart3, User } from 'lucide-react';
+import { Mail, Upload, Users, Send, Loader2, CheckCircle, XCircle, Calendar, Plus, FileCode, Layout, Edit3, MessageCircle, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import RichTextEditor from '../components/admin/RichTextEditor';
@@ -25,8 +25,6 @@ export default function NewsletterManager() {
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
-  const [sendTarget, setSendTarget] = useState('group');
-  const [singleEmail, setSingleEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [sendStatus, setSendStatus] = useState(null);
   const [sendChannel, setSendChannel] = useState('email');
@@ -205,21 +203,14 @@ ${ctaButtonsHtml}
     if ((sendChannel === 'whatsapp' || sendChannel === 'both') && !whatsappMessage.trim()) { alert(t('אנא מלאי הודעת וואטסאפ', 'Please fill in WhatsApp message')); return; }
     if ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'html' && !htmlContent) { alert(t('אנא הדביקי את קוד ה-HTML', 'Please paste the HTML code')); return; }
     if ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) { alert(t('אנא מלאי תוכן לאימייל', 'Please fill in email content')); return; }
-    if (sendTarget === 'single' && (sendChannel === 'email' || sendChannel === 'both') && !singleEmail.trim()) { alert(t('אנא הזיני כתובת מייל', 'Please enter an email address')); return; }
 
-    let recipients;
-    if (sendTarget === 'single') {
-      recipients = [{ email: singleEmail.trim(), name: '', unsubscribe_token: '' }];
-      if (!confirm(t(`לשלוח אל ${singleEmail.trim()}?`, `Send to ${singleEmail.trim()}?`))) return;
-    } else {
-      let filter = { subscribed: true };
-      if (selectedGroup && selectedGroup !== 'כל הרשימה') filter.group = selectedGroup;
-      console.log('Newsletter send - filter:', JSON.stringify(filter), 'selectedGroup:', selectedGroup);
-      recipients = await base44.entities.Subscribers.filter(filter);
-      console.log('Newsletter send - found recipients:', recipients?.length);
-      if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים פעילים בקבוצה זו', 'No active subscribers found')); return; }
-      if (!confirm(t(`לשלוח ל-${recipients.length} מנויים בקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send to ${recipients.length} subscribers in "${selectedGroup || 'All'}"?`))) return;
-    }
+    let filter = { subscribed: true };
+    if (selectedGroup && selectedGroup !== 'כל הרשימה') filter.group = selectedGroup;
+    console.log('Newsletter send - filter:', JSON.stringify(filter), 'selectedGroup:', selectedGroup);
+    const recipients = await base44.entities.Subscribers.filter(filter);
+    console.log('Newsletter send - found recipients:', recipients?.length);
+    if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים פעילים בקבוצה זו', 'No active subscribers found')); return; }
+    if (!confirm(t(`לשלוח ל-${recipients.length} מנויים בקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send to ${recipients.length} subscribers in "${selectedGroup || 'All'}"?`))) return;
 
     setSending(true); setSendStatus(null);
     const finalEmailContent = buildFinalEmailContent();
@@ -276,7 +267,7 @@ ${ctaButtonsHtml}
       await base44.entities.NewsletterLogs.create({
         subject: subject || t('הודעת וואטסאפ', 'WhatsApp Message'),
         content: finalEmailContent || whatsappMessage,
-        group: sendTarget === 'single' ? `מייל יחיד: ${singleEmail}` : selectedGroup, recipients_count: totalLogRecipients,
+        group: selectedGroup, recipients_count: totalLogRecipients,
         status: (emailErrorCount + whatsappErrorCount) > 0 ? `נשלח חלקית (${emailErrorCount + whatsappErrorCount} שגיאות)` : 'נשלח בהצלחה',
         sent_date: new Date().toISOString(),
         sent_by: sendChannel === 'both' ? `${emailProvider} + WhatsApp` : sendChannel === 'email' ? emailProvider : 'WhatsApp'
@@ -284,7 +275,7 @@ ${ctaButtonsHtml}
 
       setSendStatus('success');
       alert(t(`✅ השליחה הושלמה!\n📧 אימיילים: ${emailSuccessCount}\n💬 וואטסאפ: ${whatsappSuccessCount}`, `✅ Done!\n📧 Emails: ${emailSuccessCount}\n💬 WhatsApp: ${whatsappSuccessCount}`));
-      setSubject(''); setContent(''); setHtmlContent(''); setWhatsappMessage(''); setCtaButtons([]); setSingleEmail('');
+      setSubject(''); setContent(''); setHtmlContent(''); setWhatsappMessage(''); setCtaButtons([]);
       loadLogs();
     } catch (error) {
       setSendStatus('error');
@@ -477,37 +468,10 @@ ${ctaButtonsHtml}
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('שלחי אל', 'Send to')}</label>
-                  <div className="flex gap-2 mb-3">
-                    <button
-                      onClick={() => setSendTarget('group')}
-                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 font-medium transition-all ${sendTarget === 'group' ? 'border-[var(--crm-primary)] bg-[var(--crm-primary)]/10 text-[var(--crm-text)]' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                    >
-                      <Users className="w-4 h-4" />
-                      {t('קבוצה', 'Group')}
-                    </button>
-                    <button
-                      onClick={() => setSendTarget('single')}
-                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 font-medium transition-all ${sendTarget === 'single' ? 'border-[var(--crm-primary)] bg-[var(--crm-primary)]/10 text-[var(--crm-text)]' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                    >
-                      <User className="w-4 h-4" />
-                      {t('מייל יחיד', 'Single Email')}
-                    </button>
-                  </div>
-                  {sendTarget === 'group' ? (
-                    <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                      {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
-                    </select>
-                  ) : (
-                    <input
-                      type="email"
-                      value={singleEmail}
-                      onChange={(e) => setSingleEmail(e.target.value)}
-                      placeholder={t('הזיני כתובת מייל...', 'Enter email address...')}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      dir="ltr"
-                    />
-                  )}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('בחרי קבוצת יעד', 'Select Target Group')}</label>
+                  <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
+                  </select>
                 </div>
 
                 {(sendChannel === 'email' || sendChannel === 'both') && (

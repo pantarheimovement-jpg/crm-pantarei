@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Search, Plus, Trash2, Edit3, Loader2, X, CheckCircle, MessageCircle } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import ExportButtons from '../shared/ExportButtons';
+import SubscriberStudentLink from './SubscriberStudentLink';
 
 const SUBSCRIBERS_PER_GROUP = 280;
 
@@ -14,7 +15,7 @@ function generateToken() {
   });
 }
 
-export default function SubscribersList({ subscribers, loading, activeGroups, onReload }) {
+export default function SubscribersList({ subscribers, students, loading, activeGroups, onReload }) {
   const { t, language } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGroup, setFilterGroup] = useState('all');
@@ -30,15 +31,28 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
   const [addToContacts, setAddToContacts] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [addGroupSelectedIds, setAddGroupSelectedIds] = useState([]);
+  const [addGroupSearch, setAddGroupSearch] = useState('');
 
-  const getGroupSubscriberCount = (groupName) => subscribers.filter(s => s.group === groupName).length;
+  // Build students map by email for quick lookup
+  const studentsMap = useMemo(() => {
+    const map = {};
+    (students || []).forEach(s => {
+      if (s.email) map[s.email.toLowerCase()] = s;
+    });
+    return map;
+  }, [students]);
+
+  const getGroupSubscriberCount = (groupName) => subscribers.filter(s => 
+    s.group === groupName || (s.groups && Array.isArray(s.groups) && s.groups.includes(groupName))
+  ).length;
 
   const filteredSubscribers = subscribers.filter(sub => {
     const matchesSearch = !searchTerm ||
       sub.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sub.whatsapp?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sub.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesGroup = filterGroup === 'all' || sub.group === filterGroup;
+    const matchesGroup = filterGroup === 'all' || sub.group === filterGroup || (sub.groups && Array.isArray(sub.groups) && sub.groups.includes(filterGroup));
     const matchesStatus = filterStatus === 'all' || (filterStatus === 'active' && sub.subscribed) || (filterStatus === 'inactive' && !sub.subscribed);
     const matchesChannel = filterChannel === 'all' ||
       (filterChannel === 'has_whatsapp' && sub.whatsapp) ||
@@ -62,6 +76,14 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
     }
   };
 
+  const getStudentCourseGroup = (email) => {
+    if (!email) return null;
+    const student = studentsMap[email.toLowerCase()];
+    if (!student) return null;
+    return student.course_name || 
+      (student.courses && student.courses.length > 0 ? student.courses[0].course_name : null);
+  };
+
   const handleAddSubscriber = async () => {
     if (!newSubscriber.email && !newSubscriber.whatsapp) { alert(t('אנא הזיני כתובת מייל או מספר וואטסאפ', 'Please enter an email or WhatsApp')); return; }
     setAddingSubscriber(true);
@@ -70,8 +92,11 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
         const existing = await base44.entities.Subscribers.filter({ email: newSubscriber.email });
         if (existing?.length > 0) { alert(t('המייל כבר קיים ברשימה', 'Email already exists')); setAddingSubscriber(false); return; }
       }
-      const assignedGroup = await getAvailableGroup();
-      await base44.entities.Subscribers.create({ ...newSubscriber, group: assignedGroup, subscribed: true, unsubscribe_token: generateToken(), source: 'הוספה ידנית' });
+      // Auto-assign group based on student's course
+      const courseGroup = getStudentCourseGroup(newSubscriber.email);
+      const assignedGroup = courseGroup || 'כללי';
+      const groups = courseGroup ? [courseGroup] : [];
+      await base44.entities.Subscribers.create({ ...newSubscriber, group: assignedGroup, groups, subscribed: true, unsubscribe_token: generateToken(), source: 'הוספה ידנית' });
       if (addToContacts && newSubscriber.name) {
         await base44.entities.Contact.create({ full_name: newSubscriber.name, email: newSubscriber.email || '', phone: newSubscriber.whatsapp || '', job_title: newSubscriber.job_title || '', organization_name: newSubscriber.company || '' });
       }
@@ -91,7 +116,8 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
         email: editingSubscriber.email || '', whatsapp: editingSubscriber.whatsapp || '',
         name: editingSubscriber.name || '', job_title: editingSubscriber.job_title || '',
         company: editingSubscriber.company || '', notes: editingSubscriber.notes || '',
-        group: editingSubscriber.group, subscribed: editingSubscriber.subscribed,
+        group: editingSubscriber.group, groups: editingSubscriber.groups || [],
+        subscribed: editingSubscriber.subscribed,
         marketing_consent: editingSubscriber.marketing_consent || false
       });
       alert(t('המנוי עודכן בהצלחה!', 'Subscriber updated!'));
@@ -121,9 +147,27 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
   const handleAddGroup = async () => {
     if (!newGroupName.trim()) { alert(t('אנא הזיני שם קבוצה', 'Enter group name')); return; }
     if (activeGroups.includes(newGroupName.trim())) { alert(t('קבוצה בשם זה כבר קיימת', 'Group already exists')); return; }
-    await base44.entities.Subscribers.create({ email: `_placeholder_${Date.now()}@group.internal`, name: `[מחזיק מקום - ${newGroupName.trim()}]`, group: newGroupName.trim(), subscribed: false, unsubscribe_token: generateToken(), source: 'קבוצה חדשה' });
-    alert(`הקבוצה "${newGroupName.trim()}" נוספה!`);
-    setShowAddGroup(false); setNewGroupName(''); onReload();
+    const groupName = newGroupName.trim();
+    
+    // If subscribers are selected, add them to this group
+    if (addGroupSelectedIds.length > 0) {
+      for (const subId of addGroupSelectedIds) {
+        const sub = subscribers.find(s => s.id === subId);
+        if (sub) {
+          const currentGroups = sub.groups && Array.isArray(sub.groups) ? [...sub.groups] : (sub.group ? [sub.group] : []);
+          if (!currentGroups.includes(groupName)) {
+            currentGroups.push(groupName);
+          }
+          await base44.entities.Subscribers.update(subId, { groups: currentGroups });
+        }
+      }
+      alert(`הקבוצה "${groupName}" נוספה עם ${addGroupSelectedIds.length} מנויים!`);
+    } else {
+      // Create placeholder subscriber to register the group
+      await base44.entities.Subscribers.create({ email: `_placeholder_${Date.now()}@group.internal`, name: `[מחזיק מקום - ${groupName}]`, group: groupName, groups: [groupName], subscribed: false, unsubscribe_token: generateToken(), source: 'קבוצה חדשה' });
+      alert(`הקבוצה "${groupName}" נוספה!`);
+    }
+    setShowAddGroup(false); setNewGroupName(''); setAddGroupSelectedIds([]); setAddGroupSearch(''); onReload();
   };
 
   return (
@@ -152,15 +196,47 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
 
       {showAddGroup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">{t('הוסף קבוצה חדשה', 'Add New Group')}</h3>
-              <button onClick={() => { setShowAddGroup(false); setNewGroupName(''); }}><X className="w-6 h-6" /></button>
+              <button onClick={() => { setShowAddGroup(false); setNewGroupName(''); setAddGroupSelectedIds([]); setAddGroupSearch(''); }}><X className="w-6 h-6" /></button>
             </div>
             <input type="text" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} placeholder={t('שם הקבוצה', 'Group name')} className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4" />
+            
+            {/* Subscriber multi-select */}
+            <div className="border border-gray-200 rounded-lg p-3 mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">{t('בחרי מנויים לשיוך לקבוצה (אופציונלי)', 'Select subscribers to add to group (optional)')}</p>
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input type="text" value={addGroupSearch} onChange={(e) => setAddGroupSearch(e.target.value)} placeholder={t('חפשי מנוי...', 'Search subscriber...')} className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm" />
+              </div>
+              {addGroupSelectedIds.length > 0 && (
+                <p className="text-xs text-[var(--crm-primary)] font-medium mb-2">{addGroupSelectedIds.length} {t('מנויים נבחרו', 'selected')}</p>
+              )}
+              <div className="max-h-48 overflow-y-auto space-y-1">
+                {subscribers
+                  .filter(s => s.subscribed !== false && !s.email?.startsWith('_placeholder_'))
+                  .filter(s => !addGroupSearch || (s.name || '').toLowerCase().includes(addGroupSearch.toLowerCase()) || (s.email || '').toLowerCase().includes(addGroupSearch.toLowerCase()))
+                  .map(sub => (
+                    <label key={sub.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={addGroupSelectedIds.includes(sub.id)}
+                        onChange={(e) => setAddGroupSelectedIds(e.target.checked ? [...addGroupSelectedIds, sub.id] : addGroupSelectedIds.filter(id => id !== sub.id))}
+                        className="w-4 h-4"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{sub.name || sub.email}</p>
+                        <p className="text-xs text-gray-500 truncate">{sub.group || ''}</p>
+                      </div>
+                    </label>
+                  ))}
+              </div>
+            </div>
+
             <div className="flex gap-3">
               <button onClick={handleAddGroup} className="flex-1 bg-[var(--crm-primary)] text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2"><Plus className="w-5 h-5" />{t('הוסף', 'Add')}</button>
-              <button onClick={() => { setShowAddGroup(false); setNewGroupName(''); }} className="px-6 py-3 border border-gray-300 rounded-lg">{t('ביטול', 'Cancel')}</button>
+              <button onClick={() => { setShowAddGroup(false); setNewGroupName(''); setAddGroupSelectedIds([]); setAddGroupSearch(''); }} className="px-6 py-3 border border-gray-300 rounded-lg">{t('ביטול', 'Cancel')}</button>
             </div>
           </div>
         </div>
@@ -239,10 +315,43 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
                   <input type={type} value={editingSubscriber[field] || ''} onChange={(e) => setEditingSubscriber({...editingSubscriber, [field]: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
                 </div>
               ))}
+              {/* Student link */}
+              {editingSubscriber.email && studentsMap[editingSubscriber.email.toLowerCase()] && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <a href={`/Students?student_id=${studentsMap[editingSubscriber.email.toLowerCase()].id}`} className="text-sm font-medium text-[var(--crm-primary)] hover:underline flex items-center gap-2">
+                    👤 {t('צפה בכרטיס משתתף:', 'View student card:')} {studentsMap[editingSubscriber.email.toLowerCase()].full_name}
+                  </a>
+                </div>
+              )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('קבוצה', 'Group')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('קבוצה ראשית', 'Primary Group')}</label>
                 <select value={editingSubscriber.group} onChange={(e) => setEditingSubscriber({...editingSubscriber, group: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                  {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
+                  {activeGroups.filter(g => g !== 'כל הרשימה').map(group => <option key={group} value={group}>{group}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('קבוצות נוספות', 'Additional Groups')}</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {(editingSubscriber.groups || []).map((g, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-[var(--crm-primary)]/10 text-[var(--crm-primary)]">
+                      {g}
+                      <button onClick={() => {
+                        const updated = (editingSubscriber.groups || []).filter((_, i) => i !== idx);
+                        setEditingSubscriber({...editingSubscriber, groups: updated});
+                      }} className="hover:text-red-500"><X className="w-3 h-3" /></button>
+                    </span>
+                  ))}
+                </div>
+                <select onChange={(e) => {
+                  if (e.target.value && !(editingSubscriber.groups || []).includes(e.target.value)) {
+                    setEditingSubscriber({...editingSubscriber, groups: [...(editingSubscriber.groups || []), e.target.value]});
+                  }
+                  e.target.value = '';
+                }} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" defaultValue="">
+                  <option value="">{t('+ הוסף לקבוצה...', '+ Add to group...')}</option>
+                  {activeGroups.filter(g => g !== 'כל הרשימה' && !(editingSubscriber.groups || []).includes(g)).map(group => (
+                    <option key={group} value={group}>{group}</option>
+                  ))}
                 </select>
               </div>
               <div className="flex items-center gap-3">
@@ -332,12 +441,20 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
                   {sub.job_title && <div><span className="text-gray-400 text-xs">{t('תפקיד', 'Title')}: </span>{sub.job_title}</div>}
                   {sub.company && <div><span className="text-gray-400 text-xs">{t('חברה', 'Co')}: </span>{sub.company}</div>}
                 </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {(() => {
+                    const allGroups = new Set();
+                    if (sub.group) allGroups.add(sub.group);
+                    if (sub.groups && Array.isArray(sub.groups)) sub.groups.forEach(g => allGroups.add(g));
+                    return [...allGroups].map((g, i) => (
+                      <span key={i} className="px-2 py-0.5 text-xs font-medium rounded-full text-white" style={{ backgroundColor: 'var(--crm-primary)' }}>{g}</span>
+                    ));
+                  })()}
+                </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                  <select value={sub.group} onChange={(e) => handleUpdateSubscriberGroup(sub.id, e.target.value)} className="px-3 py-1.5 text-xs font-medium rounded-full text-white border-0" style={{ backgroundColor: 'var(--crm-primary)', borderRadius: 'var(--crm-button-radius)' }}>
-                    {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
-                  </select>
+                  <SubscriberStudentLink email={sub.email} studentsMap={studentsMap} />
                   <div className="flex items-center gap-1">
-                    <button onClick={() => { setEditingSubscriber({ id: sub.id, email: sub.email, whatsapp: sub.whatsapp || '', name: sub.name || '', job_title: sub.job_title || '', company: sub.company || '', notes: sub.notes || '', group: sub.group, subscribed: sub.subscribed, marketing_consent: sub.marketing_consent || false }); setShowEditSubscriber(true); }} className="text-[var(--crm-primary)] p-2 hover:bg-[var(--crm-primary)]/10 rounded-lg">
+                    <button onClick={() => { setEditingSubscriber({ id: sub.id, email: sub.email, whatsapp: sub.whatsapp || '', name: sub.name || '', job_title: sub.job_title || '', company: sub.company || '', notes: sub.notes || '', group: sub.group, groups: sub.groups || [], subscribed: sub.subscribed, marketing_consent: sub.marketing_consent || false }); setShowEditSubscriber(true); }} className="text-[var(--crm-primary)] p-2 hover:bg-[var(--crm-primary)]/10 rounded-lg">
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button onClick={() => deleteSubscriber(sub.id)} className="text-red-500 p-2 hover:bg-red-50 rounded-lg">
@@ -357,7 +474,7 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
                   <th className="px-4 py-3 text-center w-12">
                     <input type="checkbox" checked={selectedIds.length === filteredSubscribers.length && filteredSubscribers.length > 0} onChange={() => setSelectedIds(selectedIds.length === filteredSubscribers.length ? [] : filteredSubscribers.map(s => s.id))} className="w-5 h-5" />
                   </th>
-                  {[t('מייל', 'Email'), t('וואטסאפ', 'WhatsApp'), t('שם', 'Name'), t('תפקיד', 'Job Title'), t('חברה', 'Company'), t('קבוצה', 'Group'), t('הסכמה', 'Consent'), t('סטטוס', 'Status'), t('פעולות', 'Actions')].map(h => (
+                  {[t('מייל', 'Email'), t('וואטסאפ', 'WhatsApp'), t('שם', 'Name'), t('משתתף', 'Student'), t('קבוצות', 'Groups'), t('הסכמה', 'Consent'), t('סטטוס', 'Status'), t('פעולות', 'Actions')].map(h => (
                     <th key={h} className="px-4 py-3 text-right text-xs font-normal text-gray-400 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -380,12 +497,21 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
                       ) : '-'}
                     </td>
                     <td className="px-4 py-4 text-sm font-medium">{sub.name || '-'}</td>
-                    <td className="px-4 py-4 text-sm text-gray-500">{sub.job_title || '-'}</td>
-                    <td className="px-4 py-4 text-sm text-gray-500">{sub.company || '-'}</td>
+                    <td className="px-4 py-4 text-sm text-center">
+                      <SubscriberStudentLink email={sub.email} studentsMap={studentsMap} />
+                    </td>
                     <td className="px-4 py-4 text-sm">
-                      <select value={sub.group} onChange={(e) => handleUpdateSubscriberGroup(sub.id, e.target.value)} className="w-full px-3 py-1.5 text-xs font-medium rounded-full text-white border-0" style={{ backgroundColor: 'var(--crm-primary)', borderRadius: 'var(--crm-button-radius)' }}>
-                        {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
-                      </select>
+                      <div className="flex flex-wrap gap-1">
+                        {(() => {
+                          const allGroups = new Set();
+                          if (sub.group) allGroups.add(sub.group);
+                          if (sub.groups && Array.isArray(sub.groups)) sub.groups.forEach(g => allGroups.add(g));
+                          return [...allGroups].map((g, i) => (
+                            <span key={i} className="px-2 py-0.5 text-xs font-medium rounded-full text-white" style={{ backgroundColor: 'var(--crm-primary)' }}>{g}</span>
+                          ));
+                        })()}
+                        {!sub.group && (!sub.groups || sub.groups.length === 0) && <span className="text-gray-400">-</span>}
+                      </div>
                     </td>
                     <td className="px-4 py-4 text-sm text-center">
                       {sub.marketing_consent
@@ -401,7 +527,7 @@ export default function SubscribersList({ subscribers, loading, activeGroups, on
                     </td>
                     <td className="px-4 py-4 text-sm">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => { setEditingSubscriber({ id: sub.id, email: sub.email, whatsapp: sub.whatsapp || '', name: sub.name || '', job_title: sub.job_title || '', company: sub.company || '', notes: sub.notes || '', group: sub.group, subscribed: sub.subscribed, marketing_consent: sub.marketing_consent || false }); setShowEditSubscriber(true); }} className="text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 p-2 hover:bg-[var(--crm-primary)]/10 rounded-lg">
+                        <button onClick={() => { setEditingSubscriber({ id: sub.id, email: sub.email, whatsapp: sub.whatsapp || '', name: sub.name || '', job_title: sub.job_title || '', company: sub.company || '', notes: sub.notes || '', group: sub.group, groups: sub.groups || [], subscribed: sub.subscribed, marketing_consent: sub.marketing_consent || false }); setShowEditSubscriber(true); }} className="text-[var(--crm-primary)] hover:text-[var(--crm-primary)]/80 p-2 hover:bg-[var(--crm-primary)]/10 rounded-lg">
                           <Edit3 className="w-4 h-4" />
                         </button>
                         <button onClick={() => deleteSubscriber(sub.id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg">

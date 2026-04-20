@@ -20,6 +20,7 @@ export default function NewsletterManager() {
   const { siteSettings } = useSiteSettings();
   const [activeTab, setActiveTab] = useState('subscribers');
   const [subscribers, setSubscribers] = useState([]);
+  const [students, setStudents] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -51,7 +52,17 @@ export default function NewsletterManager() {
     loadSubscribers();
     loadLogs();
     loadEmailTemplates();
+    loadStudents();
   }, []);
+
+  const loadStudents = async () => {
+    try {
+      const data = await base44.entities.Student.list('-created_date');
+      setStudents(data || []);
+    } catch (error) {
+      console.error('Error loading students:', error);
+    }
+  };
 
   const loadEmailTemplates = async () => {
     try {
@@ -102,7 +113,15 @@ export default function NewsletterManager() {
     }, 0)
   };
 
-  const activeGroups = ['כל הרשימה', ...[...new Set(subscribers.map(s => s.group).filter(Boolean))].sort((a, b) => {
+  // Collect all unique groups from both group and groups fields
+  const allGroupNames = new Set();
+  subscribers.forEach(s => {
+    if (s.group) allGroupNames.add(s.group);
+    if (s.groups && Array.isArray(s.groups)) {
+      s.groups.forEach(g => allGroupNames.add(g));
+    }
+  });
+  const activeGroups = ['כל הרשימה', ...[...allGroupNames].sort((a, b) => {
     const numA = parseInt(a.replace('קבוצה ', ''));
     const numB = parseInt(b.replace('קבוצה ', ''));
     if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
@@ -214,11 +233,16 @@ ${ctaButtonsHtml}
       recipients = [matchingSub || { email: singleRecipient.email, name: singleRecipient.name || '', unsubscribe_token: '' }];
       if (!confirm(t(`לשלוח ל-${singleRecipient.email}?`, `Send to ${singleRecipient.email}?`))) return;
     } else {
-      let filter = { subscribed: true };
-      if (selectedGroup && selectedGroup !== 'כל הרשימה') filter.group = selectedGroup;
-      console.log('Newsletter send - filter:', JSON.stringify(filter), 'selectedGroup:', selectedGroup);
-      recipients = await base44.entities.Subscribers.filter(filter);
-      console.log('Newsletter send - found recipients:', recipients?.length);
+      let allSubscribers = await base44.entities.Subscribers.filter({ subscribed: true });
+      if (selectedGroup && selectedGroup !== 'כל הרשימה') {
+        // Filter by group OR groups array
+        allSubscribers = allSubscribers.filter(s => 
+          s.group === selectedGroup || 
+          (s.groups && Array.isArray(s.groups) && s.groups.includes(selectedGroup))
+        );
+      }
+      console.log('Newsletter send - filter group:', selectedGroup, 'found:', allSubscribers?.length);
+      recipients = allSubscribers;
       if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים פעילים בקבוצה זו', 'No active subscribers found')); return; }
       if (!confirm(t(`לשלוח ל-${recipients.length} מנויים בקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send to ${recipients.length} subscribers in "${selectedGroup || 'All'}"?`))) return;
     }
@@ -302,9 +326,14 @@ ${ctaButtonsHtml}
 
   const handleConfirmResend = async () => {
     if (!resendSubject.trim()) { alert(t('אנא הזיני נושא', 'Please enter a subject')); return; }
-    let filter = { subscribed: true };
-    if (resendGroup && resendGroup !== 'כל הרשימה') filter.group = resendGroup;
-    const recipients = await base44.entities.Subscribers.filter(filter);
+    let allResendSubs = await base44.entities.Subscribers.filter({ subscribed: true });
+    if (resendGroup && resendGroup !== 'כל הרשימה') {
+      allResendSubs = allResendSubs.filter(s => 
+        s.group === resendGroup || 
+        (s.groups && Array.isArray(s.groups) && s.groups.includes(resendGroup))
+      );
+    }
+    const recipients = allResendSubs;
     if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים', 'No active subscribers')); return; }
     if (!confirm(t(`לשלוח מחדש ל-${recipients.length} מנויים?`, `Resend to ${recipients.length} subscribers?`))) return;
 
@@ -416,7 +445,7 @@ ${ctaButtonsHtml}
 
           <div className="p-6">
             {activeTab === 'subscribers' && (
-              <SubscribersList subscribers={subscribers} loading={loading} activeGroups={activeGroups} onReload={loadSubscribers} />
+              <SubscribersList subscribers={subscribers} students={students} loading={loading} activeGroups={activeGroups} onReload={loadSubscribers} />
             )}
 
             {activeTab === 'send' && (

@@ -1,10 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// One-time migration: assign existing subscribers to course-based groups
-// Skips subscribers in test/placeholder groups
-
-const SKIP_GROUP_PREFIXES = ['קבוצה ']; // Keep test groups untouched
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -14,9 +9,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const { dry_run = true } = await req.json().catch(() => ({}));
+    const { dry_run = true, course_filter = null } = await req.json().catch(() => ({}));
 
-    // Load all data
     const [allSubscribers, allStudents] = await Promise.all([
       base44.asServiceRole.entities.Subscribers.list(),
       base44.asServiceRole.entities.Student.list()
@@ -34,51 +28,42 @@ Deno.serve(async (req) => {
     const details = [];
 
     for (const sub of allSubscribers) {
-      // Skip placeholder subscribers
-      if (sub.email?.startsWith('_placeholder_')) {
-        skipped++;
-        continue;
-      }
-
-      // Skip subscribers in test groups (קבוצה 1, קבוצה 2, etc.)
-      const isTestGroup = SKIP_GROUP_PREFIXES.some(prefix => (sub.group || '').startsWith(prefix));
-      if (isTestGroup) {
-        skipped++;
-        details.push({ email: sub.email, action: 'skipped', reason: `test group: ${sub.group}` });
-        continue;
-      }
-
-      // Find matching student
-      if (!sub.email) {
-        noMatch++;
-        continue;
-      }
+      if (sub.email?.startsWith('_placeholder_')) { skipped++; continue; }
+      if (!sub.email) { noMatch++; continue; }
 
       const student = studentsByEmail[sub.email.toLowerCase()];
-      if (!student) {
-        noMatch++;
-        details.push({ email: sub.email, action: 'no_match', reason: 'no student found' });
-        continue;
+      if (!student) { noMatch++; continue; }
+
+      // Get all course names for this student
+      const courseNames = [];
+      if (student.course_name) courseNames.push(student.course_name);
+      if (student.courses && Array.isArray(student.courses)) {
+        student.courses.forEach(c => {
+          if (c.course_name && !courseNames.includes(c.course_name)) {
+            courseNames.push(c.course_name);
+          }
+        });
       }
 
-      // Get course name
-      const courseName = student.course_name || 
-        (student.courses && student.courses.length > 0 ? student.courses[0].course_name : null);
+      if (courseNames.length === 0) { noMatch++; continue; }
 
-      if (!courseName) {
-        noMatch++;
-        details.push({ email: sub.email, action: 'no_course', reason: 'student has no course' });
-        continue;
+      // If course_filter is set, only process students in that course
+      if (course_filter) {
+        const match = courseNames.some(cn => cn.toLowerCase().includes(course_filter.toLowerCase()));
+        if (!match) { skipped++; continue; }
       }
 
-      // Update subscriber
+      const targetCourse = course_filter 
+        ? courseNames.find(cn => cn.toLowerCase().includes(course_filter.toLowerCase()))
+        : courseNames[0];
+
       if (!dry_run) {
         const currentGroups = sub.groups && Array.isArray(sub.groups) ? [...sub.groups] : [];
-        if (!currentGroups.includes(courseName)) {
-          currentGroups.push(courseName);
+        if (!currentGroups.includes(targetCourse)) {
+          currentGroups.push(targetCourse);
         }
         await base44.asServiceRole.entities.Subscribers.update(sub.id, { 
-          group: courseName,
+          group: targetCourse,
           groups: currentGroups
         });
       }
@@ -86,22 +71,14 @@ Deno.serve(async (req) => {
       updated++;
       details.push({ 
         email: sub.email, 
-        name: sub.name,
+        name: sub.name || student.full_name,
         action: dry_run ? 'would_update' : 'updated', 
         from: sub.group, 
-        to: courseName 
+        to: targetCourse 
       });
     }
 
-    return Response.json({
-      dry_run,
-      total: allSubscribers.length,
-      updated,
-      skipped,
-      noMatch,
-      details: details.slice(0, 100) // Limit details to first 100
-    });
-
+    return Response.json({ dry_run, course_filter, total: allSubscribers.length, updated, skipped, noMatch, details });
   } catch (error) {
     console.error('Migration error:', error);
     return Response.json({ error: error.message }, { status: 500 });

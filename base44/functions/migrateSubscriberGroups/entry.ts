@@ -30,6 +30,9 @@ Deno.serve(async (req) => {
     for (const sub of allSubscribers) {
       if (sub.email?.startsWith('_placeholder_')) { skipped++; continue; }
       if (!sub.email) { noMatch++; continue; }
+      // Skip specific emails
+      const skipEmails = ['s.ganels@gmail.com'];
+      if (skipEmails.includes(sub.email.toLowerCase())) { skipped++; details.push({ email: sub.email, name: sub.name, action: 'skipped_manual' }); continue; }
 
       const student = studentsByEmail[sub.email.toLowerCase()];
       if (!student) { noMatch++; continue; }

@@ -12,6 +12,7 @@ import TestEmailModal from '../components/newsletter/TestEmailModal';
 import SubscribersList from '../components/newsletter/SubscribersList';
 import AiSubjectSuggestions from '../components/newsletter/AiSubjectSuggestions';
 import SingleRecipientPicker from '../components/newsletter/SingleRecipientPicker';
+import EmojiPicker from '../components/newsletter/EmojiPicker';
 import { appParams } from '@/lib/app-params';
 
 function getUnsubscribeUrl(token) {
@@ -578,8 +579,18 @@ ${ctaButtonsHtml}
                 {(sendChannel === 'whatsapp' || sendChannel === 'both') && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                     <h3 className="font-semibold text-lg text-gray-900 mb-4 flex items-center gap-2"><MessageCircle className="w-6 h-6 text-green-600" />{t('הודעת וואטסאפ', 'WhatsApp Message')}</h3>
-                    <textarea value={whatsappMessage} onChange={(e) => setWhatsappMessage(e.target.value)} placeholder={t('היי {{name}}, זה הניוזלטר שלנו...', 'Hi {{name}}, this is our newsletter...')} rows="5" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
-                    <p className="text-xs text-gray-600 mt-2">💡 {t('השתמשי ב-{{name}} לשם המנוי', 'Use {{name}} for subscriber name')}</p>
+                    <div className="relative">
+                      <textarea id="whatsapp-textarea" value={whatsappMessage} onChange={(e) => setWhatsappMessage(e.target.value)} placeholder={t('היי {{name}}, זה הניוזלטר שלנו...', 'Hi {{name}}, this is our newsletter...')} rows="5" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+                      <div className="absolute bottom-2 left-2">
+                        <EmojiPicker onSelect={(emoji) => {
+                          const textarea = document.getElementById('whatsapp-textarea');
+                          const start = textarea?.selectionStart || whatsappMessage.length;
+                          const end = textarea?.selectionEnd || whatsappMessage.length;
+                          setWhatsappMessage(whatsappMessage.slice(0, start) + emoji + whatsappMessage.slice(end));
+                        }} />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2">💡 {t('השתמשי ב-{{name}} לשם המנוי. קישורים (עם https://) יהפכו ללחיצים אוטומטית', 'Use {{name}} for subscriber name. Links (with https://) become clickable automatically')}</p>
                   </div>
                 )}
 

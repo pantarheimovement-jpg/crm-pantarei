@@ -1,194 +1,177 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// פונקציה שמושכת את כל הרשומות עם pagination
 async function fetchAllRecords(base44, entityName) {
   const allRecords = [];
   let skip = 0;
-  const limit = 1000; // למשוך 1000 רשומות בכל פעם
-  
-  console.log(`    📥 Fetching ${entityName} with pagination...`);
+  const limit = 1000;
   
   while (true) {
     const batch = await base44.asServiceRole.entities[entityName].filter({}, '', limit, skip);
-    
     if (batch.length === 0) break;
-    
     allRecords.push(...batch);
-    console.log(`    ✓ Fetched ${batch.length} records (total: ${allRecords.length})`);
-    
-    if (batch.length < limit) break; // אם קיבלנו פחות מה-limit, אין יותר רשומות
-    
+    if (batch.length < limit) break;
     skip += limit;
   }
   
-  console.log(`    ✅ Total ${entityName}: ${allRecords.length} records`);
   return allRecords;
+}
+
+function recordsToSheetData(records) {
+  if (!records || records.length === 0) return [['No data']];
+  
+  const allKeys = new Set();
+  records.forEach(r => Object.keys(r).forEach(k => allKeys.add(k)));
+  const headers = [...allKeys];
+  
+  const rows = [headers];
+  for (const record of records) {
+    rows.push(headers.map(h => {
+      const val = record[h];
+      if (val === null || val === undefined) return '';
+      if (typeof val === 'object') return JSON.stringify(val);
+      return String(val);
+    }));
+  }
+  return rows;
 }
 
 Deno.serve(async (req) => {
   try {
-    console.log('🔄 Starting weekly backup process...');
+    console.log('🔄 Starting weekly backup to Google Sheets...');
     
     const base44 = createClientFromRequest(req);
     
+    // Use Google Sheets connector (has spreadsheets + drive.file scopes)
+    const { accessToken } = await base44.asServiceRole.connectors.getConnection('googlesheets');
+    if (!accessToken) {
+      throw new Error('Google Sheets not connected.');
+    }
+    console.log('🔐 Got Sheets access token');
+
     const entityNames = [
-      'Subscribers', 'NewsletterLogs', 'Contact', 'Interaction', 'Opportunity',
-      'EmailTemplate', 'Automation', 'Task', 'Event', 'DesignSettings',
-      'SystemTexts', 'LeadStatuses', 'AutomationSettings', 'GeneralSettings',
-      'Student', 'Course', 'WhatsappQueue'
+      'Student', 'Subscribers', 'Contact', 'Course', 'Task',
+      'Interaction', 'Opportunity', 'Event',
+      'NewsletterLogs', 'EmailTemplate', 'WhatsappQueue',
+      'Automation', 'LeadStatuses', 'AutomationSettings',
+      'GeneralSettings', 'DesignSettings', 'SystemTexts'
     ];
 
-    console.log('🔐 Getting Google Drive access token...');
-    const accessToken = await base44.asServiceRole.connectors.getAccessToken('googledrive');
-    
-    if (!accessToken) {
-      throw new Error('Google Drive not connected. Please authorize first.');
-    }
-
-    // חיפוש או יצירת תיקיית הגיבויים הראשית
-    const backupFolderName = 'Pantarhei CRM Backups';
-    console.log('📁 Searching for backup folder...');
-    
-    const searchResponse = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=name='${backupFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      }
-    );
-    const searchResult = await searchResponse.json();
-    
-    let parentFolderId;
-    if (searchResult.files && searchResult.files.length > 0) {
-      parentFolderId = searchResult.files[0].id;
-      console.log(`✓ Found existing backup folder: ${parentFolderId}`);
-    } else {
-      console.log('Creating new backup folder...');
-      const createFolderResponse = await fetch(
-        'https://www.googleapis.com/drive/v3/files',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: backupFolderName,
-            mimeType: 'application/vnd.google-apps.folder'
-          })
-        }
-      );
-      const newFolder = await createFolderResponse.json();
-      parentFolderId = newFolder.id;
-      console.log(`✓ Created backup folder: ${parentFolderId}`);
-    }
-
-    // יצירת תיקייה לתאריך הנוכחי
     const dateStr = new Date().toISOString().split('T')[0];
-    const dateFolderResponse = await fetch(
-      'https://www.googleapis.com/drive/v3/files',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: dateStr,
-          mimeType: 'application/vnd.google-apps.folder',
-          parents: [parentFolderId]
-        })
-      }
-    );
-    const dateFolder = await dateFolderResponse.json();
-    const dateFolderId = dateFolder.id;
-    console.log(`📅 Created date folder: ${dateStr}`);
+    const timeStr = new Date().toISOString().split('T')[1].substring(0, 5).replace(':', '');
 
-    // גיבוי כל אנטיטי לקובץ נפרד
-    const results = [];
+    // Fetch all data first
+    console.log('📥 Fetching all entity data...');
+    const allData = {};
+    let totalRecords = 0;
     
     for (const entityName of entityNames) {
       try {
-        console.log(`  ⏳ Backing up ${entityName}...`);
-        
-        // שימוש בפונקציה עם pagination לוודא שמושכים הכל
         const data = await fetchAllRecords(base44, entityName);
-        
-        const backupData = {
-          entity_name: entityName,
-          backup_date: new Date().toISOString(),
-          count: data.length,
-          records: data
-        };
-
-        const jsonContent = JSON.stringify(backupData, null, 2);
-        const jsonBlob = new Blob([jsonContent], { type: 'application/json' });
-
-        const metadata = {
-          name: `${entityName}.json`,
-          mimeType: 'application/json',
-          parents: [dateFolderId]
-        };
-
-        const formData = new FormData();
-        formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-        formData.append('file', jsonBlob);
-
-        const uploadResponse = await fetch(
-          'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-          {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${accessToken}` },
-            body: formData
-          }
-        );
-
-        if (!uploadResponse.ok) {
-          throw new Error(`Upload failed: ${await uploadResponse.text()}`);
-        }
-
-        const uploadResult = await uploadResponse.json();
-        results.push({
-          entity: entityName,
-          records: data.length,
-          file_id: uploadResult.id,
-          status: 'success'
-        });
-        
-        console.log(`  ✅ ${entityName}: ${data.length} records uploaded successfully`);
-        
+        allData[entityName] = data;
+        totalRecords += data.length;
+        console.log(`  ✅ ${entityName}: ${data.length} records`);
       } catch (error) {
-        console.error(`  ❌ Error backing up ${entityName}:`, error.message);
-        results.push({
-          entity: entityName,
-          records: 0,
-          status: 'error',
-          error: error.message
-        });
+        console.error(`  ❌ ${entityName}: ${error.message}`);
+        allData[entityName] = [];
       }
     }
 
-    const totalRecords = results.reduce((sum, r) => sum + r.records, 0);
-    const successCount = results.filter(r => r.status === 'success').length;
+    // Create a new Google Spreadsheet with all entities as sheets
+    console.log('📊 Creating Google Spreadsheet...');
+    
+    const sheets = entityNames.map(name => ({
+      properties: { title: name },
+      data: [{
+        startRow: 0,
+        startColumn: 0,
+        rowData: recordsToSheetData(allData[name]).map(row => ({
+          values: row.map(cell => ({ userEnteredValue: { stringValue: cell } }))
+        }))
+      }]
+    }));
 
-    console.log(`✅ Backup completed: ${successCount}/${entityNames.length} entities, ${totalRecords} total records`);
+    const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        properties: {
+          title: `Pantarhei CRM Backup - ${dateStr}`
+        },
+        sheets: sheets
+      })
+    });
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      throw new Error(`Failed to create spreadsheet: ${createResponse.status} - ${errorText}`);
+    }
+
+    const spreadsheet = await createResponse.json();
+    console.log(`✅ Spreadsheet created: ${spreadsheet.spreadsheetId}`);
+    console.log(`📎 URL: ${spreadsheet.spreadsheetUrl}`);
+
+    // Also upload a single JSON backup file via Drive (using Sheets token which has drive.file scope)
+    console.log('📁 Uploading JSON backup...');
+    const jsonBackup = {};
+    for (const entityName of entityNames) {
+      jsonBackup[entityName] = {
+        count: allData[entityName].length,
+        records: allData[entityName]
+      };
+    }
+    
+    const jsonContent = JSON.stringify({
+      backup_date: new Date().toISOString(),
+      total_records: totalRecords,
+      entities: jsonBackup
+    }, null, 2);
+
+    const metadata = {
+      name: `Pantarhei_CRM_Backup_${dateStr}.json`,
+      mimeType: 'application/json'
+    };
+
+    const formData = new FormData();
+    formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    formData.append('file', new Blob([jsonContent], { type: 'application/json' }));
+
+    const uploadResponse = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: formData
+      }
+    );
+
+    let jsonFileId = null;
+    if (uploadResponse.ok) {
+      const uploadResult = await uploadResponse.json();
+      jsonFileId = uploadResult.id;
+      console.log(`✅ JSON backup uploaded: ${jsonFileId}`);
+    } else {
+      console.log(`⚠️ JSON upload failed (${uploadResponse.status}), Spreadsheet backup still succeeded`);
+    }
+
+    const successEntities = entityNames.filter(n => allData[n].length >= 0).length;
 
     return Response.json({
       success: true,
       message: 'Weekly backup completed',
       backup_date: new Date().toISOString(),
-      folder_name: `${backupFolderName}/${dateStr}`,
-      folder_id: dateFolderId,
-      entities_backed_up: successCount,
+      spreadsheet_id: spreadsheet.spreadsheetId,
+      spreadsheet_url: spreadsheet.spreadsheetUrl,
+      json_file_id: jsonFileId,
+      entities_backed_up: successEntities,
       total_entities: entityNames.length,
-      total_records: totalRecords,
-      details: results
+      total_records: totalRecords
     });
 
   } catch (error) {
     console.error('❌ Backup failed:', error);
-    return Response.json({
-      success: false,
-      error: error.message
-    }, { status: 500 });
+    return Response.json({ success: false, error: error.message }, { status: 500 });
   }
 });

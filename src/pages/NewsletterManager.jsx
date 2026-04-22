@@ -12,12 +12,12 @@ import TestEmailModal from '../components/newsletter/TestEmailModal';
 import SubscribersList from '../components/newsletter/SubscribersList';
 import AiSubjectSuggestions from '../components/newsletter/AiSubjectSuggestions';
 import SingleRecipientPicker from '../components/newsletter/SingleRecipientPicker';
+import { appParams } from '@/lib/app-params';
 
 function getUnsubscribeUrl(token) {
-  const baseUrl = import.meta.env.VITE_BASE44_APP_BASE_URL;
+  const baseUrl = appParams.appBaseUrl;
   if (!baseUrl) {
-    console.error('CRITICAL: VITE_BASE44_APP_BASE_URL is not defined. Unsubscribe links will be broken.');
-    return '#unsubscribe-url-missing';
+    throw new Error('CRITICAL: appBaseUrl is not defined. Cannot generate unsubscribe links. Newsletter send aborted.');
   }
   return `${baseUrl}/functions/unsubscribeHandler?token=${token}`;
 }

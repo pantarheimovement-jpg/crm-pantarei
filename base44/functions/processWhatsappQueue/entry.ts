@@ -1,16 +1,10 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
-    // 1. אתחול לקוח Base44
+    // 1. אתחול לקוח Base44 (scheduled automation - no user context)
     const base44 = createClientFromRequest(req);
     
-    // 2. בדיקת הרשאות
-    const user = await base44.auth.me();
-    if (!user || user.role !== 'admin') { 
-        return Response.json({error: 'Forbidden'}, {status: 403}); 
-    }
-    
-    // 3. שליפת הודעה אחת (בלבד) שנמצאת בסטטוס 'pending'
+    // 2. שליפת הודעה אחת (בלבד) שנמצאת בסטטוס 'pending'
     // המיון הוא לפי תאריך יצירה (הישן ביותר קודם) כדי לשמור על סדר FIFO
     const pendingMessages = await base44.asServiceRole.entities.WhatsappQueue.filter({ 
         status: 'pending' 

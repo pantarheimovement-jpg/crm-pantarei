@@ -150,8 +150,13 @@ function buildHtmlFromSections(s, generalSettings) {
 
     <!-- Footer -->
     <tr><td style="text-align:center;padding:20px;font-size:12px;color:#888888;background-color:#f0f0f0;font-family:'Rubik',Arial,sans-serif;">
-      <p style="margin:0 0 8px;">נשלח על ידי ${systemName}</p>
-      <p style="margin:0;"><a href="{{unsubscribe_link}}" style="color:#888888;text-decoration:underline;">להסרה מהרשימה</a></p>
+      <p style="margin:0 0 8px;">קיבלת מייל זה כי נרשמת לרשימת התפוצה של ${systemName}</p>
+      <p style="margin:0 0 8px;">
+        <a href="{{unsubscribe_link}}" style="color:#888888;text-decoration:underline;">הסרה מהרשימה</a>
+        &nbsp;|&nbsp;
+        <a href="mailto:pantarhei.movement@gmail.com?subject=%D7%93%D7%99%D7%95%D7%95%D7%97%20%D7%A2%D7%9C%20%D7%A9%D7%99%D7%9E%D7%95%D7%A9%20%D7%9C%D7%A8%D7%A2%D7%94%20/%20Report%20Abuse" style="color:#888888;text-decoration:underline;">דיווח על שימוש לרעה (Report Abuse)</a>
+      </p>
+      <p style="margin:0;font-size:11px;color:#aaa;">פנטהריי — מרכז למחול ותנועה סומטית | pantarhei-studio.co.il</p>
     </td></tr>
 
   </table>

@@ -13,6 +13,15 @@ import SubscribersList from '../components/newsletter/SubscribersList';
 import AiSubjectSuggestions from '../components/newsletter/AiSubjectSuggestions';
 import SingleRecipientPicker from '../components/newsletter/SingleRecipientPicker';
 
+function getUnsubscribeUrl(token) {
+  const baseUrl = import.meta.env.VITE_BASE44_APP_BASE_URL;
+  if (!baseUrl) {
+    console.error('CRITICAL: VITE_BASE44_APP_BASE_URL is not defined. Unsubscribe links will be broken.');
+    return '#unsubscribe-url-missing';
+  }
+  return `${baseUrl}/functions/unsubscribeHandler?token=${token}`;
+}
+
 const SUBSCRIBERS_PER_GROUP = 280;
 
 export default function NewsletterManager() {
@@ -211,8 +220,13 @@ ${content}
 ${ctaButtonsHtml}
 </td></tr>
 <tr><td style="text-align:center;padding:20px;font-size:12px;color:#888;background-color:#f0f0f0;font-family:'Rubik',Arial,sans-serif;">
-<p style="margin:0 0 8px;">קיבלת מייל זה כי נרשמת לרשימת התפוצה שלנו</p>
-<p style="margin:0;"><a href="{{unsubscribe_link}}" style="color:#888;text-decoration:underline;">הסרה מהרשימה</a></p>
+<p style="margin:0 0 8px;">קיבלת מייל זה כי נרשמת לרשימת התפוצה של פנטהריי</p>
+<p style="margin:0 0 8px;">
+  <a href="{{unsubscribe_link}}" style="color:#888;text-decoration:underline;">הסרה מהרשימה</a>
+  &nbsp;|&nbsp;
+  <a href="mailto:pantarhei.movement@gmail.com?subject=%D7%93%D7%99%D7%95%D7%95%D7%97%20%D7%A2%D7%9C%20%D7%A9%D7%99%D7%9E%D7%95%D7%A9%20%D7%9C%D7%A8%D7%A2%D7%94%20/%20Report%20Abuse" style="color:#888;text-decoration:underline;">דיווח על שימוש לרעה (Report Abuse)</a>
+</p>
+<p style="margin:0;font-size:11px;color:#aaa;">פנטהריי — מרכז למחול ותנועה סומטית | pantarhei-studio.co.il</p>
 </td></tr>
 </table>
 </td></tr>
@@ -264,7 +278,7 @@ ${ctaButtonsHtml}
           console.log('Newsletter send - batch', batchIndex, 'emailRecipients:', emailRecipients.length);
           for (const recipient of emailRecipients) {
             const personalizedHtml = finalEmailContent
-              .replace(/\{\{unsubscribe_link\}\}/g, `${window.location.origin}/Unsubscribe?token=${recipient.unsubscribe_token}`)
+              .replace(/\{\{unsubscribe_link\}\}/g, getUnsubscribeUrl(recipient.unsubscribe_token))
               .replace(/\{\{name\}\}/g, recipient.name || '');
             try {
               const res = await base44.functions.invoke('sendEmailSES', {
@@ -342,7 +356,7 @@ ${ctaButtonsHtml}
       const emailRecipients = recipients.filter(r => r.email).map(recipient => ({
         email: recipient.email, name: recipient.name || '',
         html_content: resendContent
-          .replace(/\{\{unsubscribe_link\}\}/g, `${window.location.origin}/Unsubscribe?token=${recipient.unsubscribe_token}`)
+          .replace(/\{\{unsubscribe_link\}\}/g, getUnsubscribeUrl(recipient.unsubscribe_token))
           .replace(/\{\{name\}\}/g, recipient.name || '')
       }));
 

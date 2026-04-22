@@ -183,7 +183,7 @@ export default function SubscribersList({ subscribers, students, loading, active
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {activeGroups.length === 0 ? <p className="text-gray-600 text-center col-span-full">{t('אין קבוצות', 'No groups')}</p> :
             activeGroups.map(group => (
-              <div key={group} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <div key={group} onClick={() => setFilterGroup(group === filterGroup ? 'all' : group)} className={`bg-gray-50 rounded-xl p-4 border cursor-pointer hover:shadow-md transition-all ${filterGroup === group ? 'border-[var(--crm-primary)] ring-2 ring-[var(--crm-primary)]/20' : 'border-gray-100 hover:border-[var(--crm-primary)]'}`}>
                 <div className="text-2xl font-bold text-[var(--crm-primary)]">{getGroupSubscriberCount(group)}</div>
                 <div className="text-sm text-[var(--crm-text)] opacity-70">{group}</div>
                 <div className="mt-2 bg-gray-200 rounded-full h-2">

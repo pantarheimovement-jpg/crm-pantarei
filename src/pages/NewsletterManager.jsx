@@ -15,19 +15,8 @@ import SingleRecipientPicker from '../components/newsletter/SingleRecipientPicke
 import { appParams } from '@/lib/app-params';
 
 function getUnsubscribeUrl(token) {
-  const baseUrl = appParams.appBaseUrl;
-  if (!baseUrl) {
-    return null;
-  }
+  const baseUrl = appParams.appBaseUrl || window.location.origin;
   return `${baseUrl}/functions/unsubscribeHandler?token=${token}`;
-}
-
-function assertUnsubscribeUrlAvailable() {
-  if (!appParams.appBaseUrl) {
-    alert('שגיאה בשליחת הניוזלטר: appBaseUrl is not defined. Cannot generate unsubscribe links.');
-    return false;
-  }
-  return true;
 }
 
 const SUBSCRIBERS_PER_GROUP = 280;
@@ -269,8 +258,6 @@ ${ctaButtonsHtml}
       if (!confirm(t(`לשלוח ל-${recipients.length} מנויים בקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send to ${recipients.length} subscribers in "${selectedGroup || 'All'}"?`))) return;
     }
 
-    if ((sendChannel === 'email' || sendChannel === 'both') && !assertUnsubscribeUrlAvailable()) return;
-
     setSending(true); setSendStatus(null);
     const finalEmailContent = buildFinalEmailContent();
 
@@ -360,8 +347,6 @@ ${ctaButtonsHtml}
     const recipients = allResendSubs;
     if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים', 'No active subscribers')); return; }
     if (!confirm(t(`לשלוח מחדש ל-${recipients.length} מנויים?`, `Resend to ${recipients.length} subscribers?`))) return;
-
-    if (!assertUnsubscribeUrlAvailable()) return;
 
     setSending(true);
     try {

@@ -85,7 +85,7 @@ export default function NewsletterManager() {
   const loadSubscribers = async () => {
     setLoading(true);
     try {
-      const data = await base44.entities.Subscribers.list('-created_date');
+      const data = await base44.entities.Subscribers.list('-created_date', 500);
       setSubscribers(data || []);
     } catch (error) {
       console.error('Error loading subscribers:', error);

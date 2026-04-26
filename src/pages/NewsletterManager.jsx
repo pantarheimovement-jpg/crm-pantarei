@@ -283,7 +283,9 @@ ${ctaButtonsHtml}
                 to: recipient.email,
                 subject,
                 html_content: personalizedHtml,
-                from_name: 'פנטהריי'
+                from_name: 'פנטהריי',
+                unsubscribe_token: recipient.unsubscribe_token,
+                app_base_url: window.location.origin,
               });
               if (res.data?.sent_via) lastSentVia = res.data.sent_via === 'gmail' ? 'Gmail' : 'SES';
               emailSuccessCount++;
@@ -365,7 +367,9 @@ ${ctaButtonsHtml}
             to: recipient.email,
             subject: resendSubject,
             html_content: recipient.html_content || resendContent,
-            from_name: 'פנטהריי'
+            from_name: 'פנטהריי',
+            unsubscribe_token: recipient.unsubscribe_token,
+            app_base_url: window.location.origin,
           });
           if (res.data?.sent_via) resendVia = res.data.sent_via === 'gmail' ? 'Gmail' : 'SES';
           resendSuccess++;

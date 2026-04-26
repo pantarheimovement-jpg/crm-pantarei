@@ -1,5 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
-import { SESClient, SendEmailCommand } from 'npm:@aws-sdk/client-ses@^3';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { SESClient, SendRawEmailCommand } from 'npm:@aws-sdk/client-ses@^3';
 
 Deno.serve(async (req) => {
   try {
@@ -8,7 +8,7 @@ Deno.serve(async (req) => {
     // Note: Auth is handled by the app's login system.
     // The CRM pages are only accessible to logged-in users.
 
-    const { to, subject, html_content, from_name } = await req.json();
+    const { to, subject, html_content, from_name, unsubscribe_token, app_base_url } = await req.json();
 
     if (!to || !subject || !html_content) {
       return Response.json({ error: 'Missing required fields: to, subject, html_content' }, { status: 400 });
@@ -36,24 +36,36 @@ Deno.serve(async (req) => {
           credentials: { accessKeyId, secretAccessKey },
         });
 
-        const commandParams = {
-          Source: `${senderName} <newsletter@pantarhei-studio.co.il>`,
-          Destination: { ToAddresses: [to] },
-          ReplyToAddresses: ['pantarhei.movement@gmail.com'],
-          Message: {
-            Subject: { Data: subject, Charset: 'UTF-8' },
-            Body: {
-              Html: { Data: html_content, Charset: 'UTF-8' },
-            },
-          },
-        };
-
-        // Add Configuration Set for open/click tracking if configured
         const configSet = Deno.env.get('SES_CONFIGURATION_SET') || 'pantarhei-tracking';
-        commandParams.ConfigurationSetName = configSet;
+
+        const encoder2 = new TextEncoder();
+        const subjectB64 = btoa(String.fromCharCode(...encoder2.encode(subject)));
+        const htmlB64 = btoa(String.fromCharCode(...encoder2.encode(html_content)));
+
+        const unsubUrl = unsubscribe_token && app_base_url
+          ? `<mailto:pantarhei.movement@gmail.com?subject=unsubscribe>, <${app_base_url}/functions/unsubscribeHandler?token=${unsubscribe_token}>`
+          : `<mailto:pantarhei.movement@gmail.com?subject=unsubscribe>`;
+
+        const rawMessage = [
+          `From: ${senderName} <newsletter@pantarhei-studio.co.il>`,
+          `To: ${to}`,
+          `Reply-To: pantarhei.movement@gmail.com`,
+          `Subject: =?UTF-8?B?${subjectB64}?=`,
+          `MIME-Version: 1.0`,
+          `Content-Type: text/html; charset=UTF-8`,
+          `Content-Transfer-Encoding: base64`,
+          `List-Unsubscribe: ${unsubUrl}`,
+          `List-Unsubscribe-Post: List-Unsubscribe=One-Click`,
+          ``,
+          htmlB64,
+        ].join('\r\n');
+
         console.log(`sendEmailSES: Sending via SES to ${to}, ConfigurationSet: ${configSet}`);
 
-        const command = new SendEmailCommand(commandParams);
+        const command = new SendRawEmailCommand({
+          RawMessage: { Data: encoder2.encode(rawMessage) },
+          ConfigurationSetName: configSet,
+        });
 
         await client.send(command);
         console.log(`✅ Email sent via Amazon SES to ${to} (ConfigSet: ${configSet})`);
@@ -72,22 +84,28 @@ Deno.serve(async (req) => {
     const { accessToken } = await base44.asServiceRole.connectors.getConnection("gmail");
 
     const encoder = new TextEncoder();
-    const subjectB64 = btoa(String.fromCharCode(...encoder.encode(subject)));
-    const htmlB64 = btoa(String.fromCharCode(...encoder.encode(html_content)));
+    const gmailSubjectB64 = btoa(String.fromCharCode(...encoder.encode(subject)));
+    const gmailHtmlB64 = btoa(String.fromCharCode(...encoder.encode(html_content)));
+
+    const gmailUnsubUrl = unsubscribe_token && app_base_url
+      ? `<mailto:pantarhei.movement@gmail.com?subject=unsubscribe>, <${app_base_url}/functions/unsubscribeHandler?token=${unsubscribe_token}>`
+      : `<mailto:pantarhei.movement@gmail.com?subject=unsubscribe>`;
 
     const boundary = 'boundary_' + Date.now();
     const mimeLines = [
       `From: ${senderName} <me>`,
       `To: ${to}`,
-      `Subject: =?UTF-8?B?${subjectB64}?=`,
+      `Subject: =?UTF-8?B?${gmailSubjectB64}?=`,
       'MIME-Version: 1.0',
+      `List-Unsubscribe: ${gmailUnsubUrl}`,
+      `List-Unsubscribe-Post: List-Unsubscribe=One-Click`,
       `Content-Type: multipart/alternative; boundary="${boundary}"`,
       '',
       `--${boundary}`,
       'Content-Type: text/html; charset=UTF-8',
       'Content-Transfer-Encoding: base64',
       '',
-      htmlB64,
+      gmailHtmlB64,
       `--${boundary}--`,
     ];
     const raw = btoa(String.fromCharCode(...encoder.encode(mimeLines.join('\r\n'))))

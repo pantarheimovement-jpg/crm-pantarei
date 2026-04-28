@@ -86,7 +86,7 @@ export default function NewsletterManager() {
   const loadSubscribers = async () => {
     setLoading(true);
     try {
-      const data = await base44.entities.Subscribers.list('-created_date', 500);
+      const data = await base44.entities.Subscribers.list('-created_date', 1000);
       setSubscribers(data || []);
     } catch (error) {
       console.error('Error loading subscribers:', error);
@@ -128,12 +128,14 @@ export default function NewsletterManager() {
       s.groups.forEach(g => allGroupNames.add(g));
     }
   });
-  const activeGroups = ['כל הרשימה', ...[...allGroupNames].sort((a, b) => {
-    const numA = parseInt(a.replace('קבוצה ', ''));
-    const numB = parseInt(b.replace('קבוצה ', ''));
-    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-    return a.localeCompare(b, language);
-  })];
+  const activeGroups = ['כל הרשימה', ...[...allGroupNames]
+    .filter(group => group && group !== 'כל הרשימה')
+    .sort((a, b) => {
+      const numA = parseInt(a.replace('קבוצה ', ''));
+      const numB = parseInt(b.replace('קבוצה ', ''));
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      return a.localeCompare(b, language);
+    })];
 
   // Set default group when activeGroups loads
   useEffect(() => {

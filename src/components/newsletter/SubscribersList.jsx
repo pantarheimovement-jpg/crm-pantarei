@@ -43,9 +43,14 @@ export default function SubscribersList({ subscribers, students, loading, active
     return map;
   }, [students]);
 
-  const getGroupSubscriberCount = (groupName) => subscribers.filter(s => 
-    s.group === groupName || (s.groups && Array.isArray(s.groups) && s.groups.includes(groupName))
-  ).length;
+  const getGroupSubscriberCount = (groupName) => {
+    if (groupName === 'כל הרשימה') {
+      return subscribers.filter(s => s.subscribed !== false && !s.email?.startsWith('_placeholder_')).length;
+    }
+    return subscribers.filter(s => 
+      s.group === groupName || (s.groups && Array.isArray(s.groups) && s.groups.includes(groupName))
+    ).length;
+  };
 
   const getGroupColor = (groupName) => {
     if ((groupName || '').includes('2⭐')) return 'var(--crm-action)';

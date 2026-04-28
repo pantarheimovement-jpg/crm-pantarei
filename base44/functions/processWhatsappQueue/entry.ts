@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+const WHATSAPP_MIN_INTERVAL_MS = 5 * 60 * 1000;
+
 Deno.serve(async (req) => {
     // 1. אתחול לקוח Base44 (scheduled automation - no user context)
     const base44 = createClientFromRequest(req);
@@ -15,6 +17,30 @@ Deno.serve(async (req) => {
     }
     
     const message = pendingMessages[0];
+
+    const recentSentMessages = await base44.asServiceRole.entities.WhatsappQueue.filter({
+        status: 'sent'
+    }, '-sent_at', 10);
+    const lastSentMessage = (recentSentMessages || []).find((item) => item.sent_at);
+
+    if (lastSentMessage?.sent_at) {
+        const lastSentAt = new Date(lastSentMessage.sent_at).getTime();
+        const elapsed = Date.now() - lastSentAt;
+
+        if (elapsed < WHATSAPP_MIN_INTERVAL_MS) {
+            const nextAllowedAt = new Date(lastSentAt + WHATSAPP_MIN_INTERVAL_MS).toISOString();
+            const waitSeconds = Math.ceil((WHATSAPP_MIN_INTERVAL_MS - elapsed) / 1000);
+            console.log(`WhatsApp safety delay active. Waiting ${waitSeconds} seconds before next send.`);
+            return Response.json({
+                success: true,
+                delayed: true,
+                message: `Safety delay active. Next WhatsApp can be sent at ${nextAllowedAt}`,
+                next_allowed_at: nextAllowedAt,
+                wait_seconds: waitSeconds
+            });
+        }
+    }
+
     console.log(`Processing message ID: ${message.id} for subscriber: ${message.subscriber_name}`);
     
     // 4. קבלת פרטי התחברות ל-Green API משתני הסביבה

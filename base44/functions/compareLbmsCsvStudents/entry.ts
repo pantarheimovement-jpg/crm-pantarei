@@ -91,11 +91,62 @@ Deno.serve(async (req) => {
       .filter((row) => !studentEmails.has(row.email))
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
+    const headersRow = ['תאריך', 'שם', 'אימייל', 'במה מתעניין', 'מספר הופעות בקובץ'];
+    const rows = missing.map((row) => [
+      row.date || '',
+      row.name || '',
+      row.email || '',
+      row.interest || '',
+      String(row.occurrences || 1),
+    ]);
+
+    let sheetUrl = null;
+    if (rows.length > 0) {
+      const { accessToken } = await base44.asServiceRole.connectors.getConnection('googlesheets');
+      const title = `LBMS - חסרים ב-Students - ${new Date().toISOString().split('T')[0]}`;
+
+      const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ properties: { title } }),
+      });
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        return Response.json({ error: 'Failed creating Google Sheet', details: errorText }, { status: 500 });
+      }
+
+      const spreadsheet = await createResponse.json();
+      sheetUrl = spreadsheet.spreadsheetUrl;
+
+      const values = [headersRow, ...rows];
+      const updateResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet.spreadsheetId}/values/A1:append?valueInputOption=RAW`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ values }),
+        }
+      );
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        return Response.json({ error: 'Failed writing Google Sheet', details: errorText }, { status: 500 });
+      }
+    }
+
     return Response.json({
       csv_rows: lines.length - 1,
       unique_csv_emails: csvByEmail.size,
       students_total_checked: students.length,
       missing_count: missing.length,
+      sheet_url: sheetUrl,
       missing,
     });
   } catch (error) {

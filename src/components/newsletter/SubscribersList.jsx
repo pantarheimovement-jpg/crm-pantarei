@@ -47,6 +47,16 @@ export default function SubscribersList({ subscribers, students, loading, active
     s.group === groupName || (s.groups && Array.isArray(s.groups) && s.groups.includes(groupName))
   ).length;
 
+  const getGroupColor = (groupName) => {
+    if ((groupName || '').includes('2⭐')) return 'var(--crm-action)';
+    return 'var(--crm-primary)';
+  };
+
+  const getGroupTextColor = (groupName) => {
+    if ((groupName || '').includes('2⭐')) return 'var(--crm-text)';
+    return 'white';
+  };
+
   const filteredSubscribers = subscribers.filter(sub => {
     const matchesSearch = !searchTerm ||
       sub.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -187,7 +197,7 @@ export default function SubscribersList({ subscribers, students, loading, active
                 <div className="text-2xl font-bold text-[var(--crm-primary)]">{getGroupSubscriberCount(group)}</div>
                 <div className="text-sm text-[var(--crm-text)] opacity-70">{group}</div>
                 <div className="mt-2 bg-gray-200 rounded-full h-2">
-                  <div className="h-2 rounded-full" style={{ backgroundColor: 'var(--crm-primary)', width: `${Math.min(100, (getGroupSubscriberCount(group) / SUBSCRIBERS_PER_GROUP) * 100)}%` }} />
+                  <div className="h-2 rounded-full" style={{ backgroundColor: getGroupColor(group), width: `${Math.min(100, (getGroupSubscriberCount(group) / SUBSCRIBERS_PER_GROUP) * 100)}%` }} />
                 </div>
               </div>
             ))}
@@ -447,7 +457,7 @@ export default function SubscribersList({ subscribers, students, loading, active
                     if (sub.group) allGroups.add(sub.group);
                     if (sub.groups && Array.isArray(sub.groups)) sub.groups.forEach(g => allGroups.add(g));
                     return [...allGroups].map((g, i) => (
-                      <span key={i} className="px-2 py-0.5 text-xs font-medium rounded-full text-white" style={{ backgroundColor: 'var(--crm-primary)' }}>{g}</span>
+                      <span key={i} className="px-2 py-0.5 text-xs font-medium rounded-full" style={{ backgroundColor: getGroupColor(g), color: getGroupTextColor(g) }}>{g}</span>
                     ));
                   })()}
                 </div>
@@ -507,7 +517,7 @@ export default function SubscribersList({ subscribers, students, loading, active
                           if (sub.group) allGroups.add(sub.group);
                           if (sub.groups && Array.isArray(sub.groups)) sub.groups.forEach(g => allGroups.add(g));
                           return [...allGroups].map((g, i) => (
-                            <span key={i} className="px-2 py-0.5 text-xs font-medium rounded-full text-white" style={{ backgroundColor: 'var(--crm-primary)' }}>{g}</span>
+                            <span key={i} className="px-2 py-0.5 text-xs font-medium rounded-full" style={{ backgroundColor: getGroupColor(g), color: getGroupTextColor(g) }}>{g}</span>
                           ));
                         })()}
                         {!sub.group && (!sub.groups || sub.groups.length === 0) && <span className="text-gray-400">-</span>}

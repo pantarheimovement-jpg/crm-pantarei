@@ -364,7 +364,12 @@ export default function Students() {
     // סינון לפי סטטוס
     let matchesStatus = true;
     if (statusFilter === 'leads') {
-      matchesStatus = student.status !== 'נרשם' && student.status !== 'רשום' && student.status !== 'לא רלוונטי';
+      matchesStatus = student.status !== 'נרשם' &&
+        student.status !== 'רשום' &&
+        student.status !== 'לא רלוונטי' &&
+        student.status !== 'ליד היסטורי' &&
+        student.status !== 'Historical Lead' &&
+        student.lead_source !== 'ייבוא היסטורי LBMS';
     } else if (statusFilter === 'registered') {
       matchesStatus = student.status === 'נרשם' || student.status === 'רשום';
     } else if (statusFilter !== 'all') {

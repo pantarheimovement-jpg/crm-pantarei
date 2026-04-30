@@ -336,6 +336,28 @@ export default function Tasks() {
     loadData();
   };
 
+  const isNewLeadCourseStatus = (status) => status === 'ליד חדש' || status === 'חדש';
+
+  const getCourseDateTime = (course) => {
+    const dateValue = course.registration_date || course.lead_entry_date || '';
+    return dateValue ? new Date(dateValue).getTime() : 0;
+  };
+
+  const getLastNewLeadCourse = (student) => {
+    const leadCourses = (student?.courses || [])
+      .map((course, index) => ({ ...course, _index: index }))
+      .filter((course) => isNewLeadCourseStatus(course.status));
+
+    return leadCourses.sort((a, b) =>
+      (getCourseDateTime(b) - getCourseDateTime(a)) || (b._index - a._index)
+    )[0] || null;
+  };
+
+  const selectedStudentForForm = students.find((student) => student.id === formData.student_id);
+  const introCourseForForm = formData.name === 'שיחת היכרות'
+    ? getLastNewLeadCourse(selectedStudentForForm)
+    : null;
+
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = !searchTerm ||
       task.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -785,6 +807,19 @@ export default function Tasks() {
                       </button>
                     </div>
                   </div>
+
+                  {introCourseForForm && (
+                    <div className="md:col-span-2 bg-[#FDF8F0] border border-[#D29486] rounded-lg p-4">
+                      <label className="block text-sm font-bold text-gray-800 mb-2">קורס משויך לשיחת ההיכרות</label>
+                      <div className="flex flex-wrap items-center gap-2 text-gray-900">
+                        <Tag className="w-5 h-5 text-[#6D436D]" />
+                        <span className="font-semibold">{introCourseForForm.course_name}</span>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-[#6D436D] text-white">
+                          {introCourseForForm.status}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">סטטוס</label>

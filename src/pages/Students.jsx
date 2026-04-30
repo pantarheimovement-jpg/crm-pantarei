@@ -336,6 +336,16 @@ export default function Students() {
     }
   };
 
+  const getStudentEntryTime = (student) => {
+    const dateValue = student.lead_entry_date || student.registration_date || student.created_date;
+    return dateValue ? new Date(dateValue).getTime() : 0;
+  };
+
+  const isHistoricalStudent = (student) =>
+    student.status === 'ליד היסטורי' ||
+    student.status === 'Historical Lead' ||
+    student.lead_source === 'ייבוא היסטורי LBMS';
+
   // חיפוש וסינון משתתפים
   const filteredStudents = students.filter(student => {
     const term = (searchTerm || '').trim().toLowerCase();
@@ -402,6 +412,19 @@ export default function Students() {
     }
     
     return matchesSearch && matchesStatus && matchesCourse && matchesDate;
+  }).sort((a, b) => {
+    if (statusFilter !== 'all') {
+      return getStudentEntryTime(b) - getStudentEntryTime(a);
+    }
+
+    const aHistorical = isHistoricalStudent(a);
+    const bHistorical = isHistoricalStudent(b);
+
+    if (aHistorical !== bHistorical) {
+      return aHistorical ? 1 : -1;
+    }
+
+    return getStudentEntryTime(b) - getStudentEntryTime(a);
   });
 
   const getStatusColor = (status) => {

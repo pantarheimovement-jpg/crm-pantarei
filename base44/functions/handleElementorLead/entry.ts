@@ -299,57 +299,36 @@ Deno.serve(async (req) => {
     }
     // ========================================
     
-    // שליחת WhatsApp
+    // הוספת WhatsApp לתור הבטוח
     let whatsappSent = false;
     if (isPhoneValid && phone) {
       try {
-        console.log('📱 Sending WhatsApp...');
-        
-        const GREEN_ID = Deno.env.get('GREEN_ID');
-        const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
-        
-        if (!GREEN_ID || !GREEN_TOKEN) {
-          console.log('⚠️ Green API not configured');
-        } else {
-          let phoneNumber = cleanPhone;
-          if (phoneNumber.startsWith('0')) {
-            phoneNumber = '972' + phoneNumber.substring(1);
-          }
-          if (phoneNumber.startsWith('+')) {
-            phoneNumber = phoneNumber.substring(1);
-          }
-          
-          const courseName = course ? course.name : 'הקורס';
-          const courseDescription = course?.description || '';
-          
-          let whatsappMessage = `הי ${first_name || 'שלום'}, קיבלנו את פנייתך בנוגע ל${courseName}`;
-          if (courseDescription) {
-            whatsappMessage += `, ${courseDescription}`;
-          }
-          whatsappMessage += `. ניצור איתך קשר בהקדם💜 סטודיו פנטהריי`;
-          
-          const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
-          
-          const whatsappResponse = await fetch(greenApiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chatId: `${phoneNumber}@c.us`,
-              message: whatsappMessage
-            })
-          });
-          
-          const whatsappResult = await whatsappResponse.json();
-          
-          if (whatsappResponse.ok && whatsappResult.idMessage) {
-            console.log(`✅ WhatsApp sent: ${whatsappResult.idMessage}`);
-            whatsappSent = true;
-          } else {
-            console.log(`❌ WhatsApp failed:`, whatsappResult);
-          }
+        console.log('📱 Queueing WhatsApp...');
+        let phoneNumber = cleanPhone;
+        if (phoneNumber.startsWith('0')) {
+          phoneNumber = '972' + phoneNumber.substring(1);
         }
+        if (phoneNumber.startsWith('+')) {
+          phoneNumber = phoneNumber.substring(1);
+        }
+
+        const settings = await base44.asServiceRole.entities.AutomationSettings.list();
+        const automationSettings = settings?.[0] || {};
+        const defaultMessage = 'הי {{name}}, קיבלנו את פנייתך 💜 אנחנו נדאג ליצור איתך קשר בהקדם. סטודיו פנטהריי';
+        const whatsappMessage = (automationSettings.whatsapp_auto_reply || defaultMessage)
+          .replace(/\{\{name\}\}/g, first_name || full_name || 'שלום');
+
+        await base44.asServiceRole.entities.WhatsappQueue.create({
+          subscriber_id: student.id,
+          subscriber_name: student.full_name,
+          whatsapp_number: phoneNumber,
+          message_content: whatsappMessage,
+          status: 'pending'
+        });
+        whatsappSent = true;
+        console.log('✅ WhatsApp queued with safety limits');
       } catch (error) {
-        console.error('❌ WhatsApp error:', error.message);
+        console.error('❌ WhatsApp queue error:', error.message);
       }
     }
     
@@ -390,7 +369,7 @@ Deno.serve(async (req) => {
       student_name: student.full_name,
       status: student.status,
       course: course ? course.name : 'לא שויך',
-      whatsapp_sent: whatsappSent,
+      whatsapp_queued: whatsappSent,
       task_created: taskCreated
     });
     

@@ -7,6 +7,7 @@ import StatusManager from '../components/settings/StatusManager';
 import SourceManager from '../components/settings/SourceManager';
 import WhatsappKnownContactsManager from '../components/settings/WhatsappKnownContactsManager';
 import SesConfigChecker from '../components/settings/SesConfigChecker';
+import WhatsappAutomationMessages from '../components/settings/WhatsappAutomationMessages';
 
 export default function CRMSettings() {
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('crmSettings_tab') || 'crm-general');
@@ -918,6 +919,11 @@ export default function CRMSettings() {
                     </div>
                   </div>
                 </div>
+
+                <WhatsappAutomationMessages
+                  automationSettings={automationSettings}
+                  setAutomationSettings={setAutomationSettings}
+                />
 
                 <SesConfigChecker />
 

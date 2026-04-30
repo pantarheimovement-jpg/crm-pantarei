@@ -48,13 +48,17 @@ Deno.serve(async (req) => {
     if (newStatus === 'ניסיון לשיחה') {
       const student = await base44.asServiceRole.entities.Student.get(studentId);
       const whatsappNumber = normalizeWhatsappNumber(student?.phone);
+      const settings = await base44.asServiceRole.entities.AutomationSettings.list();
+      const automationSettings = settings?.[0] || {};
+      const messageTemplate = automationSettings.whatsapp_task_try_call_message || 'היי {{name}}, ניסיתי ליצור איתך קשר, מתי יהיה לך נוח לדבר?';
+      const studentName = student?.full_name || data?.student_name || '';
 
       if (whatsappNumber) {
         await base44.asServiceRole.entities.WhatsappQueue.create({
           subscriber_id: studentId,
-          subscriber_name: student?.full_name || data?.student_name || '',
+          subscriber_name: studentName,
           whatsapp_number: whatsappNumber,
-          message_content: 'היי! ניסיתי ליצור איתך קשר, מתי יהיה לך נוח לדבר?',
+          message_content: messageTemplate.replace(/\{\{name\}\}/g, studentName || 'שלום'),
           status: 'pending'
         });
         whatsappQueued = true;

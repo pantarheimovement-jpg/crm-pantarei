@@ -109,6 +109,7 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.Student.update(item.student.id, {
           lead_entry_date: item.date,
         });
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
 

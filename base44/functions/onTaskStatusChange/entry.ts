@@ -1,5 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
+function normalizeWhatsappNumber(phone) {
+  const digits = String(phone || '').replace(/[\s\-\.\(\)\+]/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('972')) return digits;
+  if (digits.startsWith('0')) return '972' + digits.substring(1);
+  if (digits.length === 9 && digits.startsWith('5')) return '972' + digits;
+  return digits;
+}
+
 // =============================================
 // Automation: When task status changes,
 // update the linked student's status accordingly
@@ -33,6 +42,27 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Task status changed: "${oldStatus}" → "${newStatus}" for student ${studentId}`);
+
+    let whatsappQueued = false;
+
+    if (newStatus === 'ניסיון לשיחה') {
+      const student = await base44.asServiceRole.entities.Student.get(studentId);
+      const whatsappNumber = normalizeWhatsappNumber(student?.phone);
+
+      if (whatsappNumber) {
+        await base44.asServiceRole.entities.WhatsappQueue.create({
+          subscriber_id: studentId,
+          subscriber_name: student?.full_name || data?.student_name || '',
+          whatsapp_number: whatsappNumber,
+          message_content: 'היי! ניסיתי ליצור איתך קשר, מתי יהיה לך נוח לדבר?',
+          status: 'pending'
+        });
+        whatsappQueued = true;
+        console.log('✅ WhatsApp follow-up message queued');
+      } else {
+        console.log('No phone number found for WhatsApp follow-up');
+      }
+    }
 
     let newStudentStatus = null;
 
@@ -69,7 +99,8 @@ Deno.serve(async (req) => {
     return Response.json({ 
       status: 'success', 
       task_status: newStatus, 
-      student_status: newStudentStatus 
+      student_status: newStudentStatus,
+      whatsapp_queued: whatsappQueued
     });
 
   } catch (error) {

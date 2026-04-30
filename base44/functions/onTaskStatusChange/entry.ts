@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
     console.log(`Task status changed: "${oldStatus}" → "${newStatus}" for student ${studentId}`);
 
-    let whatsappQueued = false;
+    let whatsappSentImmediately = false;
 
     if (newStatus === 'ניסיון לשיחה') {
       const student = await base44.asServiceRole.entities.Student.get(studentId);
@@ -54,15 +54,30 @@ Deno.serve(async (req) => {
       const studentName = student?.full_name || data?.student_name || '';
 
       if (whatsappNumber) {
-        await base44.asServiceRole.entities.WhatsappQueue.create({
-          subscriber_id: studentId,
-          subscriber_name: studentName,
-          whatsapp_number: whatsappNumber,
-          message_content: messageTemplate.replace(/\{\{name\}\}/g, studentName || 'שלום'),
-          status: 'pending'
-        });
-        whatsappQueued = true;
-        console.log('✅ WhatsApp follow-up message queued');
+        const GREEN_ID = Deno.env.get('GREEN_ID');
+        const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
+
+        if (!GREEN_ID || !GREEN_TOKEN) {
+          console.log('Green API credentials are missing, skipping immediate WhatsApp send');
+        } else {
+          const messageContent = messageTemplate.replace(/\{\{name\}\}/g, studentName || 'שלום');
+          const response = await fetch(`https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chatId: `${whatsappNumber}@c.us`,
+              message: messageContent
+            })
+          });
+          const result = await response.json();
+
+          if (response.ok && result.idMessage) {
+            whatsappSentImmediately = true;
+            console.log('✅ WhatsApp follow-up message sent immediately');
+          } else {
+            console.log('WhatsApp immediate send failed:', JSON.stringify(result));
+          }
+        }
       } else {
         console.log('No phone number found for WhatsApp follow-up');
       }
@@ -104,7 +119,7 @@ Deno.serve(async (req) => {
       status: 'success', 
       task_status: newStatus, 
       student_status: newStudentStatus,
-      whatsapp_queued: whatsappQueued
+      whatsapp_sent_immediately: whatsappSentImmediately
     });
 
   } catch (error) {

@@ -30,20 +30,33 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'חסרה הודעת בדיקה' }, { status: 400 });
     }
 
-    const queuedMessage = await base44.asServiceRole.entities.WhatsappQueue.create({
-      subscriber_id: 'crm-automation-test',
-      subscriber_name: 'בדיקת אוטומציה CRM',
-      whatsapp_number: whatsappNumber,
-      message_content: messageContent,
-      status: 'pending'
+    const GREEN_ID = Deno.env.get('GREEN_ID');
+    const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
+
+    if (!GREEN_ID || !GREEN_TOKEN) {
+      return Response.json({ error: 'חסרים פרטי חיבור ל-Green API' }, { status: 500 });
+    }
+
+    const response = await fetch(`https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chatId: `${whatsappNumber}@c.us`,
+        message: messageContent
+      })
     });
+    const result = await response.json();
+
+    if (!response.ok || !result.idMessage) {
+      return Response.json({ error: result.message || JSON.stringify(result) || 'שליחת הבדיקה נכשלה' }, { status: 500 });
+    }
 
     return Response.json({
       success: true,
-      queued: true,
-      queue_id: queuedMessage.id,
+      sent_immediately: true,
+      message_id: result.idMessage,
       whatsapp_number: whatsappNumber,
-      message: 'הודעת הבדיקה נוספה לתור הוואטסאפ ותישלח לפי מגבלות הבטיחות.'
+      message: 'הודעת הבדיקה נשלחה מיד.'
     });
   } catch (error) {
     console.error('testWhatsappAutomationMessage error:', error.message);

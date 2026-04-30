@@ -54,7 +54,7 @@ export default function WhatsappAutomationMessages({ automationSettings, setAuto
         whatsapp_number: testNumber,
         message_content: getMessageValue(selected),
       });
-      alert(response.data?.message || 'הודעת הבדיקה נוספה לתור');
+      alert(response.data?.message || 'הודעת הבדיקה נשלחה מיד');
     } catch (error) {
       alert(error.response?.data?.error || error.message || 'שגיאה בשליחת בדיקה');
     } finally {
@@ -112,11 +112,11 @@ export default function WhatsappAutomationMessages({ automationSettings, setAuto
               className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              שלח בדיקה לתור
+              שלח בדיקה מיד
             </button>
           </div>
           <p className="text-xs text-gray-600">
-            הודעת הבדיקה תיכנס לתור ותישלח רק לפי מגבלות הבטיחות: 09:00–20:00, עד 10 ביום, וכל 10 דקות.
+            הודעת הבדיקה נשלחת מיד, כמו הודעות סטטוס. ההגנות נשארות רק לתור האוטומטי ולדיוור.
           </p>
         </div>
       </div>

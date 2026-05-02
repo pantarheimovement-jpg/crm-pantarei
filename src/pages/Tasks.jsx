@@ -353,6 +353,20 @@ export default function Tasks() {
     )[0] || null;
   };
 
+  const getTaskAssociatedCourse = (task) => {
+    const student = students.find((item) => item.id === task.student_id);
+    if (!student) return null;
+
+    const courses = student.courses || [];
+    const mentionedCourse = courses.find((course) =>
+      course.course_name && task.description?.includes(course.course_name)
+    );
+
+    return mentionedCourse || getLastNewLeadCourse(student) || courses[0] || (
+      student.course_name ? { course_name: student.course_name } : null
+    );
+  };
+
   const selectedStudentForForm = students.find((student) => student.id === formData.student_id);
   const introCourseForForm = formData.name === 'שיחת היכרות'
     ? getLastNewLeadCourse(selectedStudentForForm)
@@ -608,6 +622,15 @@ export default function Tasks() {
                     {task.description && (
                       <p className="text-sm text-gray-600 mt-1">{task.description}</p>
                     )}
+                    {(() => {
+                      const associatedCourse = getTaskAssociatedCourse(task);
+                      return associatedCourse?.course_name ? (
+                        <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-purple-50 px-3 py-1 text-sm font-semibold text-purple-700 border border-purple-100">
+                          <Tag className="w-4 h-4" />
+                          {associatedCourse.course_name}
+                        </div>
+                      ) : null;
+                    })()}
                     
                     <div className="flex flex-wrap items-center gap-2 mt-2 text-sm">
                       {task.student_name && (

@@ -1,5 +1,60 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
+function normalizeWhatsappNumber(phone) {
+  const digits = String(phone || '').replace(/[\s\-\.\(\)\+]/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('972')) return digits;
+  if (digits.startsWith('0')) return '972' + digits.substring(1);
+  if (digits.length === 9 && digits.startsWith('5')) return '972' + digits;
+  return digits;
+}
+
+function isTargetCourse(courseName) {
+  const name = String(courseName || '').toLowerCase();
+  return name.includes('lbms') || name.includes('נענע');
+}
+
+function getTemplateKey(courseName) {
+  const name = String(courseName || '').toLowerCase();
+  return name.includes('lbms') ? 'whatsapp_lbms_status_messages' : 'whatsapp_nana_status_messages';
+}
+
+function isUsableTemplate(template) {
+  if (!template || !String(template).trim()) return false;
+  return !String(template).includes('כתבי כאן את נוסחי ההודעות');
+}
+
+function applyTemplate(template, student, courseName) {
+  return String(template)
+    .replace(/\{\{name\}\}/g, student?.full_name || 'שלום')
+    .replace(/\{\{course\}\}/g, courseName || '')
+    .replace(/\{\{status\}\}/g, 'לחזור לקראת הרשמה');
+}
+
+async function sendWhatsappToNumber(whatsappNumber, messageContent) {
+  const GREEN_ID = Deno.env.get('GREEN_ID');
+  const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
+
+  if (!GREEN_ID || !GREEN_TOKEN) {
+    return { sent: false, reason: 'missing_green_api_credentials' };
+  }
+
+  const response = await fetch(`https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chatId: `${whatsappNumber}@c.us`,
+      message: messageContent
+    })
+  });
+
+  const result = await response.json();
+  return {
+    sent: response.ok && Boolean(result.idMessage),
+    reason: response.ok ? null : (result.message || JSON.stringify(result))
+  };
+}
+
 // =============================================
 // Automation: When a course status changes to "פתוח להרשמה",
 // find all students with tasks in "לחזור לקראת הרשמה" status
@@ -34,6 +89,11 @@ Deno.serve(async (req) => {
     }
 
     console.log(`🎓 Course "${courseName}" (${courseId}) opened for registration!`);
+
+    if (!isTargetCourse(courseName)) {
+      console.log(`Course "${courseName}" is not a Nana/LBMS course, skipping`);
+      return Response.json({ status: 'skipped', reason: 'not target course', course: courseName });
+    }
 
     // Find all tasks with status "לחזור לקראת הרשמה"
     const pendingTasks = await base44.asServiceRole.entities.Task.filter({
@@ -95,6 +155,11 @@ Deno.serve(async (req) => {
 
     // Create new tasks for each relevant student
     const createdTasks = [];
+    const whatsappResults = [];
+    const settings = await base44.asServiceRole.entities.AutomationSettings.list();
+    const automationSettings = settings?.[0] || {};
+    const messageTemplate = automationSettings[getTemplateKey(courseName)] || '';
+
     for (const { student } of relevantStudents) {
       const scheduledDate = new Date();
       scheduledDate.setDate(scheduledDate.getDate() + 1);
@@ -110,6 +175,20 @@ Deno.serve(async (req) => {
 
       createdTasks.push(newTask.id);
       console.log(`✅ Created task for ${student.full_name}`);
+
+      if (isUsableTemplate(messageTemplate)) {
+        const whatsappNumber = normalizeWhatsappNumber(student.phone);
+        if (whatsappNumber) {
+          const messageContent = applyTemplate(messageTemplate, student, courseName);
+          const sendResult = await sendWhatsappToNumber(whatsappNumber, messageContent);
+          whatsappResults.push({ student_id: student.id, student_name: student.full_name, ...sendResult });
+          console.log(`WhatsApp result for ${student.full_name}:`, JSON.stringify(sendResult));
+        } else {
+          whatsappResults.push({ student_id: student.id, student_name: student.full_name, sent: false, reason: 'missing_student_phone' });
+        }
+      } else {
+        whatsappResults.push({ student_id: student.id, student_name: student.full_name, sent: false, reason: 'missing_message_template' });
+      }
     }
 
     // Send email notification to admin
@@ -137,7 +216,9 @@ Deno.serve(async (req) => {
       status: 'success',
       course: courseName,
       students_notified: relevantStudents.length,
-      tasks_created: createdTasks.length
+      tasks_created: createdTasks.length,
+      whatsapp_sent: whatsappResults.filter((item) => item.sent).length,
+      whatsapp_results: whatsappResults
     });
 
   } catch (error) {

@@ -35,7 +35,7 @@ export default function SesConfigChecker() {
       <div className="flex items-center justify-between">
         <div>
           <h4 className="font-bold text-gray-900">🔍 בדיקת SES Configuration Set</h4>
-          <p className="text-sm text-gray-600 mt-1">בודק אילו אירועים מוגדרים ב-AWS SES (Open, Click, Bounce...)</p>
+          <p className="text-sm text-gray-600 mt-1">בדיקת תקינות שוטפת ל-AWS SES Production: אירועי Open, Click, Bounce ועוד</p>
         </div>
         <button
           onClick={checkConfig}

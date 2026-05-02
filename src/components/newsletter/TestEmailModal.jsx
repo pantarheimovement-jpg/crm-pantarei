@@ -50,7 +50,7 @@ export default function TestEmailModal({ htmlContent, subject, onClose }) {
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <p className="text-sm text-blue-800">
-            💡 המייל יישלח דרך המערכת המובנית של Pantarhei. הוא יגיע לתיבת הדואר שלך כדי שתוכלי לבדוק איך הוא נראה.
+            💡 המייל יישלח דרך AWS SES בפרודקשן. הוא יגיע לתיבת הדואר שלך כדי שתוכלי לבדוק איך הוא נראה לפני שליחה לקבוצה.
           </p>
         </div>
 

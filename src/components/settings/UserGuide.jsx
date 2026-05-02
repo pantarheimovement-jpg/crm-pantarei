@@ -471,8 +471,8 @@ export default function UserGuide() {
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li><strong>ניהול מנויים</strong> — הוספה, עריכה, מחיקה, חלוקה לקבוצות</li>
                 <li><strong>כתיבת ניוזלטר</strong> — 3 מצבים: תבנית מהירה, HTML מתקדם, עורך חופשי</li>
-                <li><strong>שליחת מייל</strong> — דרך Amazon SES (ספק המייל הראשי), עם Gmail כגיבוי</li>
-                <li><strong>שליחת וואטסאפ</strong> — ניוזלטר דרך וואטסאפ למנויים עם מספר טלפון</li>
+                <li><strong>שליחת מייל</strong> — דרך Amazon SES בפרודקשן (EU Stockholm) כספק ראשי, עם מכסה של 50,000 מיילים ביום וקצב של עד 14 מיילים בשנייה. Gmail נשאר כגיבוי בלבד</li>
+                <li><strong>שליחת וואטסאפ</strong> — ניוזלטר דרך וואטסאפ למנויים עם מספר טלפון. מגבלות הבטיחות של וואטסאפ נשארות כפי שהן</li>
                 <li><strong>שליחה משולבת</strong> — אפשרות לשלוח גם במייל וגם בוואטסאפ בו-זמנית</li>
                 <li><strong>כפתורי CTA</strong> — הוספת כפתורים עם קישורים ותמונות לניוזלטר</li>
                 <li><strong>הצעות AI לנושא</strong> — הצעות אוטומטיות לשורת נושא על בסיס תוכן הניוזלטר</li>
@@ -480,8 +480,8 @@ export default function UserGuide() {
                 <li><strong>היסטוריית שליחות</strong> — מעקב על כל ניוזלטר ששלחת, כולל מספר נמענים, סטטוס, ואפשרות שליחה מחדש</li>
                 <li><strong>שליחת מייל ניסיון</strong> — אפשרות לשלוח לעצמך לפני שליחה לכולם</li>
               </ul>
-              <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm">
-                ⚠️ <strong>חשוב:</strong> מערכת הדיוור נשלטת על ידי <strong>מתג הפעלה</strong> בהגדרות CRM → לשונית אוטומציה. כשהמתג כבוי — לא יישלחו ניוזלטרים או מיילים שיווקיים. יש להפעיל את המתג לפני שליחה ראשונה.
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+                ✅ <strong>סטטוס:</strong> מערכת הדיוור מאושרת ב-AWS SES Production. עדיין יש מתג הפעלה בהגדרות CRM → לשונית אוטומציה: כשהמתג כבוי — לא יישלחו ניוזלטרים או מיילים שיווקיים.
               </div>
             </div>
           }
@@ -652,12 +652,13 @@ export default function UserGuide() {
                 </div>
 
                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                  <p className="font-bold text-gray-800 mb-2">📧 Amazon SES + Gmail (דיוור)</p>
+                  <p className="font-bold text-gray-800 mb-2">📧 Amazon SES Production + Gmail גיבוי (דיוור)</p>
                   <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                    <li>שליחת ניוזלטרים ומיילים דרך <strong>Amazon SES</strong> (ספק ראשי)</li>
+                    <li>שליחת ניוזלטרים ומיילים דרך <strong>Amazon SES Production</strong> ב-EU Stockholm</li>
+                    <li>מכסת AWS מאושרת: <strong>50,000 מיילים ביום</strong>, עד <strong>14 מיילים בשנייה</strong></li>
                     <li>אם SES לא זמין — נופל אוטומטית ל-<strong>Gmail API</strong> כגיבוי</li>
                     <li><strong>מעקב פתיחות וקליקים</strong> — SES Configuration Set + SNS → נתונים מגיעים אוטומטית למערכת</li>
-                    <li>⚠️ <strong>נשלט על ידי מתג הפעלה</strong> בהגדרות CRM → אוטומציה. כשהמתג כבוי — לא נשלחים מיילים</li>
+                    <li>✅ <strong>נשלט על ידי מתג הפעלה</strong> בהגדרות CRM → אוטומציה. כשהמתג כבוי — לא נשלחים מיילים</li>
                   </ul>
                 </div>
 
@@ -756,7 +757,7 @@ export default function UserGuide() {
                 <li><strong>עיצוב ומיתוג</strong> — צבעי המערכת (רקע, ראשי, הדגשה, פעולה, טקסט), פונטים, עגלות פינות וכפתורים</li>
                 <li><strong>תוויות ושדות</strong> — שינוי שמות דפי הניווט, תוויות ישויות (משתתף/קורס), ותוויות שדות</li>
                 <li><strong>סטטוסים ושלבים</strong> — הוספה, מחיקה ועריכת צבע של סטטוסי לידים, שיחות, קורסים, ומקורות ליד. סטטוסים מוגנים (משמשים באוטומציות) לא ניתנים למחיקה</li>
-                <li><strong>אוטומציה</strong> — הגדרות וואטסאפ, תגובה אוטומטית, חיבור סוכן AI, <strong>מתג הפעלת דיוור (SES/Gmail)</strong>, <strong>בדיקת SES Configuration Set</strong>, Webhook, קישור תשלום</li>
+                <li><strong>אוטומציה</strong> — הגדרות וואטסאפ, תגובה אוטומטית, חיבור סוכן AI, <strong>מתג הפעלת דיוור (AWS SES Production/Gmail גיבוי)</strong>, <strong>בדיקת תקינות SES Configuration Set</strong>, Webhook, קישור תשלום</li>
                 <li><strong>אנשי קשר וואטסאפ</strong> — ניהול מספרי טלפון מוכרים שלא ייחשבו כלידים חדשים</li>
                 <li><strong>תבניות מייל</strong> — עורך תבניות לניוזלטרים עם בלוקים (טקסט, תמונה, וידאו, כפתור, מידע קשר, רשתות חברתיות)</li>
                 <li><strong>מדריך למשתמשת</strong> — הדף הזה! הסברים מפורטים על כל חלקי המערכת</li>
@@ -873,7 +874,7 @@ export default function UserGuide() {
             <div className="space-y-2">
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full">0</span>
-                <span className="text-sm">ודאי שמתג הדיוור <strong>מופעל</strong> בהגדרות CRM → אוטומציה (אחרת השליחה תיחסם)</span>
+                <span className="text-sm">ודאי שמתג הדיוור <strong>מופעל</strong> בהגדרות CRM → אוטומציה. השליחה מתבצעת דרך AWS SES Production</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full">1</span>
@@ -897,7 +898,7 @@ export default function UserGuide() {
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full">6</span>
-                <span className="text-sm">לוחצת ״שלח ניוזלטר״ → הניוזלטר נשלח + נרשם בהיסטוריה + מעקב פתיחות וקליקים</span>
+                <span className="text-sm">לוחצת ״שלח ניוזלטר״ → הניוזלטר נשלח דרך AWS SES Production + נרשם בהיסטוריה + מעקב פתיחות וקליקים</span>
               </div>
             </div>
           }

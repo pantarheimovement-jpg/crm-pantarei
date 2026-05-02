@@ -159,7 +159,7 @@ export default function UserGuide() {
                 <li><strong>סינון</strong> — לפי סטטוס (הכל / לידים חדשים / רשומים) ולפי קורס</li>
                 <li><strong>הוספה / עריכה / מחיקה</strong> — ניהול מלא של כרטיס משתתף</li>
                 <li><strong>ייבוא מ-Summit</strong> — העלאת קובץ HTML מהמערכת החיצונית</li>
-                <li><strong>ייצוא CSV</strong> — ייצוא רשימת המשתתפים לקובץ</li>
+                <li><strong>ייצוא CSV + Google Sheets</strong> — ייצוא רשימת המשתתפים לקובץ או לגיליון Google Sheets</li>
                 <li><strong>היסטוריית שיחות</strong> — לכל משתתף ניתן לראות את כל השיחות שלו (בלחיצה על ״הצג היסטוריית שיחות״)</li>
                 <li><strong>תאריך כניסת ליד</strong> — נקבע אוטומטית בכניסת ליד (מוואטסאפ, אתר, Gmail) וניתן לעריכה ידנית</li>
                 <li><strong>מקורות ליד</strong> — אתר / וואטסאפ / פייסבוק / ידני / אחר</li>
@@ -274,7 +274,7 @@ export default function UserGuide() {
                 <li><strong>לחיצה על מספר הרשומים/לידים</strong> — מובילה ישירות לדף משתתפים מסונן לפי הקורס והסטטוס</li>
                 <li><strong>אימייל מורה</strong> — ניתן לשייך מורה לקורס דרך כתובת מייל (בעריכת קורס)</li>
                 <li><strong>לינק ישיר לדף קורס</strong> — בעריכת קורס מופיע URL מלא עם אפשרות העתקה</li>
-                <li><strong>ייצוא CSV</strong> — כפתור לייצוא רשימת הקורסים עם כל הנתונים לקובץ CSV</li>
+                <li><strong>ייצוא CSV + Google Sheets</strong> — כפתור לייצוא רשימת הקורסים עם כל הנתונים לקובץ CSV או לגיליון Google Sheets</li>
               </ul>
             </div>
           }
@@ -387,7 +387,9 @@ export default function UserGuide() {
             <div>
               <p>הדף מנהל את כל השיחות, הפגישות והמעקבים:</p>
               <ul className="list-disc list-inside mt-2 space-y-1">
-                <li><strong>רשימת שיחות</strong> — עם שם, תיאור, משתתף מקושר, סטטוס, ותאריך מתוזמן</li>
+                <li><strong>רשימת שיחות</strong> — עם שם, תיאור, משתתף מקושר, סטטוס, תאריך מתוזמן, ותג קורס סגול כשיש קורס משויך</li>
+                <li><strong>תג קורס סגול</strong> — בכרטיס השיחה מוצג הקורס המשויך כדי להבין במהירות לאיזה קורס השיחה קשורה</li>
+                <li><strong>זיהוי קורס לשיחת היכרות</strong> — המערכת מחפשת קודם קורס שמוזכר בתיאור השיחה, ואם אין כזה היא מציגה את הקורס האחרון של המשתתף בסטטוס ״ליד חדש״ / ״חדש״, או את הקורס הראשי שלו</li>
                 <li><strong>צבעי סטטוסים</strong> — כל סטטוס מוצג בצבע שונה (כמו צבעי הסטטוסים של אנשי קשר) לזיהוי מהיר</li>
                 <li><strong>סינון לפי משתתף</strong> — בחירת משתתף ספציפי מסננת את כל השיחות לאותו משתתף</li>
                 <li><strong>סינון לפי סטטוס</strong> — בחירת סטטוס ספציפי או חיפוש חופשי</li>
@@ -395,7 +397,7 @@ export default function UserGuide() {
                 <li><strong>סטטיסטיקות לחיצות</strong> — ניסיון לשיחה, בבדיקה, הושלמו, ומתוזמנות — <strong>כל סטטיסטיקה לחיצה שמסננת את הרשימה</strong></li>
                 <li><strong>מעבר על הכרטיס</strong> (hover) — מציג כרטיס מהיר של המשתתף עם טלפון, מייל וקורס</li>
                 <li><strong>יצירת משתתף חדש</strong> — ניתן ליצור משתתף חדש ישירות מתוך השיחה</li>
-                <li><strong>ייבוא / ייצוא CSV</strong></li>
+                <li><strong>ייבוא / ייצוא CSV + Google Sheets</strong></li>
               </ul>
               <p className="mt-3 p-3 bg-blue-50 rounded-lg text-sm">
                 💡 <strong>חשוב:</strong> השיחות מופיעות גם בדף המשתתפים! כל משתתף יכול לראות את היסטוריית השיחות שלו דרך כפתור ״הצג היסטוריית שיחות״.
@@ -413,7 +415,7 @@ export default function UserGuide() {
               <StatusBadge name="ניסיון לשיחה" color="#E74C3C" description="נעשה ניסיון ליצור קשר — צריך לנסות שוב." />
               <StatusBadge name="בבדיקה" color="#3498DB" description="נמצאת בתהליך בדיקה, עדיין לא הושלמה. → הלקוח עובר אוטומטית ל״במעקב ראשוני״." />
               <StatusBadge name="הושלם" color="#6D436D" description="השיחה/משימה טופלה בהצלחה." />
-              <StatusBadge name="לחזור לקראת הרשמה" color="#9B59B6" description="הליד מעוניין אך ממתין לפתיחת הרשמה לקורס. כשהקורס ייפתח להרשמה — תיווצר אוטומטית שיחת בדיקה." />
+              <StatusBadge name="לחזור לקראת הרשמה" color="#9B59B6" description="הליד מעוניין אך ממתין לפתיחת הרשמה לקורס. אם הקורס כבר פתוח להרשמה ונוסח מתאים שמור בהגדרות — יכולה להישלח גם הודעת וואטסאפ אוטומטית. אם הקורס עדיין לא פתוח — המערכת ממתינה לפתיחת ההרשמה." />
               <StatusBadge name="לא רלוונטי" color="#BDC3C7" description="לא רלוונטי יותר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
               <StatusBadge name="אבוד" color="#7F8C8D" description="הליד אבד, לא הצלחנו ליצור קשר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
               <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
@@ -583,9 +585,12 @@ export default function UserGuide() {
                 </div>
 
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                  <p className="font-bold text-yellow-800 mb-1">🔄 שינוי סטטוס שיחה → עדכון אוטומטי של סטטוס לקוח</p>
+                  <p className="font-bold text-yellow-800 mb-1">🔄 שינוי סטטוס שיחה → עדכון לקוח + הודעות וואטסאפ</p>
                   <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
+                    <li>שיחה עוברת ל<strong>״ניסיון לשיחה״</strong> → נשלחת הודעת וואטסאפ מיידית לפי נוסח ההגדרות</li>
                     <li>שיחה עוברת ל<strong>״בבדיקה״</strong> → הלקוח המקושר עובר אוטומטית ל<strong>״במעקב ראשוני״</strong></li>
+                    <li>שיחה עוברת ל<strong>״בבדיקה״</strong> או <strong>״לחזור לקראת הרשמה״</strong> → יכולה להישלח הודעת וואטסאפ אוטומטית רק לקורסי נענע/LBMS, ורק אם הקורס כבר <strong>פתוח להרשמה</strong></li>
+                    <li>אם הקורס עדיין לא פתוח להרשמה — המערכת לא שולחת וואטסאפ בשלב הזה וממתינה לפתיחת הרשמה</li>
                     <li>שיחה עוברת ל<strong>״לא רלוונטי״</strong> → הלקוח עובר אוטומטית ל<strong>״לא רלוונטי״</strong></li>
                     <li>שיחה עוברת ל<strong>״אבוד״</strong> → הלקוח עובר אוטומטית ל<strong>״לא רלוונטי״</strong></li>
                   </ul>
@@ -600,11 +605,13 @@ export default function UserGuide() {
                 </div>
 
                 <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl">
-                  <p className="font-bold text-teal-800 mb-1">🎓 פתיחת הרשמה לקורס</p>
+                  <p className="font-bold text-teal-800 mb-1">🎓 פתיחת הרשמה לקורסי נענע/LBMS</p>
                   <ul className="list-disc list-inside text-sm text-teal-700 space-y-1">
-                    <li>כשקורס עובר מ<strong>״לא פתוח להרשמה״</strong> ל<strong>״פתוח להרשמה״</strong>:</li>
+                    <li>כשקורס נענע או LBMS עובר מ<strong>״לא פתוח להרשמה״</strong> ל<strong>״פתוח להרשמה״</strong>:</li>
                     <li>המערכת מחפשת <strong>לידים משויכים</strong> לקורס שיש להם שיחות בסטטוס ״לחזור לקראת הרשמה״</li>
                     <li>נוצרות אוטומטית <strong>שיחות בדיקה להרשמה</strong> לכל ליד רלוונטי (מתוזמנות ליום למחרת)</li>
+                    <li>נשלחת גם <strong>הודעת וואטסאפ</strong> לפי נוסח ההגדרות המתאים לקורס LBMS או נענע</li>
+                    <li>אם אין נוסח שמור בהגדרות — שליחת הוואטסאפ תידלג, אבל יצירת השיחה והמייל לאדמין עדיין יתבצעו</li>
                     <li>נשלח <strong>מייל התראה</strong> לאדמין עם רשימת הלידים שהמערכת מצאה</li>
                   </ul>
                 </div>
@@ -714,7 +721,10 @@ export default function UserGuide() {
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>ניתן <strong>להפעיל/לכבות</strong> את התגובה האוטומטית</li>
                 <li>ניתן <strong>לערוך את הטקסט</strong> — השתמשי ב-{`{{name}}`} כדי להכניס את שם השולח</li>
-                <li>התגובה נשלחת רק <strong>ללידים חדשים</strong> שזוהו כהתעניינות ברורה</li>
+                <li>יש שלושה נוסחים מרכזיים לאוטומציות וואטסאפ: <strong>ניסיון לשיחה</strong>, <strong>קורסי LBMS</strong>, ו<strong>קורסי נענע</strong></li>
+                <li>בנוסחי LBMS/נענע אפשר להשתמש גם ב-{`{{course}}`} לשם הקורס וב-{`{{status}}`} לסטטוס השיחה</li>
+                <li>ניתן לשלוח <strong>הודעת בדיקה</strong> למספר וואטסאפ אחד לפני שימוש בנוסח</li>
+                <li>התגובה הכללית נשלחת רק <strong>ללידים חדשים</strong> שזוהו כהתעניינות ברורה</li>
                 <li>הודעות ש״לבדיקה״ <strong>לא מקבלות תגובה אוטומטית</strong> — אופיר מקבלת התראה ומאשרת/דוחה</li>
               </ul>
             </div>
@@ -927,7 +937,7 @@ export default function UserGuide() {
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
-                <span className="text-sm">אם אחרי כמה נסיונות אין מענה → משנה ל״אבוד״ → הלקוח עובר אוטומטית ל״לא רלוונטי״</span>
+                <span className="text-sm">אם מעדכנת ל״ניסיון לשיחה״ — נשלחת וואטסאפ מיידית לפי נוסח ההגדרות. אם אחרי כמה נסיונות אין מענה → משנה ל״אבוד״ → הלקוח עובר אוטומטית ל״לא רלוונטי״</span>
               </div>
             </div>
           }
@@ -940,11 +950,11 @@ export default function UserGuide() {
             <div className="space-y-2">
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">1</span>
-                <span className="text-sm">בדף הקורסים → עורכת את הקורס → משנה סטטוס ל״פתוח להרשמה״</span>
+                <span className="text-sm">בדף הקורסים → עורכת קורס נענע או LBMS → משנה סטטוס ל״פתוח להרשמה״</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">2</span>
-                <span className="text-sm">המערכת מחפשת אוטומטית לידים שמשויכים לקורס עם שיחות ״לחזור לקראת הרשמה״</span>
+                <span className="text-sm">המערכת מחפשת אוטומטית לידים שמשויכים לקורס נענע/LBMS עם שיחות ״לחזור לקראת הרשמה״</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
@@ -952,15 +962,40 @@ export default function UserGuide() {
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
-                <span className="text-sm">נשלח מייל התראה לאדמין עם רשימת הלידים שנמצאו</span>
+                <span className="text-sm">נשלחת הודעת וואטסאפ לפי נוסח ההגדרות, אם קיים נוסח שמור; אם אין נוסח — הוואטסאפ מדולג</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
-                <span className="text-sm">עוברת לדף השיחות → רואה את השיחות החדשות → מתקשרת ללידים</span>
+                <span className="text-sm">נשלח גם מייל התראה לאדמין עם רשימת הלידים שנמצאו, ואז עוברת לדף השיחות → רואה את השיחות החדשות → מתקשרת ללידים</span>
               </div>
               <p className="mt-3 p-3 bg-teal-50 rounded-lg text-sm">
                 💡 <strong>טיפ:</strong> ודאי שסטטוס הלידים בשיחות הוא ״לחזור לקראת הרשמה״ לפני שמשנה את סטטוס הקורס — רק לידים כאלה יקבלו שיחת בדיקה אוטומטית.
               </p>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ArrowRight}
+          color="#F39C12"
+          question="שיחה עברה ל׳לחזור לקראת הרשמה׳ כשהקורס כבר פתוח — מה קורה?"
+          answer={
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">1</span>
+                <span className="text-sm">מעדכנת שיחה לסטטוס <strong>״לחזור לקראת הרשמה״</strong></span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">2</span>
+                <span className="text-sm">המערכת מזהה את הקורס המשויך לשיחה דרך התיאור, הקורס החדש האחרון של המשתתף, או הקורס הראשי</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
+                <span className="text-sm">אם זה קורס נענע או LBMS והוא כבר פתוח להרשמה — נשלחת הודעת וואטסאפ לפי נוסח ההגדרות</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
+                <span className="text-sm">אם אין נוסח שמור או שהקורס לא פתוח — שליחת הוואטסאפ מדולגת והשיחה נשארת למעקב</span>
+              </div>
             </div>
           }
         />
@@ -1016,8 +1051,8 @@ export default function UserGuide() {
           answer={
             <div>
               <ul className="list-disc list-inside space-y-1">
-                <li><strong>קורסים:</strong> בדף הקורסים → כפתור ״ייצוא CSV״ בפינה — יכלול שם, סוג, סטטוס, לוז, מיקום, מחיר, רשומים, לידים, מקסימום, ואימייל מורה</li>
-                <li><strong>משתתפים:</strong> בדף המשתתפים → כפתור ייצוא — יכלול את כל הנתונים המוצגים</li>
+                <li><strong>קורסים:</strong> בדף הקורסים → כפתורי ייצוא CSV + Google Sheets — יכלול שם, סוג, סטטוס, לוז, מיקום, מחיר, רשומים, לידים, מקסימום, ואימייל מורה</li>
+                <li><strong>משתתפים:</strong> בדף המשתתפים → כפתורי ייצוא CSV + Google Sheets — יכלול את כל הנתונים המוצגים</li>
                 <li>הייצוא כולל רק את הרשומות המוצגות (אחרי חיפוש/סינון)</li>
               </ul>
             </div>

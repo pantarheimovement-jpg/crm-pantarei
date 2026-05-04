@@ -287,7 +287,7 @@ ${ctaButtonsHtml}
                 html_content: personalizedHtml,
                 from_name: 'פנטהריי',
                 unsubscribe_token: recipient.unsubscribe_token,
-                app_base_url: window.location.origin,
+                app_base_url: 'https://pantarhei-studio.co.il',
               });
               if (res.data?.sent_via) lastSentVia = res.data.sent_via === 'gmail' ? 'Gmail' : 'SES';
               emailSuccessCount++;
@@ -371,7 +371,7 @@ ${ctaButtonsHtml}
             html_content: recipient.html_content || resendContent,
             from_name: 'פנטהריי',
             unsubscribe_token: recipient.unsubscribe_token,
-            app_base_url: window.location.origin,
+            app_base_url: 'https://pantarhei-studio.co.il',
           });
           if (res.data?.sent_via) resendVia = res.data.sent_via === 'gmail' ? 'Gmail' : 'SES';
           resendSuccess++;

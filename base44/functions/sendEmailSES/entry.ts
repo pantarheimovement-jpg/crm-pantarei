@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     // Note: Auth is handled by the app's login system.
     // The CRM pages are only accessible to logged-in users.
 
-    const { to, subject, html_content, from_name, unsubscribe_token, app_base_url } = await req.json();
+    const { to, subject, html_content, from_name, unsubscribe_token, app_base_url, text_only } = await req.json();
 
     if (!to || !subject || !html_content) {
       return Response.json({ error: 'Missing required fields: to, subject, html_content' }, { status: 400 });
@@ -76,7 +76,19 @@ Deno.serve(async (req) => {
           ? `<mailto:pantarhei.movement@gmail.com?subject=unsubscribe>, <${app_base_url}/functions/unsubscribeHandler?token=${unsubscribe_token}>`
           : `<mailto:pantarhei.movement@gmail.com?subject=unsubscribe>`;
 
-        const rawMessage = [
+        const rawMessage = text_only ? [
+          `From: ${senderName} <newsletter@pantarhei-studio.co.il>`,
+          `To: ${to}`,
+          `Reply-To: info@pantarhei-studio.co.il`,
+          `Subject: =?UTF-8?B?${subjectB64}?=`,
+          `MIME-Version: 1.0`,
+          `List-Unsubscribe: ${unsubUrl}`,
+          `List-Unsubscribe-Post: List-Unsubscribe=One-Click`,
+          `Content-Type: text/plain; charset=UTF-8`,
+          `Content-Transfer-Encoding: base64`,
+          ``,
+          textB64,
+        ].join('\r\n') : [
           `From: ${senderName} <newsletter@pantarhei-studio.co.il>`,
           `To: ${to}`,
           `Reply-To: info@pantarhei-studio.co.il`,

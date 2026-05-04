@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
         const rawMessage = [
           `From: ${senderName} <newsletter@pantarhei-studio.co.il>`,
           `To: ${to}`,
-          `Reply-To: pantarhei.movement@gmail.com`,
+          `Reply-To: info@pantarhei-studio.co.il`,
           `Subject: =?UTF-8?B?${subjectB64}?=`,
           `MIME-Version: 1.0`,
           `List-Unsubscribe: ${unsubUrl}`,

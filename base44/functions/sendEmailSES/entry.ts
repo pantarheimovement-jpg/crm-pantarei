@@ -1,6 +1,34 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { SESClient, SendRawEmailCommand } from 'npm:@aws-sdk/client-ses@^3';
 
+function encodeBase64Utf8(value) {
+  const bytes = new TextEncoder().encode(String(value || ''));
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function htmlToPlainText(html) {
+  return String(html || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s+\n/g, '\n\n')
+    .trim();
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -39,8 +67,10 @@ Deno.serve(async (req) => {
         const configSet = Deno.env.get('SES_CONFIGURATION_SET') || 'pantarhei-tracking';
 
         const encoder2 = new TextEncoder();
-        const subjectB64 = btoa(String.fromCharCode(...encoder2.encode(subject)));
-        const htmlB64 = btoa(String.fromCharCode(...encoder2.encode(html_content)));
+        const subjectB64 = encodeBase64Utf8(subject);
+        const htmlB64 = encodeBase64Utf8(html_content);
+        const textB64 = encodeBase64Utf8(htmlToPlainText(html_content));
+        const boundary = `pantarhei_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
         const unsubUrl = unsubscribe_token && app_base_url
           ? `<mailto:pantarhei.movement@gmail.com?subject=unsubscribe>, <${app_base_url}/functions/unsubscribeHandler?token=${unsubscribe_token}>`
@@ -52,12 +82,21 @@ Deno.serve(async (req) => {
           `Reply-To: pantarhei.movement@gmail.com`,
           `Subject: =?UTF-8?B?${subjectB64}?=`,
           `MIME-Version: 1.0`,
-          `Content-Type: text/html; charset=UTF-8`,
-          `Content-Transfer-Encoding: base64`,
           `List-Unsubscribe: ${unsubUrl}`,
           `List-Unsubscribe-Post: List-Unsubscribe=One-Click`,
+          `Content-Type: multipart/alternative; boundary="${boundary}"`,
+          ``,
+          `--${boundary}`,
+          `Content-Type: text/plain; charset=UTF-8`,
+          `Content-Transfer-Encoding: base64`,
+          ``,
+          textB64,
+          `--${boundary}`,
+          `Content-Type: text/html; charset=UTF-8`,
+          `Content-Transfer-Encoding: base64`,
           ``,
           htmlB64,
+          `--${boundary}--`,
         ].join('\r\n');
 
         console.log(`sendEmailSES: Sending via SES to ${to}, ConfigurationSet: ${configSet}`);
@@ -84,8 +123,9 @@ Deno.serve(async (req) => {
     const { accessToken } = await base44.asServiceRole.connectors.getConnection("gmail");
 
     const encoder = new TextEncoder();
-    const gmailSubjectB64 = btoa(String.fromCharCode(...encoder.encode(subject)));
-    const gmailHtmlB64 = btoa(String.fromCharCode(...encoder.encode(html_content)));
+    const gmailSubjectB64 = encodeBase64Utf8(subject);
+    const gmailHtmlB64 = encodeBase64Utf8(html_content);
+    const gmailTextB64 = encodeBase64Utf8(htmlToPlainText(html_content));
 
     const gmailUnsubUrl = unsubscribe_token && app_base_url
       ? `<mailto:pantarhei.movement@gmail.com?subject=unsubscribe>, <${app_base_url}/functions/unsubscribeHandler?token=${unsubscribe_token}>`
@@ -101,6 +141,11 @@ Deno.serve(async (req) => {
       `List-Unsubscribe-Post: List-Unsubscribe=One-Click`,
       `Content-Type: multipart/alternative; boundary="${boundary}"`,
       '',
+      `--${boundary}`,
+      'Content-Type: text/plain; charset=UTF-8',
+      'Content-Transfer-Encoding: base64',
+      '',
+      gmailTextB64,
       `--${boundary}`,
       'Content-Type: text/html; charset=UTF-8',
       'Content-Transfer-Encoding: base64',

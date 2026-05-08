@@ -8,6 +8,7 @@ import SourceManager from '../components/settings/SourceManager';
 import WhatsappKnownContactsManager from '../components/settings/WhatsappKnownContactsManager';
 import SesConfigChecker from '../components/settings/SesConfigChecker';
 import WhatsappAutomationMessages from '../components/settings/WhatsappAutomationMessages';
+import AntiSpamTemplateEditor from '../components/settings/AntiSpamTemplateEditor';
 
 export default function CRMSettings() {
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('crmSettings_tab') || 'crm-general');
@@ -282,6 +283,7 @@ export default function CRMSettings() {
                 { key: 'automation', icon: Zap, label: 'אוטומציה' },
                 { key: 'whatsapp-contacts', icon: Phone, label: 'אנשי קשר וואטסאפ' },
                 { key: 'email-templates', icon: Mail, label: 'תבניות מייל' },
+                { key: 'antispam-templates', icon: Mail, label: 'תבניות Anti-Spam' },
                 { key: 'user-guide', icon: BookOpen, label: 'מדריך למשתמשת' },
               ].map(({ key, icon: Icon, label }) => (
                 <button key={key} onClick={() => switchTab(key)}
@@ -1010,6 +1012,10 @@ export default function CRMSettings() {
             <div style={{ display: activeTab === 'email-templates' ? 'block' : 'none' }}>
               <EmailTemplateEditor />
             </div>
+
+            {activeTab === 'antispam-templates' && (
+              <AntiSpamTemplateEditor />
+            )}
 
             {activeTab === 'user-guide' && (
               <UserGuide />

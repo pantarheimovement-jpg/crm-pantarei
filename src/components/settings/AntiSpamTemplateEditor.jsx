@@ -201,10 +201,7 @@ export default function AntiSpamTemplateEditor() {
 
   const loadTemplates = async () => {
     const data = await base44.entities.EmailTemplate.list();
-    // Filter to only show anti-spam templates (name contains "Anti-Spam" or "ספאם")
-    setTemplates((data || []).filter(t => 
-      (t.name || '').includes('Anti-Spam') || (t.name || '').includes('ספאם') || (t.name || '').includes('anti-spam')
-    ));
+    setTemplates(data || []);
   };
 
   const loadGeneralSettings = async () => {

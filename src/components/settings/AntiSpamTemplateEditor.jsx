@@ -2,7 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown, ShieldCheck } from 'lucide-react';
 
-const DEFAULT_BLOCK = () => ({ id: Date.now() + Math.random(), type: 'text', title: '', content: '', button_text: '', button_url: '', image_url: '', alt_text: '' });
+const DEFAULT_BLOCK = () => ({ id: Date.now() + Math.random(), type: 'text', title: '', content: '', button_text: '', button_url: '', image_url: '', alt_text: '', video_url: '', video_thumbnail_url: '' });
+
+function getAutoThumbnail(videoUrl) {
+  if (!videoUrl) return '';
+  const ytMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+  const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return `https://vumbnail.com/${vimeoMatch[1]}.jpg`;
+  return '';
+}
 
 const LOGO_URL = 'https://pantarhei-studio.co.il/wp-content/uploads/2026/05/%D7%9C%D7%95%D7%92%D7%95-%D7%A4%D7%A0%D7%98%D7%94%D7%A8%D7%99%D7%99-%D7%A8%D7%A7%D7%A2-%D7%9B%D7%94%D7%94.png';
 
@@ -24,6 +33,16 @@ function buildAntiSpamHtml(s, generalSettings) {
       return block.image_url ? `
       <tr><td style="padding:10px 30px;text-align:center;">
         <img src="${block.image_url}" alt="${block.alt_text || 'פנטהריי סטודיו'}" width="500" style="width:100%;max-width:500px;border-radius:12px;display:block;margin:0 auto;">
+      </td></tr>` : '';
+    }
+    if (block.type === 'video') {
+      const thumbnail = block.video_thumbnail_url || getAutoThumbnail(block.video_url);
+      return (block.video_url && thumbnail) ? `
+      <tr><td style="padding:10px 30px;text-align:center;">
+        <a href="${block.video_url}" target="_blank" style="text-decoration:none;">
+          <img src="${thumbnail}" alt="${block.alt_text || 'צפה בסרטון'}" width="500" style="width:100%;max-width:500px;border-radius:12px;display:block;margin:0 auto;">
+        </a>
+        <p style="font-family:'Rubik',Arial,sans-serif;font-size:14px;color:#555;margin-top:10px;">▶ לחצו לצפייה בסרטון</p>
       </td></tr>` : '';
     }
     if (block.type === 'button') {
@@ -159,6 +178,7 @@ const ANTI_SPAM_DEFAULT_SECTIONS = {
 const BLOCK_TYPES = [
   { type: 'text', icon: '📝', label: 'טקסט' },
   { type: 'image', icon: '🖼️', label: 'תמונה' },
+  { type: 'video', icon: '🎬', label: 'סרטון' },
   { type: 'button', icon: '🔘', label: 'כפתור' },
 ];
 
@@ -411,6 +431,34 @@ export default function AntiSpamTemplateEditor() {
                     <input type="text" value={block.alt_text || ''} onChange={e => updateBlock(idx, 'alt_text', e.target.value)} className="w-full px-3 py-2 border border-green-300 rounded-lg text-sm bg-green-50/50" placeholder="תיאור קצר של התמונה, למשל: סדנת תנועה בסטודיו פנטהריי" />
                   </div>
                   {block.image_url && <img src={block.image_url} alt={block.alt_text || 'preview'} className="max-h-32 rounded" />}
+                </div>
+              )}
+
+              {block.type === 'video' && (
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">קישור לסרטון</label>
+                    <input type="text" value={block.video_url || ''} onChange={e => updateBlock(idx, 'video_url', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="https://youtube.com/..." dir="ltr" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">תמונה ממוזערת (אופציונלי — נוצרת אוטומטית מיוטיוב/וימאו)</label>
+                    <input type="text" value={block.video_thumbnail_url || ''} onChange={e => updateBlock(idx, 'video_thumbnail_url', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="אוטומטי מיוטיוב, או הדביקי URL..." dir="ltr" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-green-700 mb-1">🏷️ Alt Text (תיאור הסרטון)</label>
+                    <input type="text" value={block.alt_text || ''} onChange={e => updateBlock(idx, 'alt_text', e.target.value)} className="w-full px-3 py-2 border border-green-300 rounded-lg text-sm bg-green-50/50" placeholder="תיאור קצר של הסרטון" />
+                  </div>
+                  {(() => {
+                    const thumb = block.video_thumbnail_url || getAutoThumbnail(block.video_url);
+                    return thumb ? (
+                      <div className="mt-1">
+                        <p className="text-xs text-gray-500 mb-1">{block.video_thumbnail_url ? 'תמונה ממוזערת (ידנית):' : 'תמונה ממוזערת (אוטומטית):'}</p>
+                        <img src={thumb} alt="thumbnail preview" className="max-h-32 rounded border" />
+                      </div>
+                    ) : block.video_url ? (
+                      <p className="text-xs text-orange-600 mt-1">⚠️ לא ניתן לייצר תמונה ממוזערת אוטומטית. העלי תמונה ידנית.</p>
+                    ) : null;
+                  })()}
                 </div>
               )}
 

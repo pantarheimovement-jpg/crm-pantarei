@@ -333,18 +333,46 @@ Deno.serve(async (req) => {
     }
     
     // יצירת/עדכון מנוי ב-Subscribers (אם יש הסכמה לדיוור)
-    if (marketingConsent && email) {
+    // רק אם הסטטוס הוא "ליד חדש" — לא יוצרים מנוי ללידים "לבדיקה"
+    const finalStatus = student?.status || studentData.status;
+    const shouldCreateSubscriber = marketingConsent && email && finalStatus !== 'הודעה מוואטסאפ לבדיקה';
+    
+    if (shouldCreateSubscriber) {
       try {
-        const existingSubs = await base44.asServiceRole.entities.Subscribers.filter({ email });
-        if (existingSubs && existingSubs.length > 0) {
-          await base44.asServiceRole.entities.Subscribers.update(existingSubs[0].id, {
+        // בדיקת כפילות לפי email או טלפון
+        let existingSub = null;
+        const byEmail = await base44.asServiceRole.entities.Subscribers.filter({ email });
+        if (byEmail && byEmail.length > 0) {
+          existingSub = byEmail[0];
+        }
+        
+        if (!existingSub && cleanPhone) {
+          const whatsappNum = cleanPhone.startsWith('0') ? '972' + cleanPhone.substring(1) : cleanPhone;
+          const byPhone = await base44.asServiceRole.entities.Subscribers.filter({ whatsapp: whatsappNum });
+          if (byPhone && byPhone.length > 0) {
+            existingSub = byPhone[0];
+          }
+        }
+
+        // שיוך קבוצה לפי שם הקורס
+        const subscriberGroup = course_name || (course ? course.name : '');
+        
+        if (existingSub) {
+          const updatedGroups = existingSub.groups || [];
+          if (subscriberGroup && !updatedGroups.includes(subscriberGroup)) {
+            updatedGroups.push(subscriberGroup);
+          }
+          await base44.asServiceRole.entities.Subscribers.update(existingSub.id, {
             marketing_consent: true,
             subscribed: true,
             name: full_name,
-            whatsapp: cleanPhone ? (cleanPhone.startsWith('0') ? '972' + cleanPhone.substring(1) : cleanPhone) : undefined,
-            source: 'טופס אתר'
+            email: email,
+            whatsapp: cleanPhone ? (cleanPhone.startsWith('0') ? '972' + cleanPhone.substring(1) : cleanPhone) : existingSub.whatsapp,
+            source: existingSub.source || 'טופס אתר',
+            group: subscriberGroup || existingSub.group,
+            groups: updatedGroups
           });
-          console.log('✅ Subscriber updated with marketing consent');
+          console.log('✅ Subscriber updated with marketing consent + group:', subscriberGroup);
         } else {
           await base44.asServiceRole.entities.Subscribers.create({
             email,
@@ -352,13 +380,17 @@ Deno.serve(async (req) => {
             whatsapp: cleanPhone ? (cleanPhone.startsWith('0') ? '972' + cleanPhone.substring(1) : cleanPhone) : '',
             subscribed: true,
             marketing_consent: true,
-            source: 'טופס אתר'
+            source: 'טופס אתר',
+            group: subscriberGroup,
+            groups: subscriberGroup ? [subscriberGroup] : []
           });
-          console.log('✅ New subscriber created with marketing consent');
+          console.log('✅ New subscriber created with marketing consent + group:', subscriberGroup);
         }
       } catch (subError) {
         console.error('⚠️ Failed to create/update subscriber:', subError.message);
       }
+    } else if (marketingConsent && email) {
+      console.log(`⏭️ Skipping subscriber creation — status is "${finalStatus}", waiting for approval`);
     }
 
     console.log('✅ Webhook completed successfully');

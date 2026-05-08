@@ -427,6 +427,13 @@ Deno.serve(async (req) => {
 
         const autoReplySent = await sendAutoReply(base44, chatId, senderName, 'new_lead');
 
+        // יצירת מנוי אם יש מייל (ליד חדש מוואטסאפ)
+        await createOrUpdateSubscriber(base44, {
+          name: senderName || storedPhone,
+          phone: storedPhone,
+          courseName: intent.identifiedCourseName
+        });
+
         return Response.json({
           status: 'new_lead_created',
           student_id: student.id,
@@ -676,6 +683,14 @@ async function handleOfirResponse(base44, messageText) {
       student_name: student.full_name
     });
 
+    // יצירת מנוי עם שיוך קבוצה (ליד מאושר ע"י אופיר)
+    await createOrUpdateSubscriber(base44, {
+      name: student.full_name,
+      email: student.email,
+      phone: student.phone,
+      courseName: student.interest_area || student.course_name
+    });
+
     // Confirm to Ofir
     await sendWhatsApp(`✅ נשלחה הודעה ל${student.full_name} (${student.phone}) ונוצרה משימת שיחת היכרות.`);
 
@@ -730,6 +745,76 @@ async function sendWhatsAppToChat(chatId, message) {
   } catch (e) {
     console.error('❌ WhatsApp error:', e.message);
     return false;
+  }
+}
+
+// =============================================
+// CREATE OR UPDATE SUBSCRIBER (with duplicate check & group assignment)
+// =============================================
+async function createOrUpdateSubscriber(base44, { name, email, phone, courseName }) {
+  // Must have at least phone or email
+  if (!email && !phone) {
+    console.log('⏭️ No email or phone for subscriber creation');
+    return;
+  }
+
+  try {
+    let existingSub = null;
+
+    // Check by email
+    if (email) {
+      const byEmail = await base44.asServiceRole.entities.Subscribers.filter({ email });
+      if (byEmail && byEmail.length > 0) existingSub = byEmail[0];
+    }
+
+    // Check by phone (whatsapp format)
+    if (!existingSub && phone) {
+      let whatsappNum = normalizePhone(phone);
+      if (whatsappNum.startsWith('0')) whatsappNum = '972' + whatsappNum.substring(1);
+      const byPhone = await base44.asServiceRole.entities.Subscribers.filter({ whatsapp: whatsappNum });
+      if (byPhone && byPhone.length > 0) existingSub = byPhone[0];
+    }
+
+    let whatsappNum = '';
+    if (phone) {
+      whatsappNum = normalizePhone(phone);
+      if (whatsappNum.startsWith('0')) whatsappNum = '972' + whatsappNum.substring(1);
+    }
+
+    const subscriberGroup = courseName || '';
+
+    if (existingSub) {
+      const updatedGroups = existingSub.groups || [];
+      if (subscriberGroup && !updatedGroups.includes(subscriberGroup)) {
+        updatedGroups.push(subscriberGroup);
+      }
+      await base44.asServiceRole.entities.Subscribers.update(existingSub.id, {
+        subscribed: true,
+        name: name || existingSub.name,
+        email: email || existingSub.email,
+        whatsapp: whatsappNum || existingSub.whatsapp,
+        source: existingSub.source || 'וואטסאפ',
+        group: subscriberGroup || existingSub.group,
+        groups: updatedGroups
+      });
+      console.log(`✅ Subscriber updated: ${existingSub.email || whatsappNum}, group: ${subscriberGroup}`);
+    } else {
+      const token = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+      await base44.asServiceRole.entities.Subscribers.create({
+        email: email || '',
+        name: name || '',
+        whatsapp: whatsappNum,
+        subscribed: true,
+        marketing_consent: false,
+        source: 'וואטסאפ',
+        unsubscribe_token: token,
+        group: subscriberGroup,
+        groups: subscriberGroup ? [subscriberGroup] : []
+      });
+      console.log(`✅ New subscriber created: ${email || whatsappNum}, group: ${subscriberGroup}`);
+    }
+  } catch (e) {
+    console.error('⚠️ Subscriber create/update error:', e.message);
   }
 }
 

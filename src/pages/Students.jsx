@@ -108,6 +108,25 @@ export default function Students() {
 
   const handleSave = async () => {
     try {
+      // === DEDUP: בדיקת כפילות לפני יצירה חדשה ===
+      if (!editingStudent) {
+        let existingMatch = null;
+        if (formData.email) {
+          existingMatch = students.find(s => s.email && s.email.toLowerCase() === formData.email.toLowerCase());
+        }
+        if (!existingMatch && formData.phone) {
+          existingMatch = students.find(s => s.phone === formData.phone);
+        }
+        if (existingMatch) {
+          const confirmUpdate = confirm(`כבר קיים/ת משתתף/ת עם הפרטים האלה: "${existingMatch.full_name}".\nלעדכן את הרשומה הקיימת במקום ליצור חדשה?`);
+          if (confirmUpdate) {
+            setEditingStudent(existingMatch);
+          } else {
+            return; // ביטול
+          }
+        }
+      }
+
       const originalStudent = editingStudent ? students.find(s => s.id === editingStudent.id) : null;
       const wasRegistered = originalStudent?.status === 'נרשם' || originalStudent?.status === 'רשום';
       const isNowRegistered = formData.status === 'נרשם' || formData.status === 'רשום';

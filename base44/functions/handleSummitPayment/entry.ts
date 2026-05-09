@@ -196,6 +196,60 @@ Deno.serve(async (req) => {
       });
     }
     
+    // 5. סנכרון Subscribers — יצירת/עדכון מנוי עם קבוצת הקורס
+    if (customerEmail) {
+      try {
+        let existingSub = null;
+        const bySubEmail = await base44.asServiceRole.entities.Subscribers.filter({ email: customerEmail });
+        if (bySubEmail && bySubEmail.length > 0) existingSub = bySubEmail[0];
+        
+        if (!existingSub && customerPhone && customerPhone !== 'לא זמין') {
+          let whatsappNum = customerPhone.replace(/[\s\-\.\(\)\+]/g, '');
+          if (whatsappNum.startsWith('0')) whatsappNum = '972' + whatsappNum.substring(1);
+          const bySubPhone = await base44.asServiceRole.entities.Subscribers.filter({ whatsapp: whatsappNum });
+          if (bySubPhone && bySubPhone.length > 0) existingSub = bySubPhone[0];
+        }
+        
+        const subscriberGroup = course ? course.name : '';
+        let whatsappNum = '';
+        if (customerPhone && customerPhone !== 'לא זמין') {
+          whatsappNum = customerPhone.replace(/[\s\-\.\(\)\+]/g, '');
+          if (whatsappNum.startsWith('0')) whatsappNum = '972' + whatsappNum.substring(1);
+        }
+        
+        if (existingSub) {
+          const updatedGroups = existingSub.groups || [];
+          if (subscriberGroup && !updatedGroups.includes(subscriberGroup)) {
+            updatedGroups.push(subscriberGroup);
+          }
+          await base44.asServiceRole.entities.Subscribers.update(existingSub.id, {
+            subscribed: true,
+            name: customerName || existingSub.name,
+            email: customerEmail,
+            whatsapp: whatsappNum || existingSub.whatsapp,
+            source: existingSub.source || 'Summit',
+            group: subscriberGroup || existingSub.group,
+            groups: updatedGroups
+          });
+          console.log(`✅ Subscriber updated: ${customerEmail}, group: ${subscriberGroup}`);
+        } else {
+          await base44.asServiceRole.entities.Subscribers.create({
+            email: customerEmail,
+            name: customerName || '',
+            whatsapp: whatsappNum,
+            subscribed: true,
+            marketing_consent: false,
+            source: 'Summit',
+            group: subscriberGroup,
+            groups: subscriberGroup ? [subscriberGroup] : []
+          });
+          console.log(`✅ New subscriber created: ${customerEmail}, group: ${subscriberGroup}`);
+        }
+      } catch (subError) {
+        console.error('⚠️ Subscriber sync error (non-fatal):', subError.message);
+      }
+    }
+    
     return Response.json({
       success: true,
       student_id: student.id,

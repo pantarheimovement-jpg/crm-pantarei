@@ -171,6 +171,35 @@ export default function Students() {
         await base44.entities.Student.create(cleanedData);
       }
 
+      // === סנכרון Subscribers אם יש email ו-marketing_consent ===
+      const savedEmail = cleanedData.email?.toLowerCase().trim();
+      if (savedEmail && cleanedData.marketing_consent) {
+        try {
+          const existingSubs = await base44.entities.Subscribers.filter({ email: savedEmail });
+          const courseGroups = (cleanedData.courses || []).map(c => c.course_name).filter(Boolean);
+          const mainGroup = cleanedData.course_name || courseGroups[0] || '';
+          
+          if (existingSubs && existingSubs.length > 0) {
+            const sub = existingSubs[0];
+            const updatedGroups = [...(sub.groups || [])];
+            courseGroups.forEach(g => { if (!updatedGroups.includes(g)) updatedGroups.push(g); });
+            await base44.entities.Subscribers.update(sub.id, {
+              subscribed: true, marketing_consent: true, name: cleanedData.full_name,
+              group: mainGroup || sub.group, groups: updatedGroups
+            });
+          } else {
+            await base44.entities.Subscribers.create({
+              email: savedEmail, name: cleanedData.full_name,
+              whatsapp: cleanedData.phone ? (cleanedData.phone.startsWith('0') ? '972' + cleanedData.phone.substring(1) : cleanedData.phone) : '',
+              subscribed: true, marketing_consent: true, source: 'ידני',
+              group: mainGroup, groups: courseGroups.length > 0 ? courseGroups : (mainGroup ? [mainGroup] : [])
+            });
+          }
+        } catch (subErr) {
+          console.error('Subscriber sync error:', subErr);
+        }
+      }
+
       // עדכון חכם של current_students בקורס
       if (formData.course_id) {
         const course = await base44.entities.Course.list();

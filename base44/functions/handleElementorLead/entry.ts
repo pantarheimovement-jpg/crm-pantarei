@@ -248,6 +248,39 @@ Deno.serve(async (req) => {
       
       student = await base44.asServiceRole.entities.Student.create(studentData);
       console.log(`✅ New student created: ${student.full_name} (ID: ${student.id})`);
+      
+      // Post-creation dedup: בדיקת כפילות (race condition מטפסים כפולים)
+      try {
+        let duplicates = [];
+        if (email) {
+          duplicates = await base44.asServiceRole.entities.Student.filter({ email });
+        }
+        if (duplicates.length <= 1 && phone) {
+          // בדיקה גם לפי טלפון
+          const byPhone = await base44.asServiceRole.entities.Student.filter({ phone: phone });
+          if (byPhone.length > 1) duplicates = byPhone;
+        }
+        
+        if (duplicates.length > 1) {
+          // שומרים את הרשומה הישנה ביותר (created_date הנמוך ביותר)
+          const sorted = duplicates.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+          const oldest = sorted[0];
+          const toDelete = sorted.filter(d => d.id !== oldest.id);
+          
+          console.log(`⚠️ DEDUP: Found ${duplicates.length} duplicates for ${email || phone}. Keeping oldest (${oldest.id}), deleting ${toDelete.map(d => d.id).join(', ')}`);
+          
+          for (const dup of toDelete) {
+            await base44.asServiceRole.entities.Student.delete(dup.id);
+            console.log(`🗑️ Deleted duplicate student: ${dup.id}`);
+          }
+          
+          // עדכון הרשומה הישנה עם הנתונים החדשים
+          student = await base44.asServiceRole.entities.Student.update(oldest.id, studentData);
+          console.log(`✅ Updated oldest record: ${oldest.id}`);
+        }
+      } catch (dedupError) {
+        console.error('⚠️ Post-creation dedup error (non-fatal):', dedupError.message);
+      }
     }
     
     // ========================================

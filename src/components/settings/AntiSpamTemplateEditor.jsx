@@ -429,11 +429,14 @@ export default function AntiSpamTemplateEditor() {
                         <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                           const file = e.target.files[0];
                           if (!file) return;
+                          updateBlock(idx, '_uploading', true);
                           try {
-                            updateBlock(idx, '_uploading', true);
                             const { file_url } = await base44.integrations.Core.UploadFile({ file });
-                            updateBlock(idx, 'image_url', file_url);
-                            updateBlock(idx, '_uploading', false);
+                            setSections(prev => {
+                              const newBlocks = [...prev.blocks];
+                              newBlocks[idx] = { ...newBlocks[idx], image_url: file_url, _uploading: false };
+                              return { ...prev, blocks: newBlocks };
+                            });
                           } catch (err) {
                             alert('שגיאה בהעלאת תמונה: ' + err.message);
                             updateBlock(idx, '_uploading', false);

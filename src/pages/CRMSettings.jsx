@@ -11,7 +11,12 @@ import WhatsappAutomationMessages from '../components/settings/WhatsappAutomatio
 import AntiSpamTemplateEditor from '../components/settings/AntiSpamTemplateEditor';
 
 export default function CRMSettings() {
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('crmSettings_tab') || 'crm-general');
+  const [activeTab, setActiveTab] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlTab = urlParams.get('tab');
+    if (urlTab) return urlTab;
+    return localStorage.getItem('crmSettings_tab') || 'crm-general';
+  });
 
   const switchTab = (tab) => {
     setActiveTab(tab);

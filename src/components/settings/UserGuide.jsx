@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   ChevronDown, ChevronUp, BookOpen, LayoutDashboard, Users, GraduationCap, 
   CheckSquare, Mail, Zap, Settings, Search, ArrowRight,
-  Sparkles, AlertCircle, RefreshCw, MessageSquare, ClipboardList, ShieldCheck, BarChart3
+  Sparkles, AlertCircle, RefreshCw, MessageSquare, ClipboardList, ShieldCheck, BarChart3,
+  Copy, Check, Image, FileText
 } from 'lucide-react';
 
 function FAQItem({ question, answer, icon: Icon, color = '#6D436D' }) {
@@ -489,6 +490,116 @@ export default function UserGuide() {
           }
         />
         <FAQItem
+          icon={Image}
+          color="#2ECC71"
+          question="איך משתמשים בתבנית Anti-Spam?"
+          answer={
+            <div>
+              <p>תבניות Anti-Spam מותאמות במיוחד כדי שהמיילים שלך <strong>יגיעו לתיבת הדואר ולא לספאם</strong>. הן כוללות alt text לתמונות, preheader, יחס טקסט/תמונות מאוזן, ומספר קישורים מצומצם.</p>
+              
+              <p className="font-semibold mt-4 mb-2">📝 יצירת תבנית חדשה:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>עברי להגדרות CRM → לשונית <strong>״תבניות Anti-Spam״</strong></li>
+                <li>לחצי על <strong>״תבנית חדשה״</strong></li>
+                <li>תני שם לתבנית ונושא ברירת מחדל</li>
+                <li>מלאי את ה-<strong>Preheader</strong> — טקסט נסתר שמופיע בתצוגה מקדימה של Gmail (חשוב מאוד!)</li>
+                <li>ערכי את הכותרת העליונה, הברכה והפתיחה</li>
+              </ol>
+
+              <p className="font-semibold mt-4 mb-2">🧱 בלוקי תוכן — סוגים:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li><strong>📝 טקסט</strong> — כותרת, פסקת תוכן, ואופציונלית כפתור עם קישור</li>
+                <li><strong>🖼️ תמונה</strong> — העלאה ישירה (כפתור ״העלאה״) או הדבקת URL. <strong>חובה למלא alt text</strong> (תיאור התמונה) — קריטי למניעת ספאם!</li>
+                <li><strong>🎬 סרטון</strong> — קישור ליוטיוב/וימאו עם תמונה ממוזערת אוטומטית</li>
+                <li><strong>🔘 כפתור</strong> — כפתור CTA עם טקסט וקישור</li>
+              </ul>
+              <p className="text-sm text-gray-600 mt-1">ניתן לגרור בלוקים למעלה/למטה עם חצים, להוסיף בלוק אחרי כל בלוק קיים, ולמחוק בלוקים.</p>
+
+              <p className="font-semibold mt-4 mb-2">🖼️ העלאת תמונות:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>בבלוק תמונה, לחצי על כפתור <strong>״העלאה״</strong> הוורוד ובחרי תמונה מהמחשב</li>
+                <li>או הדביקי URL ישירות בשדה (עדיף מהדומיין שלך — pantarhei-studio.co.il)</li>
+                <li>מלאי תמיד <strong>alt text תיאורי</strong> — לדוגמה: ״סדנת תנועה בסטודיו פנטהריי״ (לא ״תמונה 1״)</li>
+              </ul>
+
+              <p className="font-semibold mt-4 mb-2">💾 שמירה ושימוש:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>לחצי <strong>״שמור תבנית״</strong> (גם הכפתור הצף בפינה שמאלית)</li>
+                <li>לחצי <strong>״תצוגה מקדימה״</strong> לראות איך המייל ייראה</li>
+                <li>בדף הניוזלטר → בחרי <strong>״תבנית מהירה״</strong> → בחרי את התבנית שיצרת → שלחי</li>
+              </ul>
+
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+                💡 <strong>טיפ:</strong> שלחי תמיד <strong>מייל ניסיון לעצמך</strong> לפני שליחה כללית — כך תוכלי לבדוק שהמייל לא נופל לספאם ושהעיצוב נראה כמו שצריך.
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ShieldCheck}
+          color="#27AE60"
+          question="טיפים לשיפור deliverability (הגעה לתיבת הדואר)"
+          answer={
+            <div>
+              <p>כדי שהמיילים שלך יגיעו לתיבת הדואר ולא לספאם, חשוב להקפיד על הכללים הבאים:</p>
+              <div className="space-y-3 mt-3">
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="font-medium text-green-800">✅ יחס טקסט/תמונות מאוזן</p>
+                  <p className="text-sm text-green-700 mt-1">אל תשלחי מייל שהוא רק תמונות! הוסיפי לפחות 2-3 פסקאות טקסט אמיתי בין התמונות. יחס של 60% טקסט / 40% תמונות הוא אידיאלי.</p>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="font-medium text-green-800">✅ alt text תיאורי לכל תמונה</p>
+                  <p className="text-sm text-green-700 mt-1">כל תמונה חייבת alt text שמתאר מה בתמונה. ״סדנת תנועה בסטודיו פנטהריי״ ולא ״IMG_001״ או ריק.</p>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="font-medium text-green-800">✅ Preheader (טקסט תצוגה מקדימה)</p>
+                  <p className="text-sm text-green-700 mt-1">מלאי תמיד preheader — זה הטקסט שנראה ב-Gmail לפני פתיחת המייל. משפיע מאוד על שיעור הפתיחה.</p>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="font-medium text-green-800">✅ מספר קישורים מצומצם</p>
+                  <p className="text-sm text-green-700 mt-1">הגבילי ל-3-5 קישורים לכל היותר. יותר מדי קישורים מעוררים חשד אצל מסנני ספאם.</p>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="font-medium text-green-800">✅ תמונות מהדומיין שלך</p>
+                  <p className="text-sm text-green-700 mt-1">עדיף להשתמש בתמונות מ-pantarhei-studio.co.il. תמונות מדומיינים לא מוכרים יכולות להפעיל מסנני ספאם.</p>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="font-medium text-green-800">✅ שליחה לקבוצות קטנות</p>
+                  <p className="text-sm text-green-700 mt-1">אם יש לך רשימה גדולה, שלחי בקבוצות של 200-300 מנויים כדי לשמור על מוניטין שליחה טוב.</p>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="font-medium text-green-800">✅ נושא מייל ברור</p>
+                  <p className="text-sm text-green-700 mt-1">נושא ברור ולא קליקבייטי. ״עדכון חודשי מפנטהריי — סדנאות חדשות״ ולא ״!!!לא תאמיני מה מחכה לך!!!״</p>
+                </div>
+                <div className="p-3 bg-yellow-50 rounded-lg">
+                  <p className="font-medium text-yellow-800">⚠️ מייל ניסיון תמיד לפני שליחה!</p>
+                  <p className="text-sm text-yellow-700 mt-1">לחצי ״שלחי מייל ניסיון״ ובדקי שהמייל הגיע לתיבת הדואר (לא לספאם). אם נפל לספאם — בדקי את הטיפים למעלה.</p>
+                </div>
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={Mail}
+          color="#3498DB"
+          question="איך שולחים מייל ניסיון?"
+          answer={
+            <div>
+              <p>לפני כל שליחה כללית, <strong>חובה לשלוח מייל ניסיון</strong> לעצמך:</p>
+              <ol className="list-decimal list-inside mt-2 space-y-1">
+                <li>עברי לדף <strong>ניוזלטר → שליחת ניוזלטר</strong></li>
+                <li>בחרי את הערוץ, התבנית והתוכן</li>
+                <li>בפינה העליונה לחצי על <strong>״שלחי מייל ניסיון״</strong></li>
+                <li>הזיני את <strong>כתובת המייל שלך</strong> ולחצי ״שלח״</li>
+                <li>בדקי בתיבת הדואר (ובתיקיית הספאם!) שהמייל הגיע ונראה טוב</li>
+              </ol>
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                💡 <strong>חשוב:</strong> אם המייל הגיע לספאם — חזרי לתבנית, הוסיפי יותר טקסט, בדקי alt text בתמונות, ושלחי ניסיון שוב.
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
           icon={BarChart3}
           color="#9B59B6"
           question="מה נמצא בדף סטטיסטיקות ניוזלטר?"
@@ -896,7 +1007,7 @@ export default function UserGuide() {
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
-                <span className="text-sm">בוחרת תבנית מוכנה, HTML מתקדם, או עורך חופשי. ניתן להוסיף כפתורי CTA</span>
+                <span className="text-sm">בוחרת <strong>״תבנית מהירה״</strong> → בוחרת תבנית Anti-Spam שיצרת (מומלץ!), או HTML מתקדם / עורך חופשי</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
@@ -1059,6 +1170,66 @@ export default function UserGuide() {
           }
         />
       </Section>
+
+      {/* Share Link */}
+      <ShareGuideLink />
+    </div>
+  );
+}
+
+function ShareGuideLink() {
+  const [copied, setCopied] = useState(false);
+  
+  const getGuideUrl = () => {
+    const base = window.location.origin;
+    return `${base}/CRMSettings?tab=user-guide`;
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(getGuideUrl());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+      <div className="flex items-center justify-center gap-2 mb-3">
+        <BookOpen className="w-5 h-5 text-[#6D436D]" />
+        <h3 className="font-bold text-gray-900">שיתוף המדריך</h3>
+      </div>
+      <p className="text-sm text-gray-600 mb-4">
+        העתיקי את הקישור ושלחי למי שצריכה גישה ישירה למדריך הזה
+      </p>
+      <div className="flex items-center gap-2 max-w-lg mx-auto">
+        <input
+          type="text"
+          readOnly
+          value={getGuideUrl()}
+          className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 text-left dir-ltr"
+          dir="ltr"
+          onClick={(e) => e.target.select()}
+        />
+        <button
+          onClick={handleCopy}
+          className={`px-5 py-2.5 rounded-full font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+            copied 
+              ? 'bg-green-600 text-white' 
+              : 'bg-[#6D436D] text-white hover:bg-[#5a365a]'
+          }`}
+        >
+          {copied ? (
+            <>
+              <Check className="w-4 h-4" />
+              הועתק!
+            </>
+          ) : (
+            <>
+              <Copy className="w-4 h-4" />
+              העתק קישור
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

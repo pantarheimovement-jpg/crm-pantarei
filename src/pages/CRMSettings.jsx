@@ -274,7 +274,7 @@ export default function CRMSettings() {
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-sm mb-6">
           <div className="border-b border-gray-200">
-            <div className="flex overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="flex overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {[
                 { key: 'crm-general', icon: Settings, label: 'הגדרות כלליות' },
                 { key: 'design', icon: Palette, label: 'עיצוב ומיתוג' },

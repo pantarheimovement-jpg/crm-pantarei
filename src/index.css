@@ -86,3 +86,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide scrollbar for horizontal tab navigation */
+.overflow-x-auto::-webkit-scrollbar {
+  display: none;
+}

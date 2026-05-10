@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown, ShieldCheck, Upload } from 'lucide-react';
 
 const DEFAULT_BLOCK = () => ({ id: Date.now() + Math.random(), type: 'text', title: '', content: '', button_text: '', button_url: '', image_url: '', alt_text: '', video_url: '', video_thumbnail_url: '' });
 
@@ -420,8 +420,29 @@ export default function AntiSpamTemplateEditor() {
               {block.type === 'image' && (
                 <div className="space-y-2">
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">URL תמונה (מ-pantarhei-studio.co.il)</label>
-                    <input type="text" value={block.image_url} onChange={e => updateBlock(idx, 'image_url', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="https://pantarhei-studio.co.il/wp-content/uploads/..." dir="ltr" />
+                    <label className="block text-xs text-gray-600 mb-1">URL תמונה או העלאה ישירה</label>
+                    <div className="flex gap-2">
+                      <input type="text" value={block.image_url} onChange={e => updateBlock(idx, 'image_url', e.target.value)} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="https://... או העלי תמונה →" dir="ltr" />
+                      <label className="px-3 py-2 bg-[#D29486] text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-[#c08478] flex items-center gap-1 whitespace-nowrap">
+                        <Upload className="w-4 h-4" />
+                        העלאה
+                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          try {
+                            updateBlock(idx, '_uploading', true);
+                            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                            updateBlock(idx, 'image_url', file_url);
+                            updateBlock(idx, '_uploading', false);
+                          } catch (err) {
+                            alert('שגיאה בהעלאת תמונה: ' + err.message);
+                            updateBlock(idx, '_uploading', false);
+                          }
+                          e.target.value = '';
+                        }} />
+                      </label>
+                    </div>
+                    {block._uploading && <p className="text-xs text-blue-600 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />מעלה תמונה...</p>}
                   </div>
                   <div>
                     <label className="block text-xs text-green-700 mb-1">🏷️ Alt Text (תיאור התמונה — חשוב למניעת ספאם)</label>

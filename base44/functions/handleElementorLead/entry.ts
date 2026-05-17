@@ -347,9 +347,15 @@ Deno.serve(async (req) => {
 
         const settings = await base44.asServiceRole.entities.AutomationSettings.list();
         const automationSettings = settings?.[0] || {};
-        const defaultMessage = 'הי {{name}}, קיבלנו את פנייתך 💜 אנחנו נדאג ליצור איתך קשר בהקדם. סטודיו פנטהריי';
-        const whatsappMessage = (automationSettings.whatsapp_auto_reply || defaultMessage)
-          .replace(/\{\{name\}\}/g, first_name || full_name || 'שלום');
+        const siteLeadDefault = 'הי {{name}}, קיבלנו את פנייתך בנוגע ל{{course}} 💜 ניצור איתך קשר בהקדם. סטודיו פנטהריי';
+        const fallbackDefault = 'הי {{name}}, קיבלנו את פנייתך 💜 אנחנו נדאג ליצור איתך קשר בהקדם. סטודיו פנטהריי';
+        const resolvedCourseName = course ? course.name : (course_name || '');
+        const template = resolvedCourseName
+          ? (automationSettings.whatsapp_new_lead_from_site || siteLeadDefault)
+          : (automationSettings.whatsapp_auto_reply || fallbackDefault);
+        const whatsappMessage = template
+          .replace(/\{\{name\}\}/g, first_name || full_name || 'שלום')
+          .replace(/\{\{course\}\}/g, resolvedCourseName);
 
         await base44.asServiceRole.entities.WhatsappQueue.create({
           subscriber_id: student.id,

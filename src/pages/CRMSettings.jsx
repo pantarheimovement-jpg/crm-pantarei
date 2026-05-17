@@ -278,8 +278,32 @@ export default function CRMSettings() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-sm mb-6">
-          <div className="border-b border-gray-200">
+          {/* Mobile: horizontal tabs */}
+          <div className="md:hidden border-b border-gray-200">
             <div className="flex overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {[
+                { key: 'crm-general', icon: Settings, label: 'כלליות' },
+                { key: 'design', icon: Palette, label: 'עיצוב' },
+                { key: 'labels', icon: Tag, label: 'תוויות' },
+                { key: 'statuses', icon: GripVertical, label: 'סטטוסים' },
+                { key: 'automation', icon: Zap, label: 'אוטומציה' },
+                { key: 'whatsapp-contacts', icon: Phone, label: 'אנשי קשר' },
+                { key: 'email-templates', icon: Mail, label: 'תבניות מייל' },
+                { key: 'antispam-templates', icon: Mail, label: 'Anti-Spam' },
+                { key: 'user-guide', icon: BookOpen, label: 'מדריך' },
+              ].map(({ key, icon: Icon, label }) => (
+                <button key={key} onClick={() => switchTab(key)}
+                  className={`px-4 py-3 text-sm font-medium whitespace-nowrap flex items-center gap-1.5 flex-shrink-0 ${activeTab === key ? 'border-b-2 border-[#6D436D] text-[#6D436D]' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <Icon className="w-4 h-4" />{label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop: sidebar tabs + content side by side */}
+          <div className="flex">
+            <div className="hidden md:flex flex-col border-l border-gray-200 min-w-[200px] py-2">
               {[
                 { key: 'crm-general', icon: Settings, label: 'הגדרות כלליות' },
                 { key: 'design', icon: Palette, label: 'עיצוב ומיתוג' },
@@ -292,15 +316,14 @@ export default function CRMSettings() {
                 { key: 'user-guide', icon: BookOpen, label: 'מדריך למשתמשת' },
               ].map(({ key, icon: Icon, label }) => (
                 <button key={key} onClick={() => switchTab(key)}
-                  className={`px-4 md:px-6 py-3 md:py-4 text-sm md:text-base font-medium whitespace-nowrap flex items-center gap-1.5 md:gap-2 flex-shrink-0 ${activeTab === key ? 'border-b-2 border-[#6D436D] text-[#6D436D]' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-4 py-3 text-sm font-medium whitespace-nowrap flex items-center gap-2 text-right transition-colors ${activeTab === key ? 'bg-[#6D436D]/10 text-[#6D436D] border-l-3 border-[#6D436D]' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
                 >
-                  <Icon className="w-4 h-4 md:w-5 md:h-5" />{label}
+                  <Icon className="w-5 h-5 flex-shrink-0" />{label}
                 </button>
               ))}
             </div>
-          </div>
 
-          <div className="p-4 md:p-6">
+            <div className="flex-1 p-4 md:p-6">
             {/* CRM General Tab */}
             {activeTab === 'crm-general' && generalSettings && (
               <div className="space-y-6">
@@ -1047,6 +1070,7 @@ export default function CRMSettings() {
               <UserGuide />
             )}
 
+          </div>
           </div>
         </div>
       </div>

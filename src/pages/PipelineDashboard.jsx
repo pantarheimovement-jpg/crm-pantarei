@@ -733,11 +733,11 @@ export default function PipelineDashboard() {
                     צפה
                   </Link>
                 </div>
-                {tasks.filter(t => t.name?.includes('שיחת היכרות') && t.status !== 'הושלם' && t.status !== 'אבוד').length === 0 ? (
+                {tasks.filter(t => t.name === 'שיחת היכרות' && t.status !== 'הושלם' && t.status !== 'אבוד').length === 0 ? (
                   <p className="text-xs text-gray-400">אין שיחות היכרות</p>
                 ) : (
                   <div className="space-y-2">
-                    {tasks.filter(t => t.name?.includes('שיחת היכרות') && t.status !== 'הושלם' && t.status !== 'אבוד').slice(0, 3).map(task => (
+                    {tasks.filter(t => t.name === 'שיחת היכרות' && t.status !== 'הושלם' && t.status !== 'אבוד').slice(0, 3).map(task => (
                       <div 
                         key={task.id}
                         onClick={() => window.location.href = createPageUrl('Tasks') + '?task_id=' + task.id + '&highlight=' + task.id}

@@ -52,15 +52,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    // בדיקה אם כבר יש משימת היכרות פתוחה למשתתף הזה
+    // קביעת שם המשימה לפי סוג הקורס
+    const courseName = student.course_name || (student.courses && student.courses.length > 0 ? student.courses[student.courses.length - 1].course_name : '') || student.interest_area || '';
+    const isFascia = courseName.includes('פאשיה');
+    const taskName = isFascia ? "שיחת היכרות פאשיה בתנועה" : "שיחת היכרות";
+    console.log(`📋 Task name: "${taskName}" (course: "${courseName}", isFascia: ${isFascia})`);
+
+    // בדיקה אם כבר יש משימת היכרות פתוחה מאותו סוג למשתתף הזה
     console.log(`🔍 Checking for existing tasks...`);
     
     const existingTasks = await base44.asServiceRole.entities.Task.filter({
       student_id: student.id,
-      name: "שיחת היכרות"
+      name: taskName
     });
 
-    console.log(`📋 Found ${existingTasks.length} existing "שיחת היכרות" tasks`);
+    console.log(`📋 Found ${existingTasks.length} existing "${taskName}" tasks`);
     
     const openTask = existingTasks.find(t => 
       t.status !== "הושלם" && t.status !== "אבוד"
@@ -87,8 +93,8 @@ Deno.serve(async (req) => {
     console.log(`🔨 Creating task with status: "ממתין"`);
     
     const task = await base44.asServiceRole.entities.Task.create({
-      name: "שיחת היכרות",
-      description: `שיחת היכרות עם ${student.full_name}`,
+      name: taskName,
+      description: `${taskName} עם ${student.full_name}`,
       status: "ממתין",
       scheduled_date: scheduledDate.toISOString().split('T')[0],
       student_id: student.id,

@@ -295,10 +295,16 @@ Deno.serve(async (req) => {
       console.log('📞 Creating introduction task...');
       
       try {
-        // בדיקה אם כבר יש משימת היכרות פתוחה
+        // קביעת שם המשימה לפי סוג הקורס
+        const resolvedCourseNameForTask = course ? course.name : (course_name || '');
+        const isFascia = resolvedCourseNameForTask.includes('פאשיה');
+        const taskName = isFascia ? "שיחת היכרות פאשיה בתנועה" : "שיחת היכרות";
+        console.log(`📋 Task name: "${taskName}" (course: "${resolvedCourseNameForTask}", isFascia: ${isFascia})`);
+        
+        // בדיקה אם כבר יש משימת היכרות פתוחה מאותו סוג
         const existingTasks = await base44.asServiceRole.entities.Task.filter({
           student_id: student.id,
-          name: "שיחת היכרות"
+          name: taskName
         });
         
         const openTask = existingTasks.find(t => 
@@ -313,8 +319,8 @@ Deno.serve(async (req) => {
           scheduledDate.setDate(scheduledDate.getDate() + 2);
           
           const task = await base44.asServiceRole.entities.Task.create({
-            name: "שיחת היכרות",
-            description: `שיחת היכרות עם ${student.full_name}`,
+            name: taskName,
+            description: `${taskName} עם ${student.full_name}`,
             status: "ממתין",
             scheduled_date: scheduledDate.toISOString().split('T')[0],
             student_id: student.id,

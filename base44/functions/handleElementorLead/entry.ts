@@ -288,8 +288,8 @@ Deno.serve(async (req) => {
     // ========================================
     let taskCreated = false;
     // שיחת היכרות גם לאיש קשר קיים שהתעניין בקורס חדש
-    const isNewCourseForExisting = existingStudent && course && !(existingStudent.courses || []).some(c => c.course_id === course.id && c.status !== leadStatus);
-    const isNewLead = ((student.status === 'חדש' || student.status === 'ליד חדש') && isNewStudent) || isNewCourseForExisting;
+    const isNewCourseForExisting = existingStudent && course && !(existingStudent.courses || []).some(c => c.course_id === course.id);
+    const isNewLead = isNewStudent || isNewCourseForExisting;
     
     if (isNewLead) {
       console.log('📞 Creating introduction task...');

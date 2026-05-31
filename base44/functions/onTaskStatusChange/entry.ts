@@ -226,9 +226,70 @@ Deno.serve(async (req) => {
 
     if (newStudentStatus) {
       console.log(`Updating student ${studentId} status to "${newStudentStatus}"`);
-      await base44.asServiceRole.entities.Student.update(studentId, {
-        status: newStudentStatus
-      });
+      
+      const student = await base44.asServiceRole.entities.Student.get(studentId);
+      const studentCourses = student?.courses || [];
+      const taskName = data?.name || '';
+      const taskDescription = data?.description || '';
+      
+      // זיהוי הקורס הספציפי מתוך שם/תיאור המשימה
+      let targetCourseId = null;
+      
+      // חיפוש לפי שם המשימה: "שיחת היכרות - קורס X" או "שיחת היכרות פאשיה בתנועה"
+      if (taskName.startsWith('שיחת היכרות - ')) {
+        const courseNameFromTask = taskName.replace('שיחת היכרות - ', '');
+        const match = studentCourses.find(c => c.course_name === courseNameFromTask);
+        if (match) targetCourseId = match.course_id;
+      } else if (taskName === 'שיחת היכרות פאשיה בתנועה') {
+        const match = studentCourses.find(c => c.course_name && c.course_name.includes('פאשיה'));
+        if (match) targetCourseId = match.course_id;
+      }
+      
+      // fallback: חיפוש לפי תיאור המשימה
+      if (!targetCourseId) {
+        for (const c of studentCourses) {
+          if (c.course_name && taskDescription.includes(c.course_name)) {
+            targetCourseId = c.course_id;
+            break;
+          }
+        }
+      }
+      
+      const updateData = {};
+      
+      // עדכון סטטוס קורס ספציפי במערך courses
+      if (targetCourseId && studentCourses.length > 0) {
+        const updatedCourses = studentCourses.map(c => {
+          if (c.course_id === targetCourseId) {
+            return { ...c, status: newStudentStatus };
+          }
+          return c;
+        });
+        updateData.courses = updatedCourses;
+        
+        // חישוב סטטוס כללי לפי עדיפות
+        const STATUS_PRIORITY = ['רשום', 'נרשם', 'ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'לא רלוונטי'];
+        let bestStatus = newStudentStatus;
+        let bestPriority = STATUS_PRIORITY.indexOf(newStudentStatus);
+        if (bestPriority === -1) bestPriority = STATUS_PRIORITY.length;
+        
+        for (const c of updatedCourses) {
+          const idx = STATUS_PRIORITY.indexOf(c.status);
+          const priority = idx === -1 ? STATUS_PRIORITY.length : idx;
+          if (priority < bestPriority) {
+            bestPriority = priority;
+            bestStatus = c.status;
+          }
+        }
+        
+        updateData.status = bestStatus;
+        console.log(`📊 Per-course update: course ${targetCourseId} → "${newStudentStatus}", general status → "${bestStatus}"`);
+      } else {
+        // אין מערך courses או לא מצאנו קורס — עדכון סטטוס כללי בלבד (כמו קודם)
+        updateData.status = newStudentStatus;
+      }
+      
+      await base44.asServiceRole.entities.Student.update(studentId, updateData);
       console.log('✅ Student status updated successfully');
     } else {
       console.log('No student status mapping for this task status');

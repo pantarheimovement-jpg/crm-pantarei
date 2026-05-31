@@ -120,7 +120,7 @@ export default function UserGuide() {
                 <li><strong>לידים חדשים</strong> — כמה לידים חדשים נכנסו</li>
                 <li><strong>יחס המרה</strong> — אחוז המשתתפים שהפכו מלידים לרשומים (עם גרף עוגה)</li>
                 <li><strong>טבלת קורסים</strong> — כל הקורסים עם מספר הרשומים, חדשים היום והשבוע, ואחוז מילוי. לחיצה על קורס מעבירה לדף הקורס הייעודי</li>
-                <li><strong>שיחות היכרות מתוזמנות</strong> — שיחות בסטטוס ״ממתין״ או ״ניסיון לשיחה״ שמתוזמנות. שיחות שכבר עברו מסטטוס ״ממתין״ כבר לא מוצגות בדשבורד</li>
+                <li><strong>שיחות היכרות מתוזמנות</strong> — כל שיחות ההיכרות הפתוחות (כולל פאשיה!) עם <strong>פירוט לפי קורס</strong> — לדוגמה: "נענע (3)", "LBMS (1)", "פאשיה בתנועה (2)". כל תג לחיץ ומסנן את דף השיחות לפי הקורס</li>
                 <li><strong>לחזור לקראת הרשמה</strong> — שיחות שממתינות לפתיחת הרשמה לקורס. לחיצה מסננת את דף השיחות לסטטוס זה</li>
                 <li><strong>התראות</strong> — קורסים שמתמלאים (90%+), קורסים שעומדים להתחיל</li>
               </ul>
@@ -225,7 +225,7 @@ export default function UserGuide() {
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
-                  <span className="text-sm"><strong>שיחת היכרות</strong> — כשליד חדש (או קיים עם קורס חדש) נכנס מוואטסאפ/אתר, נוצרת אוטומטית שיחת היכרות מתוזמנת ליומיים קדימה</span>
+                  <span className="text-sm"><strong>שיחת היכרות לפי קורס</strong> — כשליד חדש (או קיים עם קורס חדש) נכנס מוואטסאפ/אתר, נוצרת אוטומטית שיחת היכרות <strong>עם שם הקורס</strong> (למשל: "שיחת היכרות - נענע"). פאשיה נשארת "שיחת היכרות פאשיה בתנועה". שיחות נפרדות לכל קורס — ליד שמתעניין בשני קורסים יקבל שתי שיחות היכרות!</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
@@ -252,7 +252,8 @@ export default function UserGuide() {
                 <li>שינוי סטטוס מ<strong>״רשום״</strong> למשהו אחר → מוריד את מונה הקורס -1</li>
                 <li>מחיקת משתתף רשום → מוריד אוטומטית את המונה בכל הקורסים שהוא רשום אליהם</li>
                 <li>הקורס הראשי (שדה course_id) → קובע איפה המשתתף מוצג בדשבורד</li>
-                <li>מערך הקורסים (courses[]) → שומר את כל הקורסים עם סטטוס נפרד לכל אחד</li>
+                <li>מערך הקורסים (courses[]) → שומר את כל הקורסים עם <strong>סטטוס נפרד לכל אחד</strong></li>
+                <li><strong>שינוי סטטוס לפי קורס</strong> — ניתן לשנות סטטוס לכל קורס בנפרד (dropdown בכרטיס המשתתף). הסטטוס הכללי מחושב אוטומטית לפי הקורס עם הסטטוס "החזק" ביותר (רשום {">"} ליד חדש {">"} לחזור {">"} במעקב {">"} לא רלוונטי)</li>
               </ul>
             </div>
           }
@@ -425,7 +426,7 @@ export default function UserGuide() {
               <div className="mt-3 space-y-1.5">
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
-                  <span className="text-sm"><strong>שיחת היכרות</strong> נוצרת אוטומטית כשליד חדש נכנס מוואטסאפ או מטופס Elementor. גם כשליד קיים מתעניין בקורס חדש</span>
+                  <span className="text-sm"><strong>שיחת היכרות לפי קורס</strong> — נוצרת אוטומטית עם שם הקורס (למשל "שיחת היכרות - LBMS"). כשליד מתעניין בעוד קורס, נוצרת שיחה נפרדת לאותו קורס</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
@@ -433,7 +434,7 @@ export default function UserGuide() {
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
-                  <span className="text-sm">שינוי שיחה ל<strong>״לא רלוונטי״</strong> או <strong>״אבוד״</strong> → לקוח עובר אוטומטית ל״לא רלוונטי״</span>
+                  <span className="text-sm">שינוי שיחה ל<strong>״לא רלוונטי״</strong> או <strong>״אבוד״</strong> → <strong>הקורס הספציפי</strong> של אותה שיחה עובר ל"לא רלוונטי", אבל הסטטוס הכללי מחושב מחדש — אם יש קורס אחר בסטטוס חזק יותר (כמו "ליד חדש"), הסטטוס הכללי ישאר אותו קורס</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
@@ -677,7 +678,7 @@ export default function UserGuide() {
                   <p className="font-bold text-green-800 mb-1">📱 הודעת וואטסאפ נכנסת → יצירת ליד</p>
                   <ul className="list-disc list-inside text-sm text-green-700 space-y-1">
                     <li>הודעה עם <strong>ביטוי התעניינות + הקשר לקורס</strong> → נוצר ליד חדש + שיחת היכרות + תגובה אוטומטית</li>
-                    <li>הודעה עם <strong>הקשר לקורס בלבד</strong> (ללא ביטוי ברור) → נוצר ליד ״הודעה מוואטסאפ לבדיקה״ + <strong>התראה לאופיר בוואטסאפ ומייל</strong>. אופיר יכולה לאשר (״כן [שם]״) או לדחות (״לא [שם]״)</li>
+                    <li>הודעה עם <strong>הקשר לקורס בלבד</strong> (ללא ביטוי ברור) → נוצר ליד ״הודעה מוואטסאפ לבדיקה״ + <strong>התראה לאופיר בוואטסאפ ומייל</strong>. אופיר יכולה לאשר (״כן [שם]״) או לדחות (״לא [שם]״ → <strong>הליד נמחק לחלוטין מהמערכת</strong>)</li>
                     <li>הודעה <strong>ללא הקשר לקורס</strong> → מתעלמים (לא נוצר כלום)</li>
                     <li>אם המשתתף <strong>כבר קיים</strong> → מעדכן פרטים + מוסיף קורס חדש אם רלוונטי + יוצר שיחת היכרות חדשה לקורס החדש</li>
                     <li><strong>אנשי קשר מוכרים</strong> (מוגדרים בהגדרות CRM) מתעלמים ולא נחשבים כלידים</li>
@@ -702,8 +703,8 @@ export default function UserGuide() {
                     <li>שיחה עוברת ל<strong>״בבדיקה״</strong> → הלקוח המקושר עובר אוטומטית ל<strong>״במעקב ראשוני״</strong></li>
                     <li>שיחה עוברת ל<strong>״בבדיקה״</strong> או <strong>״לחזור לקראת הרשמה״</strong> → יכולה להישלח הודעת וואטסאפ אוטומטית רק לקורסי נענע/LBMS, ורק אם הקורס כבר <strong>פתוח להרשמה</strong></li>
                     <li>אם הקורס עדיין לא פתוח להרשמה — המערכת לא שולחת וואטסאפ בשלב הזה וממתינה לפתיחת הרשמה</li>
-                    <li>שיחה עוברת ל<strong>״לא רלוונטי״</strong> → הלקוח עובר אוטומטית ל<strong>״לא רלוונטי״</strong></li>
-                    <li>שיחה עוברת ל<strong>״אבוד״</strong> → הלקוח עובר אוטומטית ל<strong>״לא רלוונטי״</strong></li>
+                    <li>שיחה עוברת ל<strong>״לא רלוונטי״</strong> → <strong>הקורס הספציפי</strong> של אותה שיחה עובר ל"לא רלוונטי". הסטטוס הכללי מחושב מחדש</li>
+                    <li>שיחה עוברת ל<strong>״אבוד״</strong> → אותו דבר — הקורס הספציפי עובר ל"לא רלוונטי", הסטטוס הכללי מחושב מחדש</li>
                   </ul>
                 </div>
 
@@ -897,6 +898,103 @@ export default function UserGuide() {
                 <li>שינוי <strong>תוויות ישויות</strong> (משתתף→תלמידה) → משתנה בדף המשתתפים ובדשבורד</li>
                 <li>הוספת <strong>סטטוס חדש</strong> → מופיע מיד בתפריט הסטטוסים בדף המשתתפים ובדשבורד</li>
               </ul>
+            </div>
+          }
+        />
+      </Section>
+
+      {/* סטטוס לפי קורס */}
+      <Section title="סטטוס לפי קורס — איך זה עובד?" icon={RefreshCw} color="#8B5CF6">
+        <FAQItem
+          icon={RefreshCw}
+          color="#8B5CF6"
+          question="מה זה סטטוס לפי קורס ואיך זה שונה מקודם?"
+          answer={
+            <div>
+              <p className="mb-3">בעבר לכל משתתף היה <strong>סטטוס אחד כללי</strong> שהשתנה עם כל פעולה. עכשיו <strong>לכל קורס של המשתתף יש סטטוס נפרד</strong>:</p>
+              <div className="space-y-2">
+                <div className="p-3 bg-purple-50 rounded-lg text-sm">
+                  <p className="font-medium text-purple-800">דוגמה: מרב בן דור הלוי</p>
+                  <ul className="list-disc list-inside mt-1 text-purple-700 space-y-1">
+                    <li>נענע → <strong>ליד חדש</strong></li>
+                    <li>פאשיה → <strong>לא רלוונטי</strong></li>
+                  </ul>
+                  <p className="mt-1 text-purple-600">הסטטוס הכללי שלה: <strong>ליד חדש</strong> (כי ליד חדש חזק יותר מלא רלוונטי)</p>
+                </div>
+              </div>
+              <p className="mt-3 font-semibold">סדר עדיפות הסטטוסים (מהחזק לחלש):</p>
+              <ol className="list-decimal list-inside mt-1 space-y-1 text-sm">
+                <li>רשום/נרשם</li>
+                <li>ליד חדש</li>
+                <li>לחזור לקראת הרשמה</li>
+                <li>במעקב ראשוני</li>
+                <li>היה ביום היכרות</li>
+                <li>הודעה מוואטסאפ לבדיקה</li>
+                <li>לא רלוונטי</li>
+              </ol>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={AlertCircle}
+          color="#8B5CF6"
+          question="איך משנים סטטוס של קורס ספציפי?"
+          answer={
+            <div>
+              <ul className="list-disc list-inside space-y-1">
+                <li>בכרטיס המשתתף → סקשן <strong>"קורסים"</strong></li>
+                <li>ליד כל קורס יש <strong>כפתור סטטוס סגול</strong> עם חץ — לחיצה פותחת dropdown</li>
+                <li>בוחרים סטטוס חדש → נשמר מיד</li>
+                <li>הסטטוס הכללי <strong>מתעדכן אוטומטית</strong> לפי סדר העדיפות</li>
+              </ul>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={Zap}
+          color="#8B5CF6"
+          question="מה קורה כששיחה עוברת ל'לא רלוונטי' — רק הקורס הספציפי מושפע?"
+          answer={
+            <div>
+              <p><strong>כן!</strong> כשמשנים שיחת היכרות ל"לא רלוונטי" או "אבוד":</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>המערכת מזהה <strong>לאיזה קורס השיחה שייכת</strong> (מתוך שם המשימה, למשל "שיחת היכרות - נענע")</li>
+                <li>רק <strong>הקורס הזה</strong> עובר לסטטוס "לא רלוונטי"</li>
+                <li>אם יש קורס אחר בסטטוס חזק יותר (למשל "ליד חדש") — <strong>הסטטוס הכללי לא משתנה</strong></li>
+                <li>אותה לוגיקה גם ל"בבדיקה" → "במעקב ראשוני" — רק הקורס הספציפי מושפע</li>
+              </ul>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={CheckSquare}
+          color="#8B5CF6"
+          question="איך שיחות היכרות עובדות עכשיו?"
+          answer={
+            <div>
+              <p className="mb-2">כל שיחת היכרות נקראת <strong>לפי הקורס</strong>:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>"שיחת היכרות - נענע"</li>
+                <li>"שיחת היכרות - LBMS"</li>
+                <li>"שיחת היכרות - לאבאן"</li>
+                <li>"שיחת היכרות פאשיה בתנועה" (שם מיוחד, כמו שהיה)</li>
+              </ul>
+              <p className="mt-3">ליד שמתעניין ב<strong>שני קורסים</strong> יקבל <strong>שתי שיחות היכרות נפרדות</strong>.</p>
+              <p className="mt-2">בדשבורד מוצג <strong>פירוט לפי קורס</strong> — כמה שיחות פתוחות לכל קורס, עם תגים לחיצים שמסננים את דף השיחות.</p>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={AlertCircle}
+          color="#E74C3C"
+          question="מה קורה כשאופיר דוחה ליד (כותבת 'לא')?"
+          answer={
+            <div>
+              <p><strong>הליד נמחק לחלוטין מהמערכת</strong> (לא רק מסומן כ"לא רלוונטי").</p>
+              <p className="mt-2">אופיר תקבל אישור: <strong>"❌ הליד [שם] נמחק מהמערכת."</strong></p>
+              <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
+                ⚠️ <strong>חשוב:</strong> המחיקה סופית! אם ליד נמחק בטעות, צריך ליצור אותו מחדש ידנית.
+              </div>
             </div>
           }
         />

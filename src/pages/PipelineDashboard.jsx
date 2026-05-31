@@ -48,17 +48,19 @@ export default function PipelineDashboard() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [studentsData, coursesData, tasksData, introTasksData] = await Promise.all([
+      const [studentsData, coursesData, tasksData] = await Promise.all([
         base44.entities.Student.list('-created_date'),
         base44.entities.Course.list('-created_date'),
-        base44.entities.Task.list('-scheduled_date'),
-        base44.entities.Task.filter({ name: "שיחת היכרות" }, '-scheduled_date')
+        base44.entities.Task.list('-scheduled_date')
       ]);
       setStudents(studentsData || []);
       setCourses(coursesData || []);
       setTasks(tasksData || []);
       
-      const relevantIntroTasks = (introTasksData || []).filter(t => t.status !== "הושלם" && t.status !== "אבוד");
+      // סינון שיחות היכרות — כל משימה שמתחילה ב"שיחת היכרות"
+      const relevantIntroTasks = (tasksData || []).filter(t => 
+        t.name && t.name.startsWith('שיחת היכרות') && t.status !== "הושלם" && t.status !== "אבוד"
+      );
       setIntroTasks(relevantIntroTasks);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -363,26 +365,52 @@ export default function PipelineDashboard() {
 
         {/* התראת שיחות היכרות */}
         {introTasks.length > 0 && (
-          <div className="bg-red-50 border-r-4 border-red-500 p-4 mb-6 rounded-l-xl flex justify-between items-center shadow-sm">
-            <div>
+          <div className="bg-red-50 border-r-4 border-red-500 p-4 mb-6 rounded-l-xl shadow-sm">
+            <div className="flex justify-between items-center mb-3">
               <h3 className="font-bold text-red-700 flex items-center gap-2">
                 <AlertCircle className="w-5 h-5" />
                 שיחות היכרות פתוחות ({introTasks.length})
               </h3>
-              <p className="text-sm text-red-600 mt-1">
-                {introTasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) <= new Date()).length > 0 
-                  ? `⚠️ יש ${introTasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) <= new Date()).length} שיחות שעבר התאריך המתוזמן!`
-                  : 'יש לבצע שיחות היכרות ללידים חדשים'}
-              </p>
+              <Link to={createPageUrl('Tasks') + '?search=שיחת היכרות'}>
+                <Button
+                  className="bg-red-500 text-white hover:bg-red-600"
+                  style={{ borderRadius: 'var(--crm-button-radius)' }}
+                >
+                  צפה בכולן
+                </Button>
+              </Link>
             </div>
-            <Link to={createPageUrl('Tasks')}>
-              <Button
-                className="bg-red-500 text-white hover:bg-red-600"
-                style={{ borderRadius: 'var(--crm-button-radius)' }}
-              >
-                צפה במשימות
-              </Button>
-            </Link>
+            {introTasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) <= new Date()).length > 0 && (
+              <p className="text-sm text-red-600 mb-3">
+                ⚠️ יש {introTasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) <= new Date()).length} שיחות שעבר התאריך המתוזמן!
+              </p>
+            )}
+            {/* פירוט לפי קורס */}
+            <div className="flex flex-wrap gap-2 mt-2">
+              {(() => {
+                const courseGroups = {};
+                introTasks.forEach(t => {
+                  let courseName = 'כללי';
+                  if (t.name === 'שיחת היכרות פאשיה בתנועה') {
+                    courseName = 'פאשיה בתנועה';
+                  } else if (t.name.startsWith('שיחת היכרות - ')) {
+                    courseName = t.name.replace('שיחת היכרות - ', '');
+                  }
+                  if (!courseGroups[courseName]) courseGroups[courseName] = [];
+                  courseGroups[courseName].push(t);
+                });
+                return Object.entries(courseGroups).map(([name, tasks]) => (
+                  <Link
+                    key={name}
+                    to={createPageUrl('Tasks') + '?search=' + encodeURIComponent(name === 'כללי' ? 'שיחת היכרות' : name)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-full text-xs font-medium text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
+                  >
+                    <span>{name}</span>
+                    <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-xs min-w-[20px] text-center">{tasks.length}</span>
+                  </Link>
+                ));
+              })()}
+            </div>
           </div>
         )}
 
@@ -733,11 +761,11 @@ export default function PipelineDashboard() {
                     צפה
                   </Link>
                 </div>
-                {tasks.filter(t => t.name === 'שיחת היכרות' && t.status !== 'הושלם' && t.status !== 'אבוד').length === 0 ? (
+                {tasks.filter(t => t.name && t.name.startsWith('שיחת היכרות') && t.status !== 'הושלם' && t.status !== 'אבוד').length === 0 ? (
                   <p className="text-xs text-gray-400">אין שיחות היכרות</p>
                 ) : (
                   <div className="space-y-2">
-                    {tasks.filter(t => t.name === 'שיחת היכרות' && t.status !== 'הושלם' && t.status !== 'אבוד').slice(0, 3).map(task => (
+                    {tasks.filter(t => t.name && t.name.startsWith('שיחת היכרות') && t.status !== 'הושלם' && t.status !== 'אבוד').slice(0, 3).map(task => (
                       <div 
                         key={task.id}
                         onClick={() => window.location.href = createPageUrl('Tasks') + '?task_id=' + task.id + '&highlight=' + task.id}
@@ -747,8 +775,11 @@ export default function PipelineDashboard() {
                           <span className="font-medium text-[var(--crm-text)] block hover:text-[var(--crm-primary)] transition-colors">
                             {task.student_name || 'ללא שם'}
                           </span>
+                          <span className="text-purple-500 text-xs">
+                            {task.name === 'שיחת היכרות פאשיה בתנועה' ? 'פאשיה בתנועה' : task.name.startsWith('שיחת היכרות - ') ? task.name.replace('שיחת היכרות - ', '') : ''}
+                          </span>
                           {task.scheduled_date && (
-                            <span className="text-gray-400 text-xs">
+                            <span className="text-gray-400 text-xs mr-2">
                               {new Date(task.scheduled_date).toLocaleDateString('he-IL', { month: 'short', day: 'numeric' })}
                             </span>
                           )}

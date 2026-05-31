@@ -55,7 +55,14 @@ Deno.serve(async (req) => {
     // קביעת שם המשימה לפי סוג הקורס
     const courseName = student.course_name || (student.courses && student.courses.length > 0 ? student.courses[student.courses.length - 1].course_name : '') || student.interest_area || '';
     const isFascia = courseName.includes('פאשיה');
-    const taskName = isFascia ? "שיחת היכרות פאשיה בתנועה" : "שיחת היכרות";
+    let taskName;
+    if (isFascia) {
+      taskName = "שיחת היכרות פאשיה בתנועה";
+    } else if (courseName) {
+      taskName = `שיחת היכרות - ${courseName}`;
+    } else {
+      taskName = "שיחת היכרות";
+    }
     console.log(`📋 Task name: "${taskName}" (course: "${courseName}", isFascia: ${isFascia})`);
 
     // בדיקה אם כבר יש משימת היכרות פתוחה מאותו סוג למשתתף הזה

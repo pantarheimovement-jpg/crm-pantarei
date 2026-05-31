@@ -333,16 +333,20 @@ Deno.serve(async (req) => {
           const scheduledDate = new Date();
           scheduledDate.setDate(scheduledDate.getDate() + 2);
 
-          // בדיקה שאין כבר שיחת היכרות פתוחה לאותו סטודנט
+          // קביעת שם משימה לפי קורס
+          const isFasciaWA = (identifiedCourse || '').includes('פאשיה');
+          const introTaskName = isFasciaWA ? 'שיחת היכרות פאשיה בתנועה' : (identifiedCourse ? `שיחת היכרות - ${identifiedCourse}` : 'שיחת היכרות');
+
+          // בדיקה שאין כבר שיחת היכרות פתוחה מאותו סוג לאותו סטודנט
           const existingIntroTasks = await base44.asServiceRole.entities.Task.filter({
             student_id: existingStudent.id,
-            name: 'שיחת היכרות'
+            name: introTaskName
           });
           const hasOpenIntroTask = existingIntroTasks.some(t => t.status !== 'הושלם' && t.status !== 'אבוד');
 
           if (!hasOpenIntroTask) {
             await base44.asServiceRole.entities.Task.create({
-              name: 'שיחת היכרות',
+              name: introTaskName,
               description: `התעניינות חדשה מוואטסאפ: ${existingStudent.full_name}\nקורס: ${identifiedCourse || 'לא צוין'}\nהודעה: ${messageText}`,
               status: 'ממתין',
               scheduled_date: scheduledDate.toISOString().split('T')[0],
@@ -414,8 +418,12 @@ Deno.serve(async (req) => {
         const scheduledDate = new Date();
         scheduledDate.setDate(scheduledDate.getDate() + 2);
 
+        // קביעת שם משימה לפי קורס (ליד חדש)
+        const isFasciaNewLead = (intent.identifiedCourseName || '').includes('פאשיה');
+        const newLeadTaskName = isFasciaNewLead ? 'שיחת היכרות פאשיה בתנועה' : (intent.identifiedCourseName ? `שיחת היכרות - ${intent.identifiedCourseName}` : 'שיחת היכרות');
+
         await base44.asServiceRole.entities.Task.create({
-          name: 'שיחת היכרות',
+          name: newLeadTaskName,
           description: `ליד חדש מוואטסאפ: ${senderName || storedPhone}\nהודעה: ${messageText}${intent.identifiedCourseName ? '\nקורס: ' + intent.identifiedCourseName : ''}`,
           status: 'ממתין',
           scheduled_date: scheduledDate.toISOString().split('T')[0],
@@ -674,8 +682,13 @@ async function handleOfirResponse(base44, messageText) {
     const scheduledDate = new Date();
     scheduledDate.setDate(scheduledDate.getDate() + 2);
 
+    // קביעת שם משימה לפי קורס (ליד מאושר ע"י אופיר)
+    const approvedCourseName = student.interest_area || student.course_name || '';
+    const isFasciaApproved = approvedCourseName.includes('פאשיה');
+    const approvedTaskName = isFasciaApproved ? 'שיחת היכרות פאשיה בתנועה' : (approvedCourseName ? `שיחת היכרות - ${approvedCourseName}` : 'שיחת היכרות');
+
     await base44.asServiceRole.entities.Task.create({
-      name: 'שיחת היכרות',
+      name: approvedTaskName,
       description: `ליד מאושר ע"י אופיר: ${student.full_name}\n${student.notes || ''}`,
       status: 'ממתין',
       scheduled_date: scheduledDate.toISOString().split('T')[0],
@@ -698,15 +711,15 @@ async function handleOfirResponse(base44, messageText) {
     return { status: 'lead_approved', student_id: student.id, student_name: student.full_name, reply_sent: replySent };
 
   } else {
-    // Rejection
-    await base44.asServiceRole.entities.Student.update(student.id, {
-      status: 'לא רלוונטי'
-    });
+    // Rejection — מחיקת הליד לחלוטין
+    const rejectedName = student.full_name;
+    const rejectedId = student.id;
+    await base44.asServiceRole.entities.Student.delete(rejectedId);
 
-    await sendWhatsApp(`❌ הליד "${student.full_name}" סומן כלא רלוונטי.`);
+    await sendWhatsApp(`❌ הליד "${rejectedName}" נמחק מהמערכת.`);
 
-    console.log(`❌ Lead rejected: ${student.full_name}`);
-    return { status: 'lead_rejected', student_id: student.id, student_name: student.full_name };
+    console.log(`❌ Lead rejected and deleted: ${rejectedName}`);
+    return { status: 'lead_rejected_deleted', student_id: rejectedId, student_name: rejectedName };
   }
 }
 

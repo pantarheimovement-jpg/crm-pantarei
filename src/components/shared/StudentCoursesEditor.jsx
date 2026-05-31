@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, X, Loader2, Tag } from 'lucide-react';
+import { Plus, X, Loader2, Tag, ChevronDown } from 'lucide-react';
 import CourseCombobox from './CourseCombobox';
 
 export default function StudentCoursesEditor({ student, onUpdated }) {
@@ -11,6 +11,12 @@ export default function StudentCoursesEditor({ student, onUpdated }) {
   const [newCourseName, setNewCourseName] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingStatusIdx, setEditingStatusIdx] = useState(null);
+
+  const COURSE_STATUSES = ['ליד חדש', 'במעקב ראשוני', 'היה ביום היכרות', 'לחזור לקראת הרשמה', 'רשום', 'לא רלוונטי'];
+
+  // סדר עדיפות סטטוסים לחישוב סטטוס כללי
+  const STATUS_PRIORITY = ['רשום', 'נרשם', 'ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'לא רלוונטי'];
 
   useEffect(() => {
     base44.entities.Course.list().then(data => {
@@ -58,8 +64,45 @@ export default function StudentCoursesEditor({ student, onUpdated }) {
     if (!confirm('האם להסיר קורס זה?')) return;
     setSaving(true);
     const updatedCourses = studentCourses.filter(c => c.course_id !== courseId);
-    await base44.entities.Student.update(student.id, { courses: updatedCourses });
+    
+    // חישוב סטטוס כללי מחדש
+    const generalStatus = calcGeneralStatus(updatedCourses);
+    
+    await base44.entities.Student.update(student.id, { courses: updatedCourses, status: generalStatus });
     setStudentCourses(updatedCourses);
+    setSaving(false);
+    if (onUpdated) onUpdated();
+  };
+
+  const calcGeneralStatus = (coursesArr) => {
+    if (!coursesArr || coursesArr.length === 0) return student?.status || 'ליד חדש';
+    let bestStatus = coursesArr[0].status;
+    let bestPriority = STATUS_PRIORITY.indexOf(bestStatus);
+    if (bestPriority === -1) bestPriority = STATUS_PRIORITY.length;
+    
+    for (const c of coursesArr) {
+      const idx = STATUS_PRIORITY.indexOf(c.status);
+      const priority = idx === -1 ? STATUS_PRIORITY.length : idx;
+      if (priority < bestPriority) {
+        bestPriority = priority;
+        bestStatus = c.status;
+      }
+    }
+    return bestStatus;
+  };
+
+  const handleStatusChange = async (courseId, newStatus) => {
+    setSaving(true);
+    const updatedCourses = studentCourses.map(c => 
+      c.course_id === courseId ? { ...c, status: newStatus } : c
+    );
+    
+    // חישוב סטטוס כללי מחדש
+    const generalStatus = calcGeneralStatus(updatedCourses);
+    
+    await base44.entities.Student.update(student.id, { courses: updatedCourses, status: generalStatus });
+    setStudentCourses(updatedCourses);
+    setEditingStatusIdx(null);
     setSaving(false);
     if (onUpdated) onUpdated();
   };
@@ -93,9 +136,33 @@ export default function StudentCoursesEditor({ student, onUpdated }) {
             <span className="text-sm font-medium">{course.course_name}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded-full text-xs font-medium text-white bg-[#6D436D]">
-              {course.status}
-            </span>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setEditingStatusIdx(editingStatusIdx === idx ? null : idx)}
+                className="px-2 py-0.5 rounded-full text-xs font-medium text-white bg-[#6D436D] flex items-center gap-1 hover:bg-[#5D335D] transition-colors"
+                disabled={saving}
+              >
+                {course.status}
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {editingStatusIdx === idx && (
+                <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px]">
+                  {COURSE_STATUSES.map(status => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => handleStatusChange(course.course_id, status)}
+                      className={`block w-full text-right px-3 py-2 text-xs hover:bg-gray-50 transition-colors ${
+                        course.status === status ? 'bg-purple-50 font-bold text-[#6D436D]' : 'text-gray-700'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => handleRemoveCourse(course.course_id)}

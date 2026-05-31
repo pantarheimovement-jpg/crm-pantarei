@@ -57,9 +57,9 @@ export default function PipelineDashboard() {
       setCourses(coursesData || []);
       setTasks(tasksData || []);
       
-      // סינון שיחות היכרות — כל משימה שמתחילה ב"שיחת היכרות"
+      // סינון שיחות היכרות — כל משימה שמתחילה ב"שיחת היכרות" חוץ מפאשיה
       const relevantIntroTasks = (tasksData || []).filter(t => 
-        t.name && t.name.startsWith('שיחת היכרות') && t.status !== "הושלם" && t.status !== "אבוד"
+        t.name && t.name.startsWith('שיחת היכרות') && t.name !== 'שיחת היכרות פאשיה בתנועה' && t.status !== "הושלם" && t.status !== "אבוד"
       );
       setIntroTasks(relevantIntroTasks);
     } catch (error) {
@@ -761,11 +761,11 @@ export default function PipelineDashboard() {
                     צפה
                   </Link>
                 </div>
-                {tasks.filter(t => t.name && t.name.startsWith('שיחת היכרות') && t.status !== 'הושלם' && t.status !== 'אבוד').length === 0 ? (
+                {tasks.filter(t => t.name && t.name.startsWith('שיחת היכרות') && t.name !== 'שיחת היכרות פאשיה בתנועה' && t.status !== 'הושלם' && t.status !== 'אבוד').length === 0 ? (
                   <p className="text-xs text-gray-400">אין שיחות היכרות</p>
                 ) : (
                   <div className="space-y-2">
-                    {tasks.filter(t => t.name && t.name.startsWith('שיחת היכרות') && t.status !== 'הושלם' && t.status !== 'אבוד').slice(0, 3).map(task => (
+                    {tasks.filter(t => t.name && t.name.startsWith('שיחת היכרות') && t.name !== 'שיחת היכרות פאשיה בתנועה' && t.status !== 'הושלם' && t.status !== 'אבוד').slice(0, 3).map(task => (
                       <div 
                         key={task.id}
                         onClick={() => window.location.href = createPageUrl('Tasks') + '?task_id=' + task.id + '&highlight=' + task.id}

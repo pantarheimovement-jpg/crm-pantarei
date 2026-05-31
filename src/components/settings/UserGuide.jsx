@@ -183,7 +183,8 @@ export default function UserGuide() {
                 <StatusBadge name="במעקב ראשוני" color="#FAD980" description="נוצר קשר ראשוני, ממתינים לתגובה. מתעדכן אוטומטית כששיחה עוברת ל״בבדיקה״." />
                 <StatusBadge name="היה ביום היכרות" color="#8B5CF6" description="הלקוח השתתף ביום היכרות." />
                 <StatusBadge name="רשום / נרשם" color="#2ECC71" description="המשתתף רשום ומשלם — נספר במונה הקורס." />
-                <StatusBadge name="לא רלוונטי" color="#95A5A6" description="ליד שלא מעוניין. מתעדכן אוטומטית כששיחה עוברת ל״לא רלוונטי״ או ל״אבוד״." />
+                <StatusBadge name="לחזור לקראת הרשמה" color="#9B59B6" description="הליד מעוניין אבל הקורס עדיין לא פתוח להרשמה, או שרוצים לחזור אליו כשייפתח. משמש באוטומציה — כשקורס נפתח להרשמה, לידים בסטטוס הזה מקבלים שיחה ו/או וואטסאפ אוטומטית." />
+                <StatusBadge name="לא רלוונטי" color="#95A5A6" description="ליד שלא מעוניין. מתעדכן אוטומטית ברמת הקורס הספציפי כששיחה עוברת ל״לא רלוונטי״ או ל״אבוד״. הסטטוס הכללי מחושב מחדש לפי הקורס עם הסטטוס החזק ביותר." />
               </div>
               <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
                 ❌ <strong>סטטוסים שהוסרו:</strong> ניסיון נקבע, ניסיון בוצע, ניסיון מתוכנן, אבוד, נוצר משיחה — כבר לא קיימים במערכת.
@@ -213,7 +214,7 @@ export default function UserGuide() {
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
-                  <span className="text-sm"><strong>לא רלוונטי</strong> — מתעדכן אוטומטית כששיחה עוברת ל״לא רלוונטי״ או ל״אבוד״</span>
+                  <span className="text-sm"><strong>לא רלוונטי (לפי קורס)</strong> — כששיחה עוברת ל״לא רלוונטי״ או ל״אבוד״, רק <strong>הקורס הספציפי</strong> של אותה שיחה עובר ל"לא רלוונטי". הסטטוס הכללי מחושב מחדש — אם יש קורס אחר בסטטוס חזק יותר, הסטטוס הכללי ישאר אותו קורס</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
@@ -418,8 +419,8 @@ export default function UserGuide() {
               <StatusBadge name="בבדיקה" color="#3498DB" description="נמצאת בתהליך בדיקה, עדיין לא הושלמה. → הלקוח עובר אוטומטית ל״במעקב ראשוני״." />
               <StatusBadge name="הושלם" color="#6D436D" description="השיחה/משימה טופלה בהצלחה." />
               <StatusBadge name="לחזור לקראת הרשמה" color="#9B59B6" description="הליד מעוניין אך ממתין לפתיחת הרשמה לקורס. אם הקורס כבר פתוח להרשמה ונוסח מתאים שמור בהגדרות — יכולה להישלח גם הודעת וואטסאפ אוטומטית. אם הקורס עדיין לא פתוח — המערכת ממתינה לפתיחת ההרשמה." />
-              <StatusBadge name="לא רלוונטי" color="#BDC3C7" description="לא רלוונטי יותר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
-              <StatusBadge name="אבוד" color="#7F8C8D" description="הליד אבד, לא הצלחנו ליצור קשר. → משנה אוטומטית את סטטוס הלקוח ל״לא רלוונטי״." />
+              <StatusBadge name="לא רלוונטי" color="#BDC3C7" description="לא רלוונטי יותר. → משנה אוטומטית את סטטוס הקורס הספציפי של השיחה ל״לא רלוונטי״. הסטטוס הכללי מחושב מחדש לפי סדר עדיפות." />
+              <StatusBadge name="אבוד" color="#7F8C8D" description="הליד אבד, לא הצלחנו ליצור קשר. → משנה אוטומטית את סטטוס הקורס הספציפי של השיחה ל״לא רלוונטי״. הסטטוס הכללי מחושב מחדש." />
               <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
                 ❌ <strong>סטטוסים שהוסרו:</strong> ענתה — הוסר. ״לא ענתה״ שונה ל״ניסיון לשיחה״. ״נוצר משיחה״ — כבר לא נוצר אוטומטית.
               </div>
@@ -1022,7 +1023,7 @@ export default function UserGuide() {
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">3b</span>
-                <span className="text-sm"><strong>הקשר לקורס בלבד:</strong> נוצר ליד ״לבדיקה״ + אופיר מקבלת התראה בוואטסאפ ומייל. אופיר עונה ״כן [שם]״ לאישור או ״לא [שם]״ לדחייה</span>
+                <span className="text-sm"><strong>הקשר לקורס בלבד:</strong> נוצר ליד ״לבדיקה״ + אופיר מקבלת התראה בוואטסאפ ומייל. אופיר עונה ״כן [שם]״ לאישור או ״לא [שם]״ → <strong>הליד נמחק לחלוטין מהמערכת</strong> (מחיקה סופית!)</span>
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
@@ -1146,7 +1147,7 @@ export default function UserGuide() {
               </div>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
-                <span className="text-sm">אם מעדכנת ל״ניסיון לשיחה״ — נשלחת וואטסאפ מיידית לפי נוסח ההגדרות. אם אחרי כמה נסיונות אין מענה → משנה ל״אבוד״ → הלקוח עובר אוטומטית ל״לא רלוונטי״</span>
+                <span className="text-sm">אם מעדכנת ל״ניסיון לשיחה״ — נשלחת וואטסאפ מיידית לפי נוסח ההגדרות. אם אחרי כמה נסיונות אין מענה → משנה ל״אבוד״ → <strong>הקורס הספציפי</strong> של השיחה עובר ל"לא רלוונטי". הסטטוס הכללי מחושב מחדש — אם יש קורס אחר בסטטוס חזק יותר, הסטטוס הכללי לא ישתנה</span>
               </div>
             </div>
           }
@@ -1250,6 +1251,38 @@ export default function UserGuide() {
                 <span className="bg-teal-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
                 <span className="text-sm">המורה תוכל לסמן נוכחות ולראות את רשימת המשתתפים הרשומים</span>
               </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ArrowRight}
+          color="#F39C12"
+          question="ליד נדחה מקורס אחד אבל עדיין פעיל בקורס אחר — מה קורה?"
+          answer={
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">1</span>
+                <span className="text-sm">נניח שמרב משויכת לנענע (ליד חדש) ולפאשיה (ליד חדש)</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">2</span>
+                <span className="text-sm">שיחת היכרות פאשיה עוברת ל״לא רלוונטי״ → <strong>רק פאשיה</strong> עוברת ל"לא רלוונטי"</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
+                <span className="text-sm">נענע נשארת <strong>"ליד חדש"</strong> — ללא שינוי</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">4</span>
+                <span className="text-sm">הסטטוס הכללי של מרב: <strong>"ליד חדש"</strong> (כי "ליד חדש" חזק מ"לא רלוונטי")</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
+                <span className="text-sm">שיחת ההיכרות של נענע <strong>נשארת פתוחה</strong> בדשבורד ובדף השיחות</span>
+              </div>
+              <p className="mt-3 p-3 bg-purple-50 rounded-lg text-sm">
+                💡 <strong>זה היתרון של סטטוס לפי קורס!</strong> בעבר כל דחייה הייתה מסמנת את הליד כולו כ"לא רלוונטי". עכשיו — רק הקורס הספציפי מושפע.
+              </p>
             </div>
           }
         />

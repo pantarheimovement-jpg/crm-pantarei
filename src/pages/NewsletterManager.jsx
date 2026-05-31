@@ -299,12 +299,20 @@ ${ctaButtonsHtml}
         }
 
         if (sendChannel === 'whatsapp' || sendChannel === 'both') {
-          const whatsappRecipients = batchRecipients.filter(r => r.whatsapp).map(recipient => ({
-            subscriber_id: recipient.id, subscriber_name: recipient.name || '',
-            whatsapp_number: recipient.whatsapp,
-            message_content: whatsappMessage.replace(/\{\{name\}\}/g, recipient.name || ''),
-            status: 'pending'
-          }));
+          const whatsappRecipients = batchRecipients.filter(r => r.whatsapp).map(recipient => {
+            let msgContent = whatsappMessage.replace(/\{\{name\}\}/g, recipient.name || '');
+            // Append unsubscribe link
+            if (recipient.unsubscribe_token) {
+              const unsubUrl = getUnsubscribeUrl(recipient.unsubscribe_token);
+              msgContent += `\n\n---\nלהסרה מרשימת התפוצה: ${unsubUrl}`;
+            }
+            return {
+              subscriber_id: recipient.id, subscriber_name: recipient.name || '',
+              whatsapp_number: recipient.whatsapp,
+              message_content: msgContent,
+              status: 'pending'
+            };
+          });
           if (whatsappRecipients.length > 0) {
             try { await base44.entities.WhatsappQueue.bulkCreate(whatsappRecipients); whatsappSuccessCount += whatsappRecipients.length; }
             catch (error) { whatsappErrorCount += whatsappRecipients.length; }

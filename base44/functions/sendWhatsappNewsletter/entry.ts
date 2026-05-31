@@ -139,6 +139,12 @@ Deno.serve(async (req) => {
           messageToSend = message_template.replace(/\{\{name\}\}/g, recipient.name || 'שלום');
           console.log('💬 Using template with name replacement');
         }
+
+        // Append unsubscribe link if available
+        if (recipient.unsubscribe_url) {
+          messageToSend += `\n\n---\nלהסרה מרשימת התפוצה: ${recipient.unsubscribe_url}`;
+          console.log('🔗 Appended unsubscribe link');
+        }
         
         console.log('💬 Message preview:', messageToSend.substring(0, 100) + (messageToSend.length > 100 ? '...' : ''));
 

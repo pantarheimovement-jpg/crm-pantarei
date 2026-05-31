@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown, ShieldCheck, Upload } from 'lucide-react';
+import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown, ShieldCheck, Upload, Copy } from 'lucide-react';
 
 const DEFAULT_BLOCK = () => ({ id: Date.now() + Math.random(), type: 'text', title: '', content: '', button_text: '', button_url: '', image_url: '', alt_text: '', video_url: '', video_thumbnail_url: '' });
 
@@ -275,6 +275,14 @@ export default function AntiSpamTemplateEditor() {
     setSections({ ...sections, blocks: sections.blocks.filter((_, i) => i !== idx) });
   };
 
+  const duplicateBlock = (idx) => {
+    const original = sections.blocks[idx];
+    const clone = { ...original, id: Date.now() + Math.random() };
+    const newBlocks = [...sections.blocks];
+    newBlocks.splice(idx + 1, 0, clone);
+    setSections({ ...sections, blocks: newBlocks });
+  };
+
   const moveBlock = (idx, dir) => {
     const newBlocks = [...sections.blocks];
     const swapIdx = idx + dir;
@@ -400,9 +408,10 @@ export default function AntiSpamTemplateEditor() {
                   <span className="font-medium text-sm text-gray-700">{BLOCK_TYPES.find(t => t.type === block.type)?.label || 'טקסט'} #{idx + 1}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => moveBlock(idx, -1)} disabled={idx === 0} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
-                  <button onClick={() => moveBlock(idx, 1)} disabled={idx === sections.blocks.length - 1} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
-                  <button onClick={() => removeBlock(idx)} className="p-1 text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => moveBlock(idx, -1)} disabled={idx === 0} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30" title="הזז למעלה"><ChevronUp className="w-4 h-4" /></button>
+                  <button onClick={() => moveBlock(idx, 1)} disabled={idx === sections.blocks.length - 1} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30" title="הזז למטה"><ChevronDown className="w-4 h-4" /></button>
+                  <button onClick={() => duplicateBlock(idx)} className="p-1 text-blue-500 hover:text-blue-700" title="שכפל בלוק"><Copy className="w-4 h-4" /></button>
+                  <button onClick={() => removeBlock(idx)} className="p-1 text-red-500 hover:text-red-700" title="מחק בלוק"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
 

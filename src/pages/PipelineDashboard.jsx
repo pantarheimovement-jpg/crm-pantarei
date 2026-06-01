@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import {
   Users, UserPlus, Calendar, TrendingUp, CheckSquare, 
-  Search, Loader2, ChevronLeft, AlertCircle, Sparkles, Award, Filter
+  Search, Loader2, ChevronLeft, ChevronDown, AlertCircle, Sparkles, Award, Filter
 } from 'lucide-react';
 
 export default function PipelineDashboard() {
@@ -20,6 +20,7 @@ export default function PipelineDashboard() {
   const [dateFilter, setDateFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [courseTypeFilter, setCourseTypeFilter] = useState('all');
+  const [introTasksOpen, setIntroTasksOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -363,54 +364,65 @@ export default function PipelineDashboard() {
           </div>
         </div>
 
-        {/* התראת שיחות היכרות */}
+        {/* התראת שיחות היכרות — אקורדיאון */}
         {introTasks.length > 0 && (
-          <div className="bg-red-50 border-r-4 border-red-500 p-4 mb-6 rounded-l-xl shadow-sm">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-bold text-red-700 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                שיחות היכרות פתוחות ({introTasks.length})
-              </h3>
-              <Link to={createPageUrl('Tasks') + '?search=שיחת היכרות'}>
-                <Button
-                  className="bg-red-500 text-white hover:bg-red-600"
-                  style={{ borderRadius: 'var(--crm-button-radius)' }}
-                >
-                  צפה בכולן
-                </Button>
-              </Link>
-            </div>
-            {introTasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) <= new Date()).length > 0 && (
-              <p className="text-sm text-red-600 mb-3">
-                ⚠️ יש {introTasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) <= new Date()).length} שיחות שעבר התאריך המתוזמן!
-              </p>
-            )}
-            {/* פירוט לפי קורס */}
-            <div className="flex flex-wrap gap-2 mt-2">
-              {(() => {
-                const courseGroups = {};
-                introTasks.forEach(t => {
-                  let courseName = 'כללי';
-                  if (t.name === 'שיחת היכרות פאשיה בתנועה') {
-                    courseName = 'פאשיה בתנועה';
-                  } else if (t.name.startsWith('שיחת היכרות - ')) {
-                    courseName = t.name.replace('שיחת היכרות - ', '');
-                  }
-                  if (!courseGroups[courseName]) courseGroups[courseName] = [];
-                  courseGroups[courseName].push(t);
-                });
-                return Object.entries(courseGroups).map(([name, tasks]) => (
-                  <Link
-                    key={name}
-                    to={createPageUrl('Tasks') + '?search=' + encodeURIComponent(name === 'כללי' ? 'שיחת היכרות' : name)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-full text-xs font-medium text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
-                  >
-                    <span>{name}</span>
-                    <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-xs min-w-[20px] text-center">{tasks.length}</span>
+          <div className="bg-red-50 border-r-4 border-red-500 mb-6 rounded-l-xl shadow-sm overflow-hidden">
+            <button
+              onClick={() => setIntroTasksOpen(!introTasksOpen)}
+              className="w-full flex justify-between items-center p-4 hover:bg-red-100/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-700" />
+                <h3 className="font-bold text-red-700">
+                  שיחות היכרות פתוחות ({introTasks.length})
+                </h3>
+                {introTasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) <= new Date()).length > 0 && (
+                  <span className="text-xs text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                    ⚠️ {introTasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) <= new Date()).length} עבר תאריך
+                  </span>
+                )}
+              </div>
+              <ChevronDown className={`w-5 h-5 text-red-700 transition-transform ${introTasksOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {introTasksOpen && (
+              <div className="px-4 pb-4">
+                <div className="flex justify-end mb-3">
+                  <Link to={createPageUrl('Tasks') + '?search=שיחת היכרות'}>
+                    <Button
+                      className="bg-red-500 text-white hover:bg-red-600"
+                      style={{ borderRadius: 'var(--crm-button-radius)' }}
+                    >
+                      צפה בכולן
+                    </Button>
                   </Link>
-                ));
-              })()}
-            </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(() => {
+                    const courseGroups = {};
+                    introTasks.forEach(t => {
+                      let courseName = 'כללי';
+                      if (t.name === 'שיחת היכרות פאשיה בתנועה') {
+                        courseName = 'פאשיה בתנועה';
+                      } else if (t.name.startsWith('שיחת היכרות - ')) {
+                        courseName = t.name.replace('שיחת היכרות - ', '');
+                      }
+                      if (!courseGroups[courseName]) courseGroups[courseName] = [];
+                      courseGroups[courseName].push(t);
+                    });
+                    return Object.entries(courseGroups).map(([name, tasks]) => (
+                      <Link
+                        key={name}
+                        to={createPageUrl('Tasks') + '?search=' + encodeURIComponent(name === 'כללי' ? 'שיחת היכרות' : name)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-full text-xs font-medium text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
+                      >
+                        <span>{name}</span>
+                        <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-xs min-w-[20px] text-center">{tasks.length}</span>
+                      </Link>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

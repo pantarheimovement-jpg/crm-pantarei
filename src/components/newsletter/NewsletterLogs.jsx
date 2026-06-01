@@ -47,8 +47,9 @@ export default function NewsletterLogs({ logs, sending, onResend }) {
                     <div className="mt-3 flex gap-2">
                       <button
                         onClick={() => {
+                          const contentIsHtml = log.content?.trimStart().startsWith('<');
                           setPreviewHtml(log.content);
-                          setPreviewIsWhatsapp(log.sent_by?.includes('WhatsApp') && !log.sent_by?.includes('SES') && !log.sent_by?.includes('Gmail'));
+                          setPreviewIsWhatsapp(!contentIsHtml);
                         }}
                         className="bg-[#6D436D] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#5a365a] flex items-center gap-2"
                       >

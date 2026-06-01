@@ -17,8 +17,7 @@ import WhatsappUnsubscribeDialog from '../components/newsletter/WhatsappUnsubscr
 import { appParams } from '@/lib/app-params';
 
 function getUnsubscribeUrl(token) {
-  const baseUrl = appParams.appBaseUrl || window.location.origin;
-  return `${baseUrl}/functions/unsubscribeHandler?token=${token}`;
+  return `https://pantarhei-studio.co.il/functions/unsubscribeHandler?token=${token}`;
 }
 
 const SUBSCRIBERS_PER_GROUP = 280;

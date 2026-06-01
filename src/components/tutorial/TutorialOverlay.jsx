@@ -1,21 +1,52 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import TutorialCard from './TutorialCard';
+import { Play } from 'lucide-react';
 
-export default function TutorialOverlay({ isOpen, step, currentStep, totalSteps, onNext, onPrev, onClose }) {
+export default function TutorialOverlay({
+  isOpen, step, currentStep, totalSteps, steps,
+  onNext, onPrev, onClose, onGoToStep,
+  practicing, onPractice, onResume
+}) {
   const navigate = useNavigate();
   const location = useLocation();
 
   // Navigate to the step's page
   useEffect(() => {
-    if (!isOpen || !step?.navigateTo) return;
+    if (!isOpen || practicing || !step?.navigateTo) return;
     if (location.pathname !== step.navigateTo) {
       navigate(step.navigateTo);
     }
-  }, [isOpen, step, location.pathname, navigate]);
+  }, [isOpen, practicing, step, location.pathname, navigate]);
+
+  // Navigate when entering practice mode
+  useEffect(() => {
+    if (practicing && step?.navigateTo && location.pathname !== step.navigateTo) {
+      navigate(step.navigateTo);
+    }
+  }, [practicing, step, location.pathname, navigate]);
 
   if (!isOpen) return null;
+
+  // Practice mode — floating resume button
+  if (practicing) {
+    return (
+      <motion.button
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        onClick={onResume}
+        dir="rtl"
+        className="fixed bottom-6 left-6 z-[10001] flex items-center gap-2 px-4 py-3 rounded-full shadow-lg text-white transition-colors hover:opacity-90"
+        style={{ backgroundColor: '#6D436D' }}
+      >
+        <Play className="w-4 h-4" />
+        <span className="text-sm font-medium">חזרה למדריך</span>
+      </motion.button>
+    );
+  }
 
   return (
     <>
@@ -30,9 +61,12 @@ export default function TutorialOverlay({ isOpen, step, currentStep, totalSteps,
               step={step}
               currentStep={currentStep}
               totalSteps={totalSteps}
+              steps={steps}
               onNext={onNext}
               onPrev={onPrev}
               onClose={onClose}
+              onGoToStep={onGoToStep}
+              onPractice={onPractice}
             />
           </AnimatePresence>
         </div>

@@ -204,9 +204,14 @@ function AppContent({ children, currentPageName }) {
               step={tutorial.step}
               currentStep={tutorial.currentStep}
               totalSteps={tutorial.totalSteps}
+              steps={tutorial.steps}
               onNext={tutorial.next}
               onPrev={tutorial.prev}
               onClose={tutorial.close}
+              onGoToStep={tutorial.goToStep}
+              practicing={tutorial.practicing}
+              onPractice={tutorial.startPractice}
+              onResume={tutorial.resumeFromPractice}
             />
         </div>
     );

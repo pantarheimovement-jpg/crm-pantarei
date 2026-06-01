@@ -13,6 +13,7 @@ import SubscribersList from '../components/newsletter/SubscribersList';
 import AiSubjectSuggestions from '../components/newsletter/AiSubjectSuggestions';
 import SingleRecipientPicker from '../components/newsletter/SingleRecipientPicker';
 import EmojiPicker from '../components/newsletter/EmojiPicker';
+import WhatsappUnsubscribeDialog from '../components/newsletter/WhatsappUnsubscribeDialog';
 import { appParams } from '@/lib/app-params';
 
 function getUnsubscribeUrl(token) {
@@ -54,6 +55,7 @@ export default function NewsletterManager() {
   const [resendGroup, setResendGroup] = useState('קבוצה 1');
   const [resendContent, setResendContent] = useState('');
   const [showTestEmailModal, setShowTestEmailModal] = useState(false);
+  const [showWhatsappUnsubDialog, setShowWhatsappUnsubDialog] = useState(false);
 
   useEffect(() => {
     loadSubscribers();
@@ -234,13 +236,29 @@ ${ctaButtonsHtml}
 </body></html>`;
   };
 
-  const handleSendNewsletter = async () => {
+  const handleSendClick = () => {
+    // Validation
     if ((sendChannel === 'email' || sendChannel === 'both') && !subject) { alert(t('אנא מלאי נושא לאימייל', 'Please fill in email subject')); return; }
     if ((sendChannel === 'whatsapp' || sendChannel === 'both') && !whatsappMessage.trim()) { alert(t('אנא מלאי הודעת וואטסאפ', 'Please fill in WhatsApp message')); return; }
     if ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'html' && !htmlContent) { alert(t('אנא הדביקי את קוד ה-HTML', 'Please paste the HTML code')); return; }
     if ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) { alert(t('אנא מלאי תוכן לאימייל', 'Please fill in email content')); return; }
     if (sendMode === 'single' && !singleRecipient?.email) { alert(t('אנא בחרי נמען', 'Please select a recipient')); return; }
 
+    // If WhatsApp is involved, show unsubscribe dialog first
+    if (sendChannel === 'whatsapp' || sendChannel === 'both') {
+      setShowWhatsappUnsubDialog(true);
+      return;
+    }
+    // Email only — always include unsubscribe
+    handleSendNewsletter(true);
+  };
+
+  const handleWhatsappUnsubChoice = (includeUnsubscribe) => {
+    setShowWhatsappUnsubDialog(false);
+    handleSendNewsletter(includeUnsubscribe);
+  };
+
+  const handleSendNewsletter = async (includeWhatsappUnsub = true) => {
     let recipients;
     if (sendMode === 'single') {
       const matchingSub = subscribers.find(s => s.email?.toLowerCase() === singleRecipient.email.toLowerCase());
@@ -301,8 +319,8 @@ ${ctaButtonsHtml}
         if (sendChannel === 'whatsapp' || sendChannel === 'both') {
           const whatsappRecipients = batchRecipients.filter(r => r.whatsapp).map(recipient => {
             let msgContent = whatsappMessage.replace(/\{\{name\}\}/g, recipient.name || '');
-            // Append unsubscribe link
-            if (recipient.unsubscribe_token) {
+            // Append unsubscribe link only if chosen
+            if (includeWhatsappUnsub && recipient.unsubscribe_token) {
               const unsubUrl = getUnsubscribeUrl(recipient.unsubscribe_token);
               msgContent += `\n\n---\nלהסרה מרשימת התפוצה: ${unsubUrl}`;
             }
@@ -650,7 +668,7 @@ ${ctaButtonsHtml}
                   </div>
                 )}
 
-                <button onClick={handleSendNewsletter}
+                <button onClick={handleSendClick}
                   disabled={sending || ((sendChannel === 'email' || sendChannel === 'both') && !subject) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'html' && !htmlContent) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) || ((sendChannel === 'whatsapp' || sendChannel === 'both') && !whatsappMessage.trim()) || (sendMode === 'single' && !singleRecipient?.email)}
                   className="w-full bg-[var(--crm-primary)] text-white py-3 font-semibold hover:bg-[var(--crm-primary)]/90 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   style={{ borderRadius: 'var(--crm-button-radius)' }}
@@ -699,6 +717,12 @@ ${ctaButtonsHtml}
             </div>
           </div>
         )}
+
+        <WhatsappUnsubscribeDialog
+          open={showWhatsappUnsubDialog}
+          onConfirm={handleWhatsappUnsubChoice}
+          onClose={() => setShowWhatsappUnsubDialog(false)}
+        />
 
         {showTestEmailModal && (
           <TestEmailModal

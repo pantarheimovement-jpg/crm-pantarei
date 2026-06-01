@@ -41,16 +41,15 @@ Deno.serve(async (req) => {
   try {
     const now = new Date();
 
-    // TEMP BYPASS for testing — remove after test
-    // if (!isWithinSendingWindow(now)) {
-    //   return Response.json({
-    //     success: true,
-    //     delayed: true,
-    //     reason: 'outside_sending_window',
-    //     message: 'WhatsApp sending is allowed only between 09:00 and 20:00 Israel time.',
-    //     timezone: TIME_ZONE,
-    //   });
-    // }
+    if (!isWithinSendingWindow(now)) {
+      return Response.json({
+        success: true,
+        delayed: true,
+        reason: 'outside_sending_window',
+        message: 'WhatsApp sending is allowed only between 09:00 and 20:00 Israel time.',
+        timezone: TIME_ZONE,
+      });
+    }
 
     const recentSentMessages = await base44.asServiceRole.entities.WhatsappQueue.filter({
       status: 'sent'
@@ -61,31 +60,37 @@ Deno.serve(async (req) => {
       item.sent_at && getIsraelDateKey(new Date(item.sent_at)) === todayKey
     );
 
-    // TEMP BYPASS for testing — remove after test
-    // if (sentToday.length >= DAILY_LIMIT) {
-    //   return Response.json({
-    //     success: true,
-    //     delayed: true,
-    //     reason: 'daily_limit_reached',
-    //     message: `Daily WhatsApp limit reached (${DAILY_LIMIT}). Pending messages will continue tomorrow after 09:00 Israel time.`,
-    //     sent_today: sentToday.length,
-    //     daily_limit: DAILY_LIMIT,
-    //   });
-    // }
+    if (sentToday.length >= DAILY_LIMIT) {
+      return Response.json({
+        success: true,
+        delayed: true,
+        reason: 'daily_limit_reached',
+        message: `Daily WhatsApp limit reached (${DAILY_LIMIT}). Pending messages will continue tomorrow after 09:00 Israel time.`,
+        sent_today: sentToday.length,
+        daily_limit: DAILY_LIMIT,
+      });
+    }
 
     const lastSentMessage = (recentSentMessages || []).find((item) => item.sent_at);
 
-    // TEMP BYPASS for testing — remove after test
-    // if (lastSentMessage?.sent_at) {
-    //   const lastSentAt = new Date(lastSentMessage.sent_at).getTime();
-    //   const elapsed = Date.now() - lastSentAt;
-    //   if (elapsed < WHATSAPP_MIN_INTERVAL_MS) {
-    //     const nextAllowedAt = new Date(lastSentAt + WHATSAPP_MIN_INTERVAL_MS).toISOString();
-    //     const waitSeconds = Math.ceil((WHATSAPP_MIN_INTERVAL_MS - elapsed) / 1000);
-    //     console.log(`WhatsApp safety delay active. Waiting ${waitSeconds} seconds before next send.`);
-    //     return Response.json({ success: true, delayed: true, reason: 'minimum_interval_active', message: `Safety delay active.`, next_allowed_at: nextAllowedAt, wait_seconds: waitSeconds });
-    //   }
-    // }
+    if (lastSentMessage?.sent_at) {
+      const lastSentAt = new Date(lastSentMessage.sent_at).getTime();
+      const elapsed = Date.now() - lastSentAt;
+
+      if (elapsed < WHATSAPP_MIN_INTERVAL_MS) {
+        const nextAllowedAt = new Date(lastSentAt + WHATSAPP_MIN_INTERVAL_MS).toISOString();
+        const waitSeconds = Math.ceil((WHATSAPP_MIN_INTERVAL_MS - elapsed) / 1000);
+        console.log(`WhatsApp safety delay active. Waiting ${waitSeconds} seconds before next send.`);
+        return Response.json({
+          success: true,
+          delayed: true,
+          reason: 'minimum_interval_active',
+          message: `Safety delay active. Next WhatsApp can be sent at ${nextAllowedAt}`,
+          next_allowed_at: nextAllowedAt,
+          wait_seconds: waitSeconds
+        });
+      }
+    }
 
     const pendingMessages = await base44.asServiceRole.entities.WhatsappQueue.filter({
       status: 'pending'

@@ -13,7 +13,7 @@ import SubscribersList from '../components/newsletter/SubscribersList';
 import AiSubjectSuggestions from '../components/newsletter/AiSubjectSuggestions';
 import SingleRecipientPicker from '../components/newsletter/SingleRecipientPicker';
 import EmojiPicker from '../components/newsletter/EmojiPicker';
-import WhatsappUnsubscribeDialog from '../components/newsletter/WhatsappUnsubscribeDialog';
+
 import { appParams } from '@/lib/app-params';
 
 function getUnsubscribeUrl(token) {
@@ -39,7 +39,7 @@ export default function NewsletterManager() {
   const [sendChannel, setSendChannel] = useState('email');
   const [sendMode, setSendMode] = useState('group');
   const [singleRecipient, setSingleRecipient] = useState(null);
-  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [whatsappMessage, setWhatsappMessage] = useState('\n\nלהסרה מרשימת התפוצה, יש להשיב ״הסר״');
 
   const [designMode, setDesignMode] = useState('free');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -54,7 +54,7 @@ export default function NewsletterManager() {
   const [resendGroup, setResendGroup] = useState('קבוצה 1');
   const [resendContent, setResendContent] = useState('');
   const [showTestEmailModal, setShowTestEmailModal] = useState(false);
-  const [showWhatsappUnsubDialog, setShowWhatsappUnsubDialog] = useState(false);
+
 
   useEffect(() => {
     loadSubscribers();
@@ -243,21 +243,10 @@ ${ctaButtonsHtml}
     if ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) { alert(t('אנא מלאי תוכן לאימייל', 'Please fill in email content')); return; }
     if (sendMode === 'single' && !singleRecipient?.email) { alert(t('אנא בחרי נמען', 'Please select a recipient')); return; }
 
-    // If WhatsApp is involved, show unsubscribe dialog first
-    if (sendChannel === 'whatsapp' || sendChannel === 'both') {
-      setShowWhatsappUnsubDialog(true);
-      return;
-    }
-    // Email only — always include unsubscribe
-    handleSendNewsletter(true);
+    handleSendNewsletter();
   };
 
-  const handleWhatsappUnsubChoice = (includeUnsubscribe) => {
-    setShowWhatsappUnsubDialog(false);
-    handleSendNewsletter(includeUnsubscribe);
-  };
-
-  const handleSendNewsletter = async (includeWhatsappUnsub = true) => {
+  const handleSendNewsletter = async () => {
     let recipients;
     if (sendMode === 'single') {
       const matchingSub = subscribers.find(s => s.email?.toLowerCase() === singleRecipient.email.toLowerCase());
@@ -319,10 +308,7 @@ ${ctaButtonsHtml}
           const whatsappRecipientsRaw = batchRecipients.filter(r => r.whatsapp);
           const whatsappRecipients = [];
           for (const recipient of whatsappRecipientsRaw) {
-            let msgContent = whatsappMessage.replace(/\{\{name\}\}/g, recipient.name || '');
-            if (includeWhatsappUnsub) {
-              msgContent += `\n\nלהסרה מרשימת התפוצה השיבי: הסר`;
-            }
+            const msgContent = whatsappMessage.replace(/\{\{name\}\}/g, recipient.name || '');
             whatsappRecipients.push({
               subscriber_id: recipient.id, subscriber_name: recipient.name || '',
               whatsapp_number: recipient.whatsapp,
@@ -717,11 +703,7 @@ ${ctaButtonsHtml}
           </div>
         )}
 
-        <WhatsappUnsubscribeDialog
-          open={showWhatsappUnsubDialog}
-          onConfirm={handleWhatsappUnsubChoice}
-          onClose={() => setShowWhatsappUnsubDialog(false)}
-        />
+
 
         {showTestEmailModal && (
           <TestEmailModal

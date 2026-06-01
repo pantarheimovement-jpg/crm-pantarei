@@ -17,7 +17,7 @@ import WhatsappUnsubscribeDialog from '../components/newsletter/WhatsappUnsubscr
 import { appParams } from '@/lib/app-params';
 
 function getUnsubscribeUrl(token) {
-  return `https://pantarhei-studio.co.il/functions/unsubscribeHandler?token=${token}`;
+  return `https://crm-pantarei-4738bca7.base44.app/functions/unsubscribeHandler?token=${token}`;
 }
 
 const SUBSCRIBERS_PER_GROUP = 280;
@@ -304,7 +304,7 @@ ${ctaButtonsHtml}
                 html_content: personalizedHtml,
                 from_name: 'פנטהריי',
                 unsubscribe_token: recipient.unsubscribe_token,
-                app_base_url: 'https://pantarhei-studio.co.il',
+                app_base_url: 'https://crm-pantarei-4738bca7.base44.app',
               });
               if (res.data?.sent_via) lastSentVia = res.data.sent_via === 'gmail' ? 'Gmail' : 'SES';
               emailSuccessCount++;
@@ -396,7 +396,7 @@ ${ctaButtonsHtml}
             html_content: recipient.html_content || resendContent,
             from_name: 'פנטהריי',
             unsubscribe_token: recipient.unsubscribe_token,
-            app_base_url: 'https://pantarhei-studio.co.il',
+            app_base_url: 'https://crm-pantarei-4738bca7.base44.app',
           });
           if (res.data?.sent_via) resendVia = res.data.sent_via === 'gmail' ? 'Gmail' : 'SES';
           resendSuccess++;

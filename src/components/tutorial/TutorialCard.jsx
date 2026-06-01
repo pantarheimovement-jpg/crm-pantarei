@@ -56,7 +56,7 @@ export default function TutorialCard({ step, currentStep, totalSteps, steps, onN
               }`}
             >
               <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0 ${
-                i === currentStep ? 'bg-[#6D436D] text-white' : i < currentStep ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                i === currentStep ? 'bg-[#6D436D] text-white' : i < currentStep ? 'bg-[#D29486]/20 text-[#D29486]' : 'bg-[#FDF8F0] text-[#5E4B35]/50'
               }`}>
                 {i < currentStep ? '✓' : i + 1}
               </span>
@@ -73,23 +73,23 @@ export default function TutorialCard({ step, currentStep, totalSteps, steps, onN
 
       {/* Auto note */}
       {step.autoNote && (
-        <div className="mb-2 flex items-start gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
-          <Zap className="w-3.5 h-3.5 text-green-600 mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-green-800">{step.autoNote}</p>
+        <div className="mb-2 flex items-start gap-2 px-3 py-2 rounded-lg bg-[#FAD980]/20 border border-[#FAD980]/40">
+          <Zap className="w-3.5 h-3.5 text-[#5E4B35] mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-[#5E4B35]">{step.autoNote}</p>
         </div>
       )}
 
       {/* Tip */}
       {step.tip && (
-        <div className="mb-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
-          <p className="text-xs text-amber-800">💡 {step.tip}</p>
+        <div className="mb-2 p-2.5 rounded-lg bg-[#D29486]/10 border border-[#D29486]/30">
+          <p className="text-xs text-[#5E4B35]">💡 {step.tip}</p>
         </div>
       )}
 
       {/* Practice note */}
       {step.practiceNote && (
-        <div className="mb-3 p-2.5 rounded-lg bg-blue-50 border border-blue-200">
-          <p className="text-xs text-blue-800">🎯 <strong>תרגול:</strong> {step.practiceNote}</p>
+        <div className="mb-3 p-2.5 rounded-lg bg-[#6D436D]/10 border border-[#6D436D]/20">
+          <p className="text-xs text-[#5E4B35]">🎯 <strong>תרגול:</strong> {step.practiceNote}</p>
         </div>
       )}
 
@@ -104,7 +104,7 @@ export default function TutorialCard({ step, currentStep, totalSteps, steps, onN
         {step.practiceNote && step.navigateTo && (
           <button
             onClick={onPractice}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-full transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-[#6D436D] bg-[#6D436D]/10 hover:bg-[#6D436D]/20 rounded-full transition-colors"
           >
             <Play className="w-3 h-3" />
             תרגלי

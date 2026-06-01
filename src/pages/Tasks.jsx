@@ -20,6 +20,7 @@ export default function Tasks() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterTaskName, setFilterTaskName] = useState('all');
+  const [filterStudentId, setFilterStudentId] = useState('');
   const [filterPriority, setFilterPriority] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -387,8 +388,9 @@ export default function Tasks() {
 
     const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
     const matchesTaskName = filterTaskName === 'all' || task.name === filterTaskName;
+    const matchesStudent = !filterStudentId || task.student_id === filterStudentId;
 
-    return matchesSearch && matchesStatus && matchesTaskName;
+    return matchesSearch && matchesStatus && matchesTaskName && matchesStudent;
   });
 
   const taskExportHeaders = ['שם המשימה', 'תיאור', 'משתתף', 'סטטוס', 'תאריך מתוזמן'];
@@ -547,7 +549,7 @@ export default function Tasks() {
               </label>
             )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
@@ -578,6 +580,17 @@ export default function Tasks() {
               <option value="all">כל סוגי השיחות</option>
               {uniqueTaskNames.map(name => (
                 <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+
+            <select
+              value={filterStudentId}
+              onChange={(e) => setFilterStudentId(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+            >
+              <option value="">כל המשתתפים</option>
+              {students.map(student => (
+                <option key={student.id} value={student.id}>{student.full_name}</option>
               ))}
             </select>
           </div>

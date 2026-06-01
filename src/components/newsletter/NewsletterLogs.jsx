@@ -1,10 +1,11 @@
-import React from 'react';
-import { Mail, Send, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Mail, Send, Loader2, Eye, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useLanguage } from '../LanguageContext';
 
 export default function NewsletterLogs({ logs, sending, onResend }) {
   const { t } = useLanguage();
+  const [previewHtml, setPreviewHtml] = useState(null);
 
   return (
     <div className="space-y-4">
@@ -42,7 +43,14 @@ export default function NewsletterLogs({ logs, sending, onResend }) {
                     )}
                   </div>
                   {log.content && (
-                    <div className="mt-3">
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={() => setPreviewHtml(log.content)}
+                        className="bg-[#6D436D] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#5a365a] flex items-center gap-2"
+                      >
+                        <Eye className="w-4 h-4" />
+                        {t('צפייה', 'Preview')}
+                      </button>
                       <button
                         onClick={() => onResend(log)}
                         disabled={sending}
@@ -67,6 +75,20 @@ export default function NewsletterLogs({ logs, sending, onResend }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {previewHtml && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setPreviewHtml(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="font-bold text-gray-900">{t('תצוגה מקדימה של המייל', 'Email Preview')}</h3>
+              <button onClick={() => setPreviewHtml(null)} className="p-1 text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <iframe srcDoc={previewHtml} className="flex-1 w-full border-0 min-h-[500px]" title="Email Preview" />
+          </div>
         </div>
       )}
     </div>

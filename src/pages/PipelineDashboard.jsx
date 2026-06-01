@@ -409,16 +409,20 @@ export default function PipelineDashboard() {
                       if (!courseGroups[courseName]) courseGroups[courseName] = [];
                       courseGroups[courseName].push(t);
                     });
-                    return Object.entries(courseGroups).map(([name, tasks]) => (
-                      <Link
-                        key={name}
-                        to={createPageUrl('Tasks') + '?search=' + encodeURIComponent(name === 'כללי' ? 'שיחת היכרות' : name)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-full text-xs font-medium text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
-                      >
-                        <span>{name}</span>
-                        <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-xs min-w-[20px] text-center">{tasks.length}</span>
-                      </Link>
-                    ));
+                    return Object.entries(courseGroups).map(([name, groupTasks]) => {
+                      // Use the exact task name for filtering
+                      const exactTaskName = groupTasks[0]?.name || '';
+                      return (
+                        <Link
+                          key={name}
+                          to={createPageUrl('Tasks') + '?task_name=' + encodeURIComponent(exactTaskName)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-full text-xs font-medium text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
+                        >
+                          <span>{name}</span>
+                          <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-xs min-w-[20px] text-center">{groupTasks.length}</span>
+                        </Link>
+                      );
+                    });
                   })()}
                 </div>
               </div>

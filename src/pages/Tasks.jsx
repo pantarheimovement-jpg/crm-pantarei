@@ -19,6 +19,7 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterTaskName, setFilterTaskName] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -53,8 +54,12 @@ export default function Tasks() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlStatus = urlParams.get('status');
+    const urlTaskName = urlParams.get('task_name');
     if (urlStatus) {
       setFilterStatus(urlStatus);
+    }
+    if (urlTaskName) {
+      setFilterTaskName(urlTaskName);
     }
   }, []);
 
@@ -372,6 +377,8 @@ export default function Tasks() {
     ? getLastNewLeadCourse(selectedStudentForForm)
     : null;
 
+  const uniqueTaskNames = [...new Set(tasks.map(t => t.name).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'he'));
+
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = !searchTerm ||
       task.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -379,8 +386,9 @@ export default function Tasks() {
       task.student_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
+    const matchesTaskName = filterTaskName === 'all' || task.name === filterTaskName;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesTaskName;
   });
 
   const taskExportHeaders = ['שם המשימה', 'תיאור', 'משתתף', 'סטטוס', 'תאריך מתוזמן'];
@@ -563,13 +571,13 @@ export default function Tasks() {
             </select>
 
             <select
-              value={formData.student_id}
-              onChange={(e) => setFormData({...formData, student_id: e.target.value})}
+              value={filterTaskName}
+              onChange={(e) => setFilterTaskName(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
             >
-              <option value="">כל המשתתפים</option>
-              {students.map(student => (
-                <option key={student.id} value={student.id}>{student.full_name}</option>
+              <option value="all">כל סוגי השיחות</option>
+              {uniqueTaskNames.map(name => (
+                <option key={name} value={name}>{name}</option>
               ))}
             </select>
           </div>

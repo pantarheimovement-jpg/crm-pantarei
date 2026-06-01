@@ -325,9 +325,9 @@ ${ctaButtonsHtml}
               try {
                 const shortRes = await base44.functions.invoke('shortenUrl', { url: unsubUrl });
                 const shortUrl = shortRes.data?.short_url || unsubUrl;
-                msgContent += `\n\nלהסרה: ${shortUrl}`;
+                msgContent += `\n\nלהסרה: ${shortUrl}\n💜 סטודיו פנטהריי`;
               } catch (e) {
-                msgContent += `\n\nלהסרה: ${unsubUrl}`;
+                msgContent += `\n\nלהסרה: ${unsubUrl}\n💜 סטודיו פנטהריי`;
               }
             }
             whatsappRecipients.push({

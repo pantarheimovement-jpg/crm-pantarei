@@ -1,0 +1,52 @@
+{
+  "name": "DesignSettings",
+  "type": "object",
+  "properties": {
+    "background_color": {
+      "type": "string",
+      "default": "#FDF8F0",
+      "description": "\u05e6\u05d1\u05e2 \u05e8\u05e7\u05e2"
+    },
+    "primary_color": {
+      "type": "string",
+      "default": "#6D436D",
+      "description": "\u05e6\u05d1\u05e2 \u05e8\u05d0\u05e9\u05d9 (\u05e1\u05d2\u05d5\u05dc)"
+    },
+    "accent_color": {
+      "type": "string",
+      "default": "#D29486",
+      "description": "\u05e6\u05d1\u05e2 \u05d4\u05d3\u05d2\u05e9\u05d4 (\u05d8\u05e8\u05e7\u05d5\u05d8\u05d4)"
+    },
+    "action_color": {
+      "type": "string",
+      "default": "#FAD980",
+      "description": "\u05e6\u05d1\u05e2 \u05e4\u05e2\u05d5\u05dc\u05d4 (\u05d6\u05d4\u05d1)"
+    },
+    "text_color": {
+      "type": "string",
+      "default": "#5E4B35",
+      "description": "\u05e6\u05d1\u05e2 \u05d8\u05e7\u05e1\u05d8 (\u05d7\u05d5\u05dd \u05db\u05d4\u05d4)"
+    },
+    "font_headings": {
+      "type": "string",
+      "default": "Amatic SC",
+      "description": "\u05e4\u05d5\u05e0\u05d8 \u05db\u05d5\u05ea\u05e8\u05d5\u05ea"
+    },
+    "font_body": {
+      "type": "string",
+      "default": "Heebo",
+      "description": "\u05e4\u05d5\u05e0\u05d8 \u05ea\u05d5\u05db\u05df"
+    },
+    "border_radius": {
+      "type": "number",
+      "default": 12,
+      "description": "\u05e2\u05d2\u05dc\u05d5\u05ea \u05e4\u05d9\u05e0\u05d5\u05ea (px)"
+    },
+    "button_radius": {
+      "type": "number",
+      "default": 50,
+      "description": "\u05e2\u05d2\u05dc\u05d5\u05ea \u05db\u05e4\u05ea\u05d5\u05e8\u05d9\u05dd (px)"
+    }
+  },
+  "required": []
+}

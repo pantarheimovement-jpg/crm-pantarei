@@ -1,0 +1,64 @@
+{
+  "name": "Interaction",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d5\u05e9\u05e2\u05d4"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "\u05e9\u05d9\u05d7\u05d4",
+        "\u05de\u05d9\u05d9\u05dc",
+        "\u05e4\u05d2\u05d9\u05e9\u05d4",
+        "\u05d6\u05d5\u05dd",
+        "\u05d4\u05e6\u05e2\u05ea \u05de\u05d7\u05d9\u05e8",
+        "\u05d4\u05d6\u05de\u05e0\u05d4"
+      ],
+      "description": "\u05e1\u05d5\u05d2 \u05d0\u05d9\u05e0\u05d8\u05e8\u05d0\u05e7\u05e6\u05d9\u05d4"
+    },
+    "summary": {
+      "type": "string",
+      "description": "\u05ea\u05e7\u05e6\u05d9\u05e8 \u05e7\u05e6\u05e8"
+    },
+    "result": {
+      "type": "string",
+      "enum": [
+        "\u05e4\u05ea\u05d5\u05d7",
+        "\u05e1\u05d2\u05d5\u05e8",
+        "\u05d4\u05de\u05e9\u05da \u05d8\u05d9\u05e4\u05d5\u05dc",
+        "\u05d4\u05e6\u05dc\u05d7\u05d4",
+        "\u05d0\u05d9\u05df \u05e2\u05e0\u05d9\u05d9\u05df"
+      ],
+      "default": "\u05e4\u05ea\u05d5\u05d7",
+      "description": "\u05ea\u05d5\u05e6\u05d0\u05d4"
+    },
+    "organization_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d0\u05e8\u05d2\u05d5\u05df"
+    },
+    "organization_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d0\u05e8\u05d2\u05d5\u05df (\u05dc\u05ea\u05e6\u05d5\u05d2\u05d4)"
+    },
+    "contact_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d0\u05d9\u05e9 \u05e7\u05e9\u05e8 (\u05d0\u05d5\u05e4\u05e6\u05d9\u05d5\u05e0\u05dc\u05d9)"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d0\u05d9\u05e9 \u05e7\u05e9\u05e8 (\u05dc\u05ea\u05e6\u05d5\u05d2\u05d4)"
+    },
+    "documentation": {
+      "type": "string",
+      "description": "\u05ea\u05d9\u05e2\u05d5\u05d3 \u05de\u05e4\u05d5\u05e8\u05d8"
+    }
+  },
+  "required": [
+    "date",
+    "type",
+    "organization_id"
+  ]
+}

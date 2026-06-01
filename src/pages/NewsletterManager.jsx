@@ -342,7 +342,7 @@ ${ctaButtonsHtml}
       console.log('Newsletter send complete - emails:', emailSuccessCount, 'errors:', emailErrorCount, 'whatsapp:', whatsappSuccessCount, 'via:', emailProvider);
       await base44.entities.NewsletterLogs.create({
         subject: subject || t('הודעת וואטסאפ', 'WhatsApp Message'),
-        content: finalEmailContent || whatsappMessage,
+        content: sendChannel === 'whatsapp' ? whatsappMessage : finalEmailContent,
         group: selectedGroup, recipients_count: totalLogRecipients,
         status: (emailErrorCount + whatsappErrorCount) > 0 ? `נשלח חלקית (${emailErrorCount + whatsappErrorCount} שגיאות)` : 'נשלח בהצלחה',
         sent_date: new Date().toISOString(),
@@ -406,7 +406,7 @@ ${ctaButtonsHtml}
         }
       }
 
-      await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent, group: resendGroup, recipients_count: resendSuccess, status: resendFailed === 0 ? 'נשלח בהצלחה' : `נשלח חלקית (${resendFailed} שגיאות)`, sent_date: new Date().toISOString(), sent_by: `${resendVia} (שליחה מחדש)` });
+      await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent || whatsappMessage, group: resendGroup, recipients_count: resendSuccess, status: resendFailed === 0 ? 'נשלח בהצלחה' : `נשלח חלקית (${resendFailed} שגיאות)`, sent_date: new Date().toISOString(), sent_by: `${resendVia} (שליחה מחדש)` });
       alert(`הניוזלטר נשלח מחדש בהצלחה ל-${resendSuccess} מנויים!`);
       setShowResendModal(false); setResendData(null); setResendSubject(''); setResendGroup(activeGroups[0] || 'כל הרשימה'); setResendContent('');
       loadLogs();

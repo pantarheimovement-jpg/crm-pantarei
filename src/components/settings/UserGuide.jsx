@@ -3,7 +3,7 @@ import {
   ChevronDown, ChevronUp, BookOpen, LayoutDashboard, Users, GraduationCap, 
   CheckSquare, Mail, Zap, Settings, Search, ArrowRight,
   Sparkles, AlertCircle, RefreshCw, MessageSquare, ClipboardList, ShieldCheck, BarChart3,
-  Copy, Check, Image, FileText
+  Copy, Check, Image, FileText, Globe, Upload
 } from 'lucide-react';
 
 function FAQItem({ question, answer, icon: Icon, color = '#6D436D' }) {
@@ -632,6 +632,79 @@ export default function UserGuide() {
                   <span className="text-sm"><strong>תלונה (Complaint)</strong> — נרשמת כשנמען מסמן את המייל כספאם</span>
                 </div>
               </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={Globe}
+          color="#9B59B6"
+          question="מה זה מפת פתיחות גאוגרפית (Hotspot)?"
+          answer={
+            <div>
+              <p>בדף <strong>סטטיסטיקות ניוזלטר</strong> יש מפה אינטראקטיבית שמציגה מאיפה פותחים את המיילים שלך:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li><strong>בועות על המפה</strong> — כל בועה מייצגת עיר שממנה נפתחו מיילים. ככל שהבועה גדולה יותר — יותר פתיחות</li>
+                <li><strong>טבלת מדינות</strong> — פילוח פתיחות וקליקים לפי מדינה</li>
+                <li><strong>ערים מובילות</strong> — תגיות עם הערים הפעילות ביותר</li>
+              </ul>
+              <div className="mt-3 p-3 bg-purple-50 rounded-lg text-sm">
+                💡 <strong>הנתונים נאספים אוטומטית</strong> מכל פתיחת מייל חדשה באמצעות GeoIP. פתיחות ישנות (לפני ההפעלה) לא יכללו מיקום.
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={Upload}
+          color="#9B59B6"
+          question="איך מייבאים מנויים מ-CSV?"
+          answer={
+            <div>
+              <p>בדף <strong>ניוזלטר → לשונית ייבוא</strong> ניתן לייבא מנויים בשתי דרכים:</p>
+              <ol className="list-decimal list-inside mt-2 space-y-1">
+                <li><strong>קובץ CSV</strong> — העלאת קובץ עם כותרות (email, name, phone, תפקיד, חברה, הערות — גם בעברית)</li>
+                <li><strong>העתק-הדבק</strong> — הדבקת טקסט בפורמט: מייל, וואטסאפ, שם, תפקיד, חברה, הערות</li>
+              </ol>
+              <p className="font-semibold mt-3 mb-2">תהליך הייבוא:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>בוחרים <strong>קבוצת יעד</strong> (קיימת או חדשה) — כל המנויים ישויכו אליה</li>
+                <li>המערכת <strong>מזהה כפילויות</strong> אוטומטית (לפי מייל או וואטסאפ)</li>
+                <li>מנויים קיימים <strong>מקבלים את הקבוצה</strong> בנוסף לקבוצות הקיימות שלהם</li>
+                <li>בסוף מוצג סיכום: חדשים, עודכנו, דולגו</li>
+              </ul>
+              <div className="mt-3 p-3 bg-blue-50 rounded-lg text-sm">
+                💡 <strong>טיפ:</strong> לחצי על "הורידי CSV לדוגמה" כדי לראות את הפורמט הנכון ולבדוק שהייבוא עובד.
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={Copy}
+          color="#9B59B6"
+          question="איך משכפלים בלוקים בתבנית Anti-Spam?"
+          answer={
+            <div>
+              <p>בעורך תבניות Anti-Spam (הגדרות CRM → תבניות Anti-Spam), ליד כל בלוק יש כפתור <strong>שכפול</strong>:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>לחצי על <strong>אייקון השכפול</strong> (שני מסמכים) ליד הבלוק שרוצים לשכפל</li>
+                <li>הבלוק המשוכפל יווצר <strong>מתחת</strong> לבלוק המקורי עם כל התוכן</li>
+                <li>ניתן לשכפל כל סוג בלוק: טקסט, תמונה, סרטון, כפתור</li>
+              </ul>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={MessageSquare}
+          color="#25D366"
+          question="מה עם קישור הסרה בוואטסאפ?"
+          answer={
+            <div>
+              <p><strong>קישור הסרה מתווסף אוטומטית</strong> לכל הודעת ווצאפ שנשלחת מהניוזלטר.</p>
+              <p className="mt-2">את <strong>לא צריכה להוסיף כלום</strong> — המערכת מוסיפה בסוף כל הודעה:</p>
+              <div className="mt-2 p-3 bg-green-50 rounded-lg font-mono text-xs text-green-800" dir="ltr">
+                ---<br />
+                להסרה מרשימת התפוצה: https://...
+              </div>
+              <p className="mt-2 text-sm">הקישור ייחודי לכל מנוי/ה ומסיר אותם מהרשימה בלחיצה אחת.</p>
             </div>
           }
         />

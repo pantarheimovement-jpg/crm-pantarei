@@ -4,6 +4,9 @@ import { SiteSettingsProvider, useSiteSettings } from './components/SiteSettings
 import { SystemSettingsProvider, useSystemSettings } from './components/SystemSettingsContext';
 import Header from './components/navigation/Header';
 import Footer from './components/navigation/Footer';
+import TutorialOverlay from './components/tutorial/TutorialOverlay';
+import TutorialFAB from './components/tutorial/TutorialFAB';
+import { useTutorial } from './hooks/useTutorial';
 import { Loader2 } from 'lucide-react';
 
 function StyleInjector() {
@@ -178,6 +181,7 @@ function StyleInjector() {
 function AppContent({ children, currentPageName }) {
     const { loading: siteLoading } = useSiteSettings();
     const { loading: systemLoading } = useSystemSettings();
+    const tutorial = useTutorial();
 
     if (siteLoading || systemLoading) {
         return (
@@ -194,6 +198,16 @@ function AppContent({ children, currentPageName }) {
                 {children}
             </main>
             <Footer />
+            <TutorialFAB onClick={tutorial.start} />
+            <TutorialOverlay
+              isOpen={tutorial.isOpen}
+              step={tutorial.step}
+              currentStep={tutorial.currentStep}
+              totalSteps={tutorial.totalSteps}
+              onNext={tutorial.next}
+              onPrev={tutorial.prev}
+              onClose={tutorial.close}
+            />
         </div>
     );
 }

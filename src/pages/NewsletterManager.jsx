@@ -320,15 +320,8 @@ ${ctaButtonsHtml}
           const whatsappRecipients = [];
           for (const recipient of whatsappRecipientsRaw) {
             let msgContent = whatsappMessage.replace(/\{\{name\}\}/g, recipient.name || '');
-            if (includeWhatsappUnsub && recipient.unsubscribe_token) {
-              const unsubUrl = getUnsubscribeUrl(recipient.unsubscribe_token);
-              try {
-                const shortRes = await base44.functions.invoke('shortenUrl', { url: unsubUrl });
-                const shortUrl = shortRes.data?.short_url || unsubUrl;
-                msgContent += `\n\nלהסרה: ${shortUrl}\n💜 סטודיו פנטהריי`;
-              } catch (e) {
-                msgContent += `\n\nלהסרה: ${unsubUrl}\n💜 סטודיו פנטהריי`;
-              }
+            if (includeWhatsappUnsub) {
+              msgContent += `\n\nלהסרה מרשימת התפוצה השיבי: הסר`;
             }
             whatsappRecipients.push({
               subscriber_id: recipient.id, subscriber_name: recipient.name || '',

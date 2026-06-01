@@ -11,6 +11,9 @@ const NOTIFICATION_EMAIL = 'pantarhei.movement@gmail.com';
 const APPROVE_KEYWORDS = ['כן', 'שלח', 'מאושר', 'כ', 'אשר', 'אישור', 'yes', 'שלחי'];
 const REJECT_KEYWORDS = ['לא', 'לא רלוונטי', 'ל', 'דלג', 'no', 'ביטול'];
 
+// Unsubscribe keywords
+const UNSUBSCRIBE_KEYWORDS = ['הסר', 'הסרה', 'הסירו', 'הסירו אותי', 'הסר אותי', 'להסרה'];
+
 // =============================================
 // INTEREST PHRASES - ביטויים מובהקים של התעניינות
 // =============================================
@@ -200,6 +203,17 @@ Deno.serve(async (req) => {
                         '';
 
     console.log(`📞 From: ${phoneNumber}, Name: ${senderName}, Message: "${messageText}"`);
+
+    // =============================================
+    // CHECK IF THIS IS AN UNSUBSCRIBE REQUEST
+    // =============================================
+    const lowerMsg = messageText.trim().toLowerCase();
+    const isUnsubscribeRequest = UNSUBSCRIBE_KEYWORDS.some(kw => lowerMsg === kw || lowerMsg === kw + ' אותי');
+    if (isUnsubscribeRequest && !isOfirPhone(phoneNumber)) {
+      console.log(`📭 Unsubscribe request from ${phoneNumber}`);
+      const result = await handleUnsubscribe(base44, phoneNumber, chatId);
+      return Response.json(result);
+    }
 
     // =============================================
     // CHECK IF THIS IS OFIR'S APPROVAL/REJECTION
@@ -829,6 +843,33 @@ async function createOrUpdateSubscriber(base44, { name, email, phone, courseName
   } catch (e) {
     console.error('⚠️ Subscriber create/update error:', e.message);
   }
+}
+
+// =============================================
+// HANDLE UNSUBSCRIBE REQUEST
+// =============================================
+async function handleUnsubscribe(base44, phoneNumber, chatId) {
+  let whatsappNum = normalizePhone(phoneNumber);
+  if (whatsappNum.startsWith('0')) whatsappNum = '972' + whatsappNum.substring(1);
+
+  const variants = [whatsappNum];
+  if (whatsappNum.startsWith('972')) variants.push('0' + whatsappNum.substring(3));
+
+  let subscriber = null;
+  for (const variant of variants) {
+    const results = await base44.asServiceRole.entities.Subscribers.filter({ whatsapp: variant });
+    if (results && results.length > 0) { subscriber = results[0]; break; }
+  }
+
+  if (subscriber) {
+    await base44.asServiceRole.entities.Subscribers.update(subscriber.id, { subscribed: false });
+    console.log(`✅ Subscriber ${subscriber.name || subscriber.whatsapp} unsubscribed`);
+  } else {
+    console.log(`⚠️ No subscriber found for ${phoneNumber}, but confirming removal anyway`);
+  }
+
+  await sendWhatsAppToChat(chatId, 'הוסרת מרשימת התפוצה בהצלחה 💜');
+  return { status: 'unsubscribed', phone: phoneNumber, found: !!subscriber };
 }
 
 // =============================================

@@ -1,4 +1,18 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+
+async function geoLookup(ip) {
+  if (!ip) return {};
+  try {
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,city,lat,lon`);
+    const data = await res.json();
+    if (data.status === 'success') {
+      return { country: data.country, city: data.city, latitude: data.lat, longitude: data.lon };
+    }
+  } catch (e) {
+    console.warn('GeoIP lookup failed for', ip, e.message);
+  }
+  return {};
+}
 
 Deno.serve(async (req) => {
   try {
@@ -61,6 +75,8 @@ Deno.serve(async (req) => {
         try {
           if (eventType === 'Open') {
             const openData = sesEvent.open || {};
+            const ip = openData.ipAddress || '';
+            const geo = await geoLookup(ip);
             await base44.asServiceRole.entities.EmailEvents.create({
               subscriber_email: email,
               newsletter_subject: subject,
@@ -69,7 +85,8 @@ Deno.serve(async (req) => {
               hour_of_day: now.getHours(),
               day_of_week: now.getDay(),
               user_agent: openData.userAgent || '',
-              ip_address: openData.ipAddress || ''
+              ip_address: ip,
+              ...geo
             });
 
             // Update last_opened_at on subscriber
@@ -87,6 +104,8 @@ Deno.serve(async (req) => {
 
           } else if (eventType === 'Click') {
             const clickData = sesEvent.click || {};
+            const ip = clickData.ipAddress || '';
+            const geo = await geoLookup(ip);
             await base44.asServiceRole.entities.EmailEvents.create({
               subscriber_email: email,
               newsletter_subject: subject,
@@ -95,7 +114,8 @@ Deno.serve(async (req) => {
               hour_of_day: now.getHours(),
               day_of_week: now.getDay(),
               user_agent: clickData.userAgent || '',
-              ip_address: clickData.ipAddress || ''
+              ip_address: ip,
+              ...geo
             });
             console.log(`✅ Click event recorded for ${email}`);
 

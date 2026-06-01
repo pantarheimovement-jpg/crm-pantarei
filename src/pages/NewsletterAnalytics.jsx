@@ -7,6 +7,7 @@ import AnalyticsKPICards from '../components/newsletter/AnalyticsKPICards';
 import CampaignTable from '../components/newsletter/CampaignTable';
 import HourlyChart from '../components/newsletter/HourlyChart';
 import RecentEventsTable from '../components/newsletter/RecentEventsTable';
+import GeoHeatmap from '../components/newsletter/GeoHeatmap';
 
 export default function NewsletterAnalytics() {
   const [events, setEvents] = useState([]);
@@ -70,6 +71,9 @@ export default function NewsletterAnalytics() {
           </h2>
           <CampaignTable events={events} />
         </div>
+
+        {/* Geo Heatmap */}
+        <GeoHeatmap events={events} />
 
         {/* Hourly Chart */}
         <HourlyChart events={events} />

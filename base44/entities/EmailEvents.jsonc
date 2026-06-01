@@ -40,6 +40,22 @@
     "ip_address": {
       "type": "string",
       "description": "\u05db\u05ea\u05d5\u05d1\u05ea IP"
+    },
+    "country": {
+      "type": "string",
+      "description": "\u05de\u05d3\u05d9\u05e0\u05d4 (\u05de-GeoIP)"
+    },
+    "city": {
+      "type": "string",
+      "description": "\u05e2\u05d9\u05e8 (\u05de-GeoIP)"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "\u05e7\u05d5 \u05e8\u05d5\u05d7\u05d1"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "\u05e7\u05d5 \u05d0\u05d5\u05e8\u05da"
     }
   },
   "required": [

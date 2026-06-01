@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Upload, Loader2, FileSpreadsheet, CheckCircle, AlertTriangle, Users } from 'lucide-react';
+import { Upload, Loader2, FileSpreadsheet, CheckCircle, AlertTriangle, Users, Download } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 
 function generateToken() {
@@ -80,6 +80,29 @@ function parseItems(text) {
     if (item.email || item.whatsapp) items.push(item);
   }
   return items;
+}
+
+const SAMPLE_CSV = `email,name,whatsapp,תפקיד,חברה,הערות
+dana@example.com,דנה כהן,972501111111,מורה ליוגה,סטודיו שמש,מתעניינת בלאבאן
+yael@example.com,יעל לוי,972502222222,רקדנית,להקת ארבסק,הגיעה מפייסבוק
+michal@example.com,מיכל אברהם,972503333333,מטפלת בתנועה,עצמאית,
+sara@example.com,שרה דוד,972504444444,,סטודיו פנטהריי,חברה קיימת
+noa@example.com,נועה פרידמן,972505555555,מנהלת,אורגני בע״מ,רוצה ניוזלטר חודשי
+tamar@example.com,תמר רוזן,,פסיכולוגית,,רק מייל בלי וואטסאפ
+,רונית שפירא,972506666666,,,רק וואטסאפ בלי מייל
+avital@example.com,אביטל מזרחי,972507777777,יועצת ארגונית,קונסלט בע״מ,VIP
+shira@example.com,שירה גולן,972508888888,מעצבת,סטודיו 5,מעוניינת בסדנאות
+rivka@example.com,רבקה בן דוד,972509999999,מורה לפילאטיס,סטודיו גוף ונפש,הפניה מדנה כהן`;
+
+function downloadSampleCSV() {
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + SAMPLE_CSV], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sample_subscribers.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function ImportSubscribers({ onImportDone }) {
@@ -328,8 +351,16 @@ export default function ImportSubscribers({ onImportDone }) {
               onChange={e => setCsvFile(e.target.files[0])}
               className="w-full"
             />
-          </div>
-        </div>
+            </div>
+            <button
+            type="button"
+            onClick={downloadSampleCSV}
+            className="flex items-center gap-2 text-sm text-[#6D436D] hover:text-[#5a365a] font-medium transition-colors"
+            >
+            <Download className="w-4 h-4" />
+            הורידי CSV לדוגמה לבדיקה
+            </button>
+            </div>
       )}
 
       {/* Paste mode */}

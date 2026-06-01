@@ -316,20 +316,27 @@ ${ctaButtonsHtml}
         }
 
         if (sendChannel === 'whatsapp' || sendChannel === 'both') {
-          const whatsappRecipients = batchRecipients.filter(r => r.whatsapp).map(recipient => {
+          const whatsappRecipientsRaw = batchRecipients.filter(r => r.whatsapp);
+          const whatsappRecipients = [];
+          for (const recipient of whatsappRecipientsRaw) {
             let msgContent = whatsappMessage.replace(/\{\{name\}\}/g, recipient.name || '');
-            // Append unsubscribe link only if chosen
             if (includeWhatsappUnsub && recipient.unsubscribe_token) {
               const unsubUrl = getUnsubscribeUrl(recipient.unsubscribe_token);
-              msgContent += `\n\n---\nלהסרה מרשימת התפוצה: ${unsubUrl}`;
+              try {
+                const shortRes = await base44.functions.invoke('shortenUrl', { url: unsubUrl });
+                const shortUrl = shortRes.data?.short_url || unsubUrl;
+                msgContent += `\n\nלהסרה: ${shortUrl}`;
+              } catch (e) {
+                msgContent += `\n\nלהסרה: ${unsubUrl}`;
+              }
             }
-            return {
+            whatsappRecipients.push({
               subscriber_id: recipient.id, subscriber_name: recipient.name || '',
               whatsapp_number: recipient.whatsapp,
               message_content: msgContent,
               status: 'pending'
-            };
-          });
+            });
+          }
           if (whatsappRecipients.length > 0) {
             try { await base44.entities.WhatsappQueue.bulkCreate(whatsappRecipients); whatsappSuccessCount += whatsappRecipients.length; }
             catch (error) { whatsappErrorCount += whatsappRecipients.length; }

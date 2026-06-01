@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, FileSpreadsheet, CheckCircle, AlertTriangle, Users } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 
 function generateToken() {
@@ -11,176 +11,408 @@ function generateToken() {
   });
 }
 
+// Known header aliases for auto-detection
+const HEADER_MAP = {
+  'email': 'email', 'mail': 'email', 'מייל': 'email', 'אימייל': 'email', 'e-mail': 'email', 'כתובת מייל': 'email',
+  'whatsapp': 'whatsapp', 'וואטסאפ': 'whatsapp', 'phone': 'whatsapp', 'טלפון': 'whatsapp', 'נייד': 'whatsapp', 'mobile': 'whatsapp', 'tel': 'whatsapp',
+  'name': 'name', 'שם': 'name', 'full_name': 'name', 'שם מלא': 'name',
+  'job_title': 'job_title', 'תפקיד': 'job_title', 'title': 'job_title',
+  'company': 'company', 'חברה': 'company', 'ארגון': 'company', 'organization': 'company',
+  'notes': 'notes', 'הערות': 'notes', 'note': 'notes',
+};
+
+const FIXED_ORDER = ['email', 'whatsapp', 'name', 'job_title', 'company', 'notes'];
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { current += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { result.push(current.trim()); current = ''; }
+      else { current += ch; }
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function detectHeaders(firstRow) {
+  const mapping = {};
+  let detected = false;
+  for (let i = 0; i < firstRow.length; i++) {
+    const normalized = firstRow[i].toLowerCase().trim();
+    if (HEADER_MAP[normalized]) {
+      mapping[i] = HEADER_MAP[normalized];
+      detected = true;
+    }
+  }
+  return detected ? mapping : null;
+}
+
+function parseItems(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length === 0) return [];
+
+  const firstRow = parseCSVLine(lines[0]);
+  const headerMapping = detectHeaders(firstRow);
+  const startIdx = headerMapping ? 1 : 0;
+
+  const items = [];
+  for (let i = startIdx; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i]);
+    const item = {};
+    if (headerMapping) {
+      for (const [colIdx, field] of Object.entries(headerMapping)) {
+        item[field] = cols[parseInt(colIdx)] || '';
+      }
+    } else {
+      for (let j = 0; j < FIXED_ORDER.length; j++) {
+        item[FIXED_ORDER[j]] = cols[j] || '';
+      }
+    }
+    if (item.email || item.whatsapp) items.push(item);
+  }
+  return items;
+}
+
 export default function ImportSubscribers({ onImportDone }) {
   const { t } = useLanguage();
+  const [mode, setMode] = useState('csv'); // 'csv' or 'paste'
+  const [csvFile, setCsvFile] = useState(null);
+  const [pasteText, setPasteText] = useState('');
+  const [targetGroup, setTargetGroup] = useState('');
+  const [newGroupName, setNewGroupName] = useState('');
+  const [existingGroups, setExistingGroups] = useState([]);
   const [importing, setImporting] = useState(false);
-  const [importFile, setImportFile] = useState(null);
   const [progress, setProgress] = useState('');
+  const [progressPct, setProgressPct] = useState(0);
+  const [result, setResult] = useState(null);
 
-  const handleImportCSV = async () => {
-    if (!importFile || (!importFile.file && !importFile.text)) {
-      alert(t('אנא הדביקי נתונים או בחרי קובץ להעלאה', 'Please paste data or select a file to upload'));
+  useEffect(() => {
+    loadGroups();
+  }, []);
+
+  const loadGroups = async () => {
+    const subs = await base44.entities.Subscribers.list('-created_date', 500);
+    const groups = new Set();
+    (subs || []).forEach(s => {
+      if (s.group) groups.add(s.group);
+      if (s.groups && Array.isArray(s.groups)) s.groups.forEach(g => groups.add(g));
+    });
+    setExistingGroups([...groups].sort());
+  };
+
+  const getSelectedGroup = () => {
+    if (targetGroup === '__new__') return newGroupName.trim();
+    return targetGroup;
+  };
+
+  const handleImport = async () => {
+    const group = getSelectedGroup();
+    if (!group) {
+      alert('אנא בחרי קבוצה או הזיני שם קבוצה חדשה');
       return;
     }
+
+    let rawText = '';
+    if (mode === 'paste') {
+      if (!pasteText.trim()) { alert('אנא הדביקי נתונים'); return; }
+      rawText = pasteText;
+    } else {
+      if (!csvFile) { alert('אנא בחרי קובץ CSV'); return; }
+      rawText = await csvFile.text();
+    }
+
     setImporting(true);
-    setProgress(t('קורא נתונים...', 'Reading data...'));
-    try {
-      let items = [];
-      if (importFile.type === 'text' && importFile.text) {
-        const lines = importFile.text.trim().split('\n');
-        for (const line of lines) {
-          const trimmedLine = line.trim();
-          if (!trimmedLine) continue;
-          const parts = trimmedLine.split(',').map(p => p.trim());
-          const email = parts[0], whatsapp = parts[1] || '', name = parts[2] || '',
-            job_title = parts[3] || '', company = parts[4] || '', notes = parts[5] || '';
-          if (email || whatsapp) items.push({ email, whatsapp, name, job_title, company, notes });
-        }
-      } else if (importFile.type === 'file' && importFile.file) {
-        const uploadedFile = await base44.integrations.Core.UploadFile({ file: importFile.file });
-        const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
-          file_url: uploadedFile.file_url,
-          json_schema: {
-            type: "object",
-            properties: { items: { type: "array", items: { type: "object", properties: {
-              email: { type: "string" }, whatsapp: { type: "string" }, name: { type: "string" },
-              job_title: { type: "string" }, company: { type: "string" }, notes: { type: "string" }
-            }}}}
-          }
-        });
-        if (extractResult.status === 'success' && extractResult.output?.items) {
-          items = extractResult.output.items;
-        } else {
-          alert(t('שגיאה בקריאת הקובץ. נסי שיטת ההעתקה וההדבקה.', 'Error reading file. Try the copy-paste method.'));
-          setImporting(false);
-          setProgress('');
-          return;
-        }
-      }
+    setResult(null);
+    setProgress('קורא נתונים...');
+    setProgressPct(0);
 
-      if (items.length === 0) {
-        alert(t('לא נמצאו כתובות מייל או מספרי וואטסאפ תקינים', 'No valid email addresses or WhatsApp numbers found'));
-        setImporting(false);
-        setProgress('');
-        return;
-      }
-
-      // Load all existing subscribers once for duplicate detection
-      setProgress(t(`נמצאו ${items.length} רשומות. בודק כפילויות...`, `Found ${items.length} records. Checking duplicates...`));
-      const allExistingSubscribers = await base44.entities.Subscribers.list();
-      const existingEmails = new Set(allExistingSubscribers.map(s => s.email?.toLowerCase()).filter(Boolean));
-      const existingWhatsapps = new Set(allExistingSubscribers.map(s => s.whatsapp).filter(Boolean));
-
-      let duplicateCount = 0;
-      const subscribersToCreate = [];
-
-      for (const item of items) {
-        if (!item.email && !item.whatsapp) continue;
-        const emailLower = item.email?.toLowerCase() || '';
-        const isDuplicate = (emailLower && existingEmails.has(emailLower)) ||
-                            (item.whatsapp && existingWhatsapps.has(item.whatsapp));
-        if (isDuplicate) {
-          duplicateCount++;
-        } else {
-          subscribersToCreate.push({
-            email: item.email || '',
-            whatsapp: item.whatsapp || '',
-            name: item.name || '',
-            job_title: item.job_title || '',
-            company: item.company || '',
-            notes: item.notes || '',
-            subscribed: true,
-            unsubscribe_token: generateToken(),
-            source: importFile.type === 'text' ? 'הדבקה ידנית' : 'ייבוא CSV'
-          });
-          // Also add to sets to catch duplicates within the import itself
-          if (emailLower) existingEmails.add(emailLower);
-          if (item.whatsapp) existingWhatsapps.add(item.whatsapp);
-        }
-      }
-
-      // Bulk create in batches of 100
-      let successCount = 0;
-      const BATCH_SIZE = 100;
-      for (let i = 0; i < subscribersToCreate.length; i += BATCH_SIZE) {
-        const batch = subscribersToCreate.slice(i, i + BATCH_SIZE);
-        setProgress(t(`מייבא ${i + batch.length} מתוך ${subscribersToCreate.length}...`, `Importing ${i + batch.length} of ${subscribersToCreate.length}...`));
-        await base44.entities.Subscribers.bulkCreate(batch);
-        successCount += batch.length;
-      }
-
-      alert(`✅ הייבוא הושלם!\n\nנוספו: ${successCount} מנויים\nכבר קיימים: ${duplicateCount}`);
-      onImportDone();
-      setImportFile(null);
-    } catch (error) {
-      alert(t('שגיאה בייבוא: ' + error.message, 'Import error: ' + error.message));
-    } finally {
+    const items = parseItems(rawText);
+    if (items.length === 0) {
+      alert('לא נמצאו רשומות תקינות (עם מייל או וואטסאפ)');
       setImporting(false);
       setProgress('');
+      return;
     }
+
+    setProgress(`נמצאו ${items.length} רשומות. טוען מנויים קיימים...`);
+    setProgressPct(5);
+
+    // Load ALL existing subscribers for dedup
+    let allExisting = [];
+    let hasMore = true;
+    let skip = 0;
+    while (hasMore) {
+      const batch = await base44.entities.Subscribers.list('-created_date', 500, skip);
+      if (!batch || batch.length === 0) { hasMore = false; break; }
+      allExisting = allExisting.concat(batch);
+      skip += batch.length;
+      if (batch.length < 500) hasMore = false;
+    }
+
+    setProgress(`בודק כפילויות מול ${allExisting.length} מנויים קיימים...`);
+    setProgressPct(15);
+
+    // Build lookup maps
+    const emailMap = new Map(); // email -> subscriber
+    const whatsappMap = new Map(); // whatsapp -> subscriber
+    for (const s of allExisting) {
+      if (s.email) emailMap.set(s.email.toLowerCase(), s);
+      if (s.whatsapp) whatsappMap.set(s.whatsapp, s);
+    }
+
+    const toCreate = [];
+    const toUpdateGroups = []; // {id, newGroups}
+    let skipCount = 0;
+    let mergeCount = 0;
+    const seenEmails = new Set();
+    const seenWhatsapps = new Set();
+
+    for (const item of items) {
+      const emailLower = item.email?.toLowerCase() || '';
+      const whatsapp = item.whatsapp || '';
+
+      // Dedup within import itself
+      if (emailLower && seenEmails.has(emailLower)) { skipCount++; continue; }
+      if (whatsapp && seenWhatsapps.has(whatsapp)) { skipCount++; continue; }
+
+      // Check existing
+      const existingByEmail = emailLower ? emailMap.get(emailLower) : null;
+      const existingByWhatsapp = whatsapp ? whatsappMap.get(whatsapp) : null;
+      const existing = existingByEmail || existingByWhatsapp;
+
+      if (existing) {
+        // Check if group needs to be added
+        const currentGroups = existing.groups || (existing.group ? [existing.group] : []);
+        if (!currentGroups.includes(group)) {
+          const updatedGroups = [...currentGroups, group];
+          toUpdateGroups.push({ id: existing.id, groups: updatedGroups });
+          mergeCount++;
+        } else {
+          skipCount++;
+        }
+      } else {
+        toCreate.push({
+          email: item.email || '',
+          whatsapp: whatsapp,
+          name: item.name || '',
+          job_title: item.job_title || '',
+          company: item.company || '',
+          notes: item.notes || '',
+          subscribed: true,
+          unsubscribe_token: generateToken(),
+          source: mode === 'paste' ? 'הדבקה ידנית' : 'ייבוא CSV',
+          group: group,
+          groups: [group],
+          marketing_consent: false,
+        });
+      }
+
+      if (emailLower) seenEmails.add(emailLower);
+      if (whatsapp) seenWhatsapps.add(whatsapp);
+    }
+
+    // Execute creates in batches
+    const totalOps = toCreate.length + toUpdateGroups.length;
+    let completed = 0;
+    const BATCH_SIZE = 50;
+
+    setProgress(`מייבא ${toCreate.length} מנויים חדשים, מעדכן ${mergeCount} קיימים...`);
+    setProgressPct(20);
+
+    // Bulk create
+    for (let i = 0; i < toCreate.length; i += BATCH_SIZE) {
+      const batch = toCreate.slice(i, i + BATCH_SIZE);
+      await base44.entities.Subscribers.bulkCreate(batch);
+      completed += batch.length;
+      const pct = 20 + Math.round((completed / Math.max(totalOps, 1)) * 70);
+      setProgressPct(pct);
+      setProgress(`נוצרו ${Math.min(i + BATCH_SIZE, toCreate.length)} מתוך ${toCreate.length} חדשים...`);
+    }
+
+    // Update groups for existing subscribers
+    for (let i = 0; i < toUpdateGroups.length; i++) {
+      const { id, groups } = toUpdateGroups[i];
+      await base44.entities.Subscribers.update(id, { groups });
+      completed++;
+      if (i % 20 === 0) {
+        const pct = 20 + Math.round((completed / Math.max(totalOps, 1)) * 70);
+        setProgressPct(pct);
+        setProgress(`מעדכן קבוצות: ${i + 1} מתוך ${toUpdateGroups.length}...`);
+      }
+    }
+
+    setProgressPct(100);
+    setProgress('');
+    setImporting(false);
+    setResult({
+      total: items.length,
+      created: toCreate.length,
+      merged: mergeCount,
+      skipped: skipCount,
+      group: group,
+    });
+    onImportDone();
   };
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">{t('שתי דרכים לייבוא מנויים', 'Two ways to import subscribers')}</h3>
-        <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-          <li>{t('העתק והדבק ישירות (מומלץ!)', 'Copy & Paste directly (Recommended!)')}</li>
-          <li>{t('או העלה קובץ CSV', 'Or upload a CSV file')}</li>
-        </ul>
-        <p className="text-xs text-blue-700 mt-2">{t('פורמט: מייל,וואטסאפ,שם,תפקיד,חברה,הערות', 'Format: email,whatsapp,name,job_title,company,notes')}</p>
+      {/* Group selection */}
+      <div className="bg-purple-50 border border-purple-200 rounded-xl p-5">
+        <h3 className="font-bold text-purple-900 mb-3 flex items-center gap-2">
+          <Users className="w-5 h-5" />
+          שיוך לקבוצה
+        </h3>
+        <p className="text-sm text-purple-700 mb-3">כל המנויים שייובאו ישויכו לקבוצה שתבחרי. אם המנוי כבר קיים — הקבוצה תתווסף אליו.</p>
+        <select
+          value={targetGroup}
+          onChange={e => setTargetGroup(e.target.value)}
+          className="w-full px-4 py-2 border border-purple-300 rounded-lg bg-white mb-2"
+        >
+          <option value="">-- בחרי קבוצה --</option>
+          {existingGroups.map(g => <option key={g} value={g}>{g}</option>)}
+          <option value="__new__">+ קבוצה חדשה...</option>
+        </select>
+        {targetGroup === '__new__' && (
+          <input
+            type="text"
+            value={newGroupName}
+            onChange={e => setNewGroupName(e.target.value)}
+            placeholder="שם הקבוצה החדשה"
+            className="w-full px-4 py-2 border border-purple-300 rounded-lg mt-2"
+          />
+        )}
       </div>
 
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-        <h3 className="font-semibold text-green-900 mb-3">✨ {t('דרך 1: העתק והדבק', 'Method 1: Copy & Paste')}</h3>
-        <div className="bg-white rounded p-3 mb-4">
-          <p className="text-sm text-gray-700 mb-2 font-semibold">{t('פורמט:', 'Format:')}</p>
-          <code className="text-xs bg-gray-100 p-2 rounded block" dir="ltr">
-            email1@example.com,972501234567,שם,תפקיד,חברה,הערות<br/>
-            email2@example.com,972501234568,שם<br/>
-            ,972501234569,שם
-          </code>
+      {/* Mode toggle */}
+      <div className="flex gap-2 bg-gray-50 p-1 rounded-full">
+        <button
+          onClick={() => setMode('csv')}
+          className={`flex-1 px-4 py-2.5 rounded-full font-medium text-sm transition-all flex items-center justify-center gap-2 ${mode === 'csv' ? 'bg-[#6D436D] text-white' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          העלאת קובץ CSV
+        </button>
+        <button
+          onClick={() => setMode('paste')}
+          className={`flex-1 px-4 py-2.5 rounded-full font-medium text-sm transition-all flex items-center justify-center gap-2 ${mode === 'paste' ? 'bg-[#6D436D] text-white' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          ✨ העתק והדבק
+        </button>
+      </div>
+
+      {/* CSV file mode */}
+      {mode === 'csv' && (
+        <div className="border border-gray-200 rounded-xl p-5 space-y-4">
+          <div className="bg-blue-50 rounded-lg p-3">
+            <p className="text-sm text-blue-800">
+              <strong>פורמט CSV:</strong> השורה הראשונה יכולה להיות כותרות (email, name, phone, וכו׳ — גם בעברית) או ישר נתונים בסדר: מייל, וואטסאפ, שם, תפקיד, חברה, הערות.
+            </p>
+          </div>
+          <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#6D436D] transition-colors">
+            <FileSpreadsheet className="w-10 h-10 mx-auto mb-3 text-gray-400" />
+            <p className="text-sm text-gray-600 mb-3">
+              {csvFile ? `📄 ${csvFile.name}` : 'גררי קובץ CSV לכאן או לחצי לבחירה'}
+            </p>
+            <input
+              type="file"
+              accept=".csv,.txt"
+              onChange={e => setCsvFile(e.target.files[0])}
+              className="w-full"
+            />
+          </div>
         </div>
-        <div className="mt-4">
+      )}
+
+      {/* Paste mode */}
+      {mode === 'paste' && (
+        <div className="border border-gray-200 rounded-xl p-5 space-y-4">
+          <div className="bg-green-50 rounded-lg p-3">
+            <p className="text-sm text-green-800">
+              <strong>פורמט:</strong> מייל,וואטסאפ,שם,תפקיד,חברה,הערות (שורה לכל מנוי)
+            </p>
+            <code className="text-xs bg-white p-2 rounded block mt-2 text-gray-600" dir="ltr">
+              email1@example.com,972501234567,שם<br />
+              email2@example.com,,שם אחר
+            </code>
+          </div>
           <textarea
-            value={importFile?.type === 'text' ? importFile.text : ''}
-            onChange={(e) => setImportFile({ type: 'text', text: e.target.value })}
-            placeholder={t('הדביקי את רשימת המנויים כאן...', 'Paste your subscriber list here...')}
-            rows="8"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm"
+            value={pasteText}
+            onChange={e => setPasteText(e.target.value)}
+            placeholder="הדביקי כאן את רשימת המנויים..."
+            rows="10"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg font-mono text-sm"
             dir="ltr"
           />
         </div>
-        <button
-          onClick={handleImportCSV}
-          disabled={importing || !(importFile?.type === 'text' && importFile.text?.trim())}
-          className="w-full mt-4 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {importing ? <><Loader2 className="w-5 h-5 animate-spin" />{progress || t('מייבא...', 'Importing...')}</> : <><Upload className="w-5 h-5" />{t('ייבא מנויים', 'Import Subscribers')}</>}
-        </button>
-      </div>
+      )}
 
-      <div className="border-t pt-6">
-        <h3 className="font-semibold text-gray-900 mb-3">{t('דרך 2: העלאת קובץ CSV', 'Method 2: Upload CSV File')}</h3>
-        <input
-          type="file"
-          accept=".csv,.xlsx,.xls"
-          onChange={(e) => setImportFile({ type: 'file', file: e.target.files[0] })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-        />
-        <button
-          onClick={handleImportCSV}
-          disabled={importing || !(importFile?.type === 'file' && importFile.file)}
-          className="w-full mt-4 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {importing ? <><Loader2 className="w-5 h-5 animate-spin" />{progress || t('מייבא...', 'Importing...')}</> : <><Upload className="w-5 h-5" />{t('ייבא קובץ', 'Import File')}</>}
-        </button>
-      </div>
+      {/* Import button */}
+      <button
+        onClick={handleImport}
+        disabled={importing || !getSelectedGroup() || (mode === 'csv' ? !csvFile : !pasteText.trim())}
+        className="w-full bg-[#6D436D] text-white py-3 rounded-full font-bold hover:bg-[#5a365a] disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+      >
+        {importing ? (
+          <><Loader2 className="w-5 h-5 animate-spin" />{progress || 'מייבא...'}</>
+        ) : (
+          <><Upload className="w-5 h-5" />ייבא מנויים לקבוצה &quot;{getSelectedGroup() || '...'}&quot;</>
+        )}
+      </button>
 
-      {importing && progress && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-yellow-600" />
-          <p className="text-sm text-yellow-800 font-medium">{progress}</p>
+      {/* Progress bar */}
+      {importing && (
+        <div className="space-y-2">
+          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+            <div
+              className="bg-[#6D436D] h-3 rounded-full transition-all duration-300"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-600 text-center">{progress}</p>
+        </div>
+      )}
+
+      {/* Result summary */}
+      {result && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-6 h-6 text-green-600" />
+            <h3 className="font-bold text-green-900 text-lg">הייבוא הושלם!</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-gray-900">{result.total}</p>
+              <p className="text-xs text-gray-500">סה״כ רשומות</p>
+            </div>
+            <div className="bg-white rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-green-600">{result.created}</p>
+              <p className="text-xs text-gray-500">מנויים חדשים</p>
+            </div>
+            <div className="bg-white rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-blue-600">{result.merged}</p>
+              <p className="text-xs text-gray-500">קבוצה נוספה</p>
+            </div>
+            <div className="bg-white rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-gray-400">{result.skipped}</p>
+              <p className="text-xs text-gray-500">כפילויות/דולגו</p>
+            </div>
+          </div>
+          <p className="text-sm text-green-700">קבוצה: <strong>{result.group}</strong></p>
+          {result.merged > 0 && (
+            <div className="flex items-start gap-2 bg-blue-50 rounded-lg p-3">
+              <AlertTriangle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-blue-700">{result.merged} מנויים קיימים קיבלו את הקבוצה &quot;{result.group}&quot; בנוסף לקבוצות שכבר היו להם.</p>
+            </div>
+          )}
         </div>
       )}
     </div>

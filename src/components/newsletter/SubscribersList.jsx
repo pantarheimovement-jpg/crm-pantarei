@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Search, Plus, Trash2, Edit3, Loader2, X, CheckCircle, MessageCircle } from 'lucide-react';
+import { Search, Plus, Trash2, Edit3, Loader2, X, CheckCircle, MessageCircle, LayoutGrid, List } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import ExportButtons from '../shared/ExportButtons';
 import SubscriberStudentLink from './SubscriberStudentLink';
@@ -33,6 +33,7 @@ export default function SubscribersList({ subscribers, students, loading, active
   const [newGroupName, setNewGroupName] = useState('');
   const [addGroupSelectedIds, setAddGroupSelectedIds] = useState([]);
   const [addGroupSearch, setAddGroupSearch] = useState('');
+  const [groupViewMode, setGroupViewMode] = useState('cards');
 
   // Build students map by email for quick lookup
   const studentsMap = useMemo(() => {
@@ -191,22 +192,63 @@ export default function SubscribersList({ subscribers, students, loading, active
       <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm" style={{ borderRadius: 'var(--crm-border-radius)' }}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-lg text-[var(--crm-text)]">{t('סטטיסטיקת קבוצות', 'Group Statistics')}</h3>
-          <button onClick={() => setShowAddGroup(true)} className="bg-[var(--crm-action)] text-[var(--crm-text)] px-4 py-2 text-sm font-semibold flex items-center gap-2" style={{ borderRadius: 'var(--crm-button-radius)' }}>
-            <Plus className="w-4 h-4" />{t('הוסף קבוצה', 'Add Group')}
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+              <button onClick={() => setGroupViewMode('cards')} className={`p-2 ${groupViewMode === 'cards' ? 'bg-[var(--crm-primary)] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}><LayoutGrid className="w-4 h-4" /></button>
+              <button onClick={() => setGroupViewMode('table')} className={`p-2 ${groupViewMode === 'table' ? 'bg-[var(--crm-primary)] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}><List className="w-4 h-4" /></button>
+            </div>
+            <button onClick={() => setShowAddGroup(true)} className="bg-[var(--crm-action)] text-[var(--crm-text)] px-4 py-2 text-sm font-semibold flex items-center gap-2" style={{ borderRadius: 'var(--crm-button-radius)' }}>
+              <Plus className="w-4 h-4" />{t('הוסף קבוצה', 'Add Group')}
+            </button>
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {activeGroups.length === 0 ? <p className="text-gray-600 text-center col-span-full">{t('אין קבוצות', 'No groups')}</p> :
-            activeGroups.map(group => (
-              <div key={group} onClick={() => setFilterGroup(group === filterGroup ? 'all' : group)} className={`bg-gray-50 rounded-xl p-4 border cursor-pointer hover:shadow-md transition-all ${filterGroup === group ? 'border-[var(--crm-primary)] ring-2 ring-[var(--crm-primary)]/20' : 'border-gray-100 hover:border-[var(--crm-primary)]'}`}>
-                <div className="text-2xl font-bold text-[var(--crm-primary)]">{getGroupSubscriberCount(group)}</div>
-                <div className="text-sm text-[var(--crm-text)] opacity-70">{group}</div>
-                <div className="mt-2 bg-gray-200 rounded-full h-2">
-                  <div className="h-2 rounded-full" style={{ backgroundColor: getGroupColor(group), width: `${Math.min(100, (getGroupSubscriberCount(group) / SUBSCRIBERS_PER_GROUP) * 100)}%` }} />
+        {activeGroups.length === 0 ? <p className="text-gray-600 text-center">{t('אין קבוצות', 'No groups')}</p> :
+          groupViewMode === 'cards' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {activeGroups.map(group => (
+                <div key={group} onClick={() => setFilterGroup(group === filterGroup ? 'all' : group)} className={`bg-gray-50 rounded-xl p-4 border cursor-pointer hover:shadow-md transition-all ${filterGroup === group ? 'border-[var(--crm-primary)] ring-2 ring-[var(--crm-primary)]/20' : 'border-gray-100 hover:border-[var(--crm-primary)]'}`}>
+                  <div className="text-2xl font-bold text-[var(--crm-primary)]">{getGroupSubscriberCount(group)}</div>
+                  <div className="text-sm text-[var(--crm-text)] opacity-70">{group}</div>
+                  <div className="mt-2 bg-gray-200 rounded-full h-2">
+                    <div className="h-2 rounded-full" style={{ backgroundColor: getGroupColor(group), width: `${Math.min(100, (getGroupSubscriberCount(group) / SUBSCRIBERS_PER_GROUP) * 100)}%` }} />
+                  </div>
                 </div>
-              </div>
-            ))}
-        </div>
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-2.5 text-right font-medium text-gray-500">{t('שם קבוצה', 'Group Name')}</th>
+                    <th className="px-4 py-2.5 text-center font-medium text-gray-500">{t('מנויים', 'Subscribers')}</th>
+                    <th className="px-4 py-2.5 text-right font-medium text-gray-500 w-1/3">{t('תפוסה', 'Capacity')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {[...activeGroups].sort((a, b) => getGroupSubscriberCount(b) - getGroupSubscriberCount(a)).map(group => {
+                    const count = getGroupSubscriberCount(group);
+                    const pct = Math.min(100, (count / SUBSCRIBERS_PER_GROUP) * 100);
+                    return (
+                      <tr key={group} onClick={() => setFilterGroup(group === filterGroup ? 'all' : group)} className={`cursor-pointer hover:bg-gray-50 transition-colors ${filterGroup === group ? 'bg-[var(--crm-primary)]/5' : ''}`}>
+                        <td className="px-4 py-2.5 font-medium text-[var(--crm-text)]">{group}</td>
+                        <td className="px-4 py-2.5 text-center font-bold text-[var(--crm-primary)]">{count}</td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                              <div className="h-2 rounded-full" style={{ backgroundColor: getGroupColor(group), width: `${pct}%` }} />
+                            </div>
+                            <span className="text-xs text-gray-400 w-10 text-left">{Math.round(pct)}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
       </div>
 
       {showAddGroup && (

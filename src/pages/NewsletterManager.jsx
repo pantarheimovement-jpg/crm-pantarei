@@ -87,8 +87,17 @@ export default function NewsletterManager() {
   const loadSubscribers = async () => {
     setLoading(true);
     try {
-      const data = await base44.entities.Subscribers.list('-created_date', 1000);
-      setSubscribers(data || []);
+      let allData = [];
+      let skip = 0;
+      const PAGE_SIZE = 500;
+      while (true) {
+        const batch = await base44.entities.Subscribers.list('-created_date', PAGE_SIZE, skip);
+        if (!batch || batch.length === 0) break;
+        allData = allData.concat(batch);
+        if (batch.length < PAGE_SIZE) break;
+        skip += batch.length;
+      }
+      setSubscribers(allData);
     } catch (error) {
       console.error('Error loading subscribers:', error);
     } finally {

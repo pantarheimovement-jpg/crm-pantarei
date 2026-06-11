@@ -262,16 +262,29 @@ export default function ImportSubscribers({ onImportDone }) {
       setProgress(`נוצרו ${Math.min(i + BATCH_SIZE, toCreate.length)} מתוך ${toCreate.length} חדשים...`);
     }
 
-    // Update groups for existing subscribers
+    // Update groups for existing subscribers (with delay to avoid rate limiting)
+    let updateErrors = 0;
     for (let i = 0; i < toUpdateGroups.length; i++) {
       const { id, groups } = toUpdateGroups[i];
-      await base44.entities.Subscribers.update(id, { groups });
+      try {
+        await base44.entities.Subscribers.update(id, { groups });
+      } catch (err) {
+        updateErrors++;
+        // Wait longer on error (likely rate limited)
+        await new Promise(r => setTimeout(r, 500));
+        try {
+          await base44.entities.Subscribers.update(id, { groups });
+          updateErrors--;
+        } catch (e2) { /* skip this one */ }
+      }
       completed++;
-      if (i % 20 === 0) {
+      if (i % 5 === 0 || i === toUpdateGroups.length - 1) {
         const pct = 20 + Math.round((completed / Math.max(totalOps, 1)) * 70);
         setProgressPct(pct);
         setProgress(`מעדכן קבוצות: ${i + 1} מתוך ${toUpdateGroups.length}...`);
       }
+      // Small delay between updates to prevent rate limiting
+      if (i % 10 === 9) await new Promise(r => setTimeout(r, 100));
     }
 
     setProgressPct(100);

@@ -13,8 +13,11 @@ const OPEN_FOR_REGISTRATION = 'פתוח להרשמה';
 const TARGET_REGISTRATION_STATUSES = ['בבדיקה', 'לחזור לקראת הרשמה'];
 
 function isTargetCourse(courseName) {
-  const name = String(courseName || '').toLowerCase();
-  return name.includes('lbms') || name.includes('נענע');
+  const name = String(courseName || '');
+  if (name.includes('נענע')) {
+    return name === 'נענע – בית ספר למחול ותנועה סומטית';
+  }
+  return name.toLowerCase().includes('lbms');
 }
 
 function getTemplateKey(courseName) {

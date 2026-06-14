@@ -3,8 +3,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 // =============================================
 // CONFIGURATION
 // =============================================
-const OFIR_PHONE = '972515041100';
-const OFIR_CHAT_ID = '972515041100@c.us';
+// PANTAREI_PHONE is loaded dynamically from GeneralSettings.business_phone
+// Fallback to old number only if not configured
+let PANTAREI_PHONE = '972503859256';
+let PANTAREI_CHAT_ID = '972503859256@c.us';
 const NOTIFICATION_EMAIL = 'pantarhei.movement@gmail.com';
 
 // Ofir's approval keywords
@@ -81,10 +83,10 @@ function getPhoneVariants(rawPhone) {
   return [...variants];
 }
 
-function isOfirPhone(phoneNumber) {
+function isPantareiPhone(phoneNumber) {
   const normalized = normalizePhone(phoneNumber);
-  const ofirVariants = getPhoneVariants(OFIR_PHONE);
-  return ofirVariants.includes(normalized);
+  const pantareiVariants = getPhoneVariants(PANTAREI_PHONE);
+  return pantareiVariants.includes(normalized);
 }
 
 // =============================================
@@ -172,6 +174,21 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
 
+    // Load business phone from GeneralSettings
+    try {
+      const generalSettingsArr = await base44.asServiceRole.entities.GeneralSettings.list();
+      const generalSettings = generalSettingsArr && generalSettingsArr.length > 0 ? generalSettingsArr[0] : null;
+      if (generalSettings?.business_phone) {
+        let phone = normalizePhone(generalSettings.business_phone);
+        if (phone.startsWith('0')) phone = '972' + phone.substring(1);
+        PANTAREI_PHONE = phone;
+        PANTAREI_CHAT_ID = phone + '@c.us';
+        console.log(`📱 Pantarei phone loaded from settings: ${PANTAREI_PHONE}`);
+      }
+    } catch (e) {
+      console.log('⚠️ Could not load GeneralSettings, using default phone');
+    }
+
     console.log('📦 Webhook body:', JSON.stringify(body, null, 2));
 
     const typeWebhook = body.typeWebhook;
@@ -209,7 +226,7 @@ Deno.serve(async (req) => {
     // =============================================
     const lowerMsg = messageText.trim().toLowerCase();
     const isUnsubscribeRequest = UNSUBSCRIBE_KEYWORDS.some(kw => lowerMsg === kw || lowerMsg === kw + ' אותי');
-    if (isUnsubscribeRequest && !isOfirPhone(phoneNumber)) {
+    if (isUnsubscribeRequest && !isPantareiPhone(phoneNumber)) {
       console.log(`📭 Unsubscribe request from ${phoneNumber}`);
       const result = await handleUnsubscribe(base44, phoneNumber, chatId);
       return Response.json(result);
@@ -218,8 +235,8 @@ Deno.serve(async (req) => {
     // =============================================
     // CHECK IF THIS IS OFIR'S APPROVAL/REJECTION
     // =============================================
-    if (isOfirPhone(phoneNumber)) {
-      console.log('👩‍💼 Message from Ofir - checking for approval/rejection');
+    if (isPantareiPhone(phoneNumber)) {
+      console.log('👩‍💼 Message from Pantarei phone - checking for approval/rejection');
       const result = await handleOfirResponse(base44, messageText);
       return Response.json(result);
     }
@@ -549,7 +566,7 @@ async function notifyOfir(base44, leadName, leadPhone, messageText, courseName) 
       const resp = await fetch(greenApiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId: OFIR_CHAT_ID, message: whatsappMsg })
+        body: JSON.stringify({ chatId: PANTAREI_CHAT_ID, message: whatsappMsg })
       });
       const result = await resp.json();
       if (resp.ok && result.idMessage) {
@@ -741,7 +758,7 @@ async function handleOfirResponse(base44, messageText) {
 // WHATSAPP HELPERS
 // =============================================
 async function sendWhatsApp(message) {
-  return sendWhatsAppToChat(OFIR_CHAT_ID, message);
+  return sendWhatsAppToChat(PANTAREI_CHAT_ID, message);
 }
 
 async function sendWhatsAppToChat(chatId, message) {

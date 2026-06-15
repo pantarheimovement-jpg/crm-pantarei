@@ -1,7 +1,58 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { GraduationCap, Calendar, MapPin, DollarSign, Users, Clock } from 'lucide-react';
+import { GraduationCap, Calendar, MapPin, DollarSign, Users, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+
+const NANA_PRICE_ROWS = [
+  { label: 'שבוע ראשון', earlyKey: 'price_early_week1', lateKey: 'price_late_week1' },
+  { label: 'שבוע שני', earlyKey: 'price_early_week2', lateKey: 'price_late_week2' },
+  { label: 'שבועיים מלאים', earlyKey: 'price_early_two_weeks', lateKey: 'price_late_two_weeks' },
+  { label: '3 ימים שבוע א׳', earlyKey: 'price_early_3days_week1', lateKey: 'price_late_3days_week1' },
+  { label: '3 ימים שבוע ב׳', earlyKey: 'price_early_3days_week2', lateKey: 'price_late_3days_week2' },
+];
+
+function NanaPriceAccordion({ course }) {
+  const [open, setOpen] = useState(false);
+  const hasAnyPrice = NANA_PRICE_ROWS.some(r => course[r.earlyKey] || course[r.lateKey]);
+  if (!hasAnyPrice) return null;
+
+  return (
+    <div className="mt-4 border border-purple-100 rounded-xl overflow-hidden text-sm">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-2 bg-purple-50 hover:bg-purple-100 transition-colors text-purple-800 font-medium"
+      >
+        <span className="flex items-center gap-2">
+          <DollarSign className="w-4 h-4" />
+          מחירון סמסטר קיץ נענע
+        </span>
+        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+      {open && (
+        <div className="grid grid-cols-2 divide-x divide-x-reverse divide-purple-100 bg-white">
+          <div className="p-3 space-y-2">
+            <div className="text-center font-semibold text-green-700 pb-1 border-b border-green-100">🟢 הרשמה מוקדמת</div>
+            {NANA_PRICE_ROWS.map(r => course[r.earlyKey] ? (
+              <div key={r.earlyKey} className="flex justify-between text-gray-700">
+                <span className="text-gray-500">{r.label}</span>
+                <span className="font-medium">₪{course[r.earlyKey]}</span>
+              </div>
+            ) : null)}
+          </div>
+          <div className="p-3 space-y-2">
+            <div className="text-center font-semibold text-red-700 pb-1 border-b border-red-100">🔴 הרשמה מאוחרת</div>
+            {NANA_PRICE_ROWS.map(r => course[r.lateKey] ? (
+              <div key={r.lateKey} className="flex justify-between text-gray-700">
+                <span className="text-gray-500">{r.label}</span>
+                <span className="font-medium">₪{course[r.lateKey]}</span>
+              </div>
+            ) : null)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CourseHeader({ course, registeredCount, leadsCount }) {
   const getStatusColor = (status) => {
@@ -50,7 +101,7 @@ export default function CourseHeader({ course, registeredCount, leadsCount }) {
             {course.location}
           </div>
         )}
-        {(course.price_early || course.price_late) && (
+        {!course.name?.includes('סמסטר קיץ נענע') && (course.price_early || course.price_late) && (
           <div className="flex flex-col gap-1 text-sm text-[var(--crm-text)] opacity-80">
             {course.price_early && (
               <div className="flex items-center gap-2">
@@ -75,6 +126,8 @@ export default function CourseHeader({ course, registeredCount, leadsCount }) {
           </div>
         )}
       </div>
+
+      {course.name?.includes('סמסטר קיץ נענע') && <NanaPriceAccordion course={course} />}
 
       <div className="flex gap-6 mt-4 pt-4 border-t border-gray-100">
         <Link to={createPageUrl('Students') + '?course=' + course.id + '&status=רשום'} className="flex items-center gap-2 hover:opacity-80 transition-opacity">

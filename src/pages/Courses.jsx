@@ -589,24 +589,29 @@ export default function Courses() {
                     placeholder="מיקום הקורס"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">מחיר הרשמה מוקדמת ₪</label>
-                  <Input
-                    type="number"
-                    value={formData.price_early}
-                    onChange={(e) => setFormData({...formData, price_early: e.target.value})}
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">מחיר הרשמה מאוחרת ₪</label>
-                  <Input
-                    type="number"
-                    value={formData.price_late}
-                    onChange={(e) => setFormData({...formData, price_late: e.target.value})}
-                    placeholder="0"
-                  />
-                </div>
+                {/* שדות מחיר — לנענע רק האקורדיאון, לשאר מוקדם/מאוחר */}
+                {!formData.name?.includes('סמסטר קיץ נענע') && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">מחיר הרשמה מוקדמת ₪</label>
+                      <Input
+                        type="number"
+                        value={formData.price_early}
+                        onChange={(e) => setFormData({...formData, price_early: e.target.value})}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">מחיר הרשמה מאוחרת ₪</label>
+                      <Input
+                        type="number"
+                        value={formData.price_late}
+                        onChange={(e) => setFormData({...formData, price_late: e.target.value})}
+                        placeholder="0"
+                      />
+                    </div>
+                  </>
+                )}
 
                 {/* אקורדיאון מחירים לסמסטר קיץ נענע */}
                 {formData.name && formData.name.includes('סמסטר קיץ נענע') && (

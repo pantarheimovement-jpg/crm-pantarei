@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../SystemSettingsContext';
 import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown } from 'lucide-react';
@@ -192,9 +192,16 @@ export default function EmailTemplateEditor() {
     loadTemplates();
   }, []);
 
+  const loadTemplatesRef = useRef(null);
   const loadTemplates = async () => {
-    const data = await base44.entities.EmailTemplate.list();
-    setTemplates(data || []);
+    if (loadTemplatesRef.current) return;
+    loadTemplatesRef.current = true;
+    try {
+      const data = await base44.entities.EmailTemplate.list();
+      setTemplates(data || []);
+    } finally {
+      setTimeout(() => { loadTemplatesRef.current = false; }, 3000);
+    }
   };
 
   const parseHtmlToSections = (html) => {

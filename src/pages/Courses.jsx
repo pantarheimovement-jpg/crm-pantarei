@@ -126,10 +126,33 @@ export default function Courses() {
     }
   };
 
+  const unlinkCourseFromStudents = async (courseId) => {
+    const students = await base44.entities.Student.list();
+    const toUpdate = students.filter(s =>
+      s.course_id === courseId ||
+      (s.courses && s.courses.some(c => c.course_id === courseId))
+    );
+    for (const student of toUpdate) {
+      const newCourses = (student.courses || []).filter(c => c.course_id !== courseId);
+      const newCourseId = student.course_id === courseId
+        ? (newCourses.length > 0 ? newCourses[newCourses.length - 1].course_id : null)
+        : student.course_id;
+      const newCourseName = student.course_id === courseId
+        ? (newCourses.length > 0 ? newCourses[newCourses.length - 1].course_name : null)
+        : student.course_name;
+      await base44.entities.Student.update(student.id, {
+        courses: newCourses,
+        course_id: newCourseId,
+        course_name: newCourseName
+      });
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!confirm('האם למחוק קורס זה?')) return;
     try {
       await base44.entities.Course.delete(id);
+      await unlinkCourseFromStudents(id);
       await loadCourses();
     } catch (error) {
       console.error('Error deleting course:', error);
@@ -144,6 +167,7 @@ export default function Courses() {
     try {
       for (const id of selectedIds) {
         await base44.entities.Course.delete(id);
+        await unlinkCourseFromStudents(id);
       }
       setSelectedIds([]);
       await loadCourses();

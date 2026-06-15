@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useSystemSettings } from '../SystemSettingsContext';
 import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown } from 'lucide-react';
 
 // A "block" can be: text, image, video, button
@@ -168,6 +169,7 @@ function buildHtmlFromSections(s, generalSettings) {
 }
 
 export default function EmailTemplateEditor() {
+  const { generalSettings: ctxGeneralSettings } = useSystemSettings();
   const [templates, setTemplates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [sections, setSections] = useState(() => {
@@ -175,7 +177,7 @@ export default function EmailTemplateEditor() {
   });
   const [templateName, setTemplateName] = useState(() => localStorage.getItem('emailTemplate_name') || '');
   const [templateSubject, setTemplateSubject] = useState(() => localStorage.getItem('emailTemplate_subject') || '');
-  const [generalSettings, setGeneralSettings] = useState(null);
+  const generalSettings = ctxGeneralSettings || null;
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [uploadingField, setUploadingField] = useState(null);
@@ -188,17 +190,11 @@ export default function EmailTemplateEditor() {
 
   useEffect(() => {
     loadTemplates();
-    loadGeneralSettings();
   }, []);
 
   const loadTemplates = async () => {
     const data = await base44.entities.EmailTemplate.list();
     setTemplates(data || []);
-  };
-
-  const loadGeneralSettings = async () => {
-    const data = await base44.entities.GeneralSettings.list();
-    if (data && data.length > 0) setGeneralSettings(data[0]);
   };
 
   const parseHtmlToSections = (html) => {

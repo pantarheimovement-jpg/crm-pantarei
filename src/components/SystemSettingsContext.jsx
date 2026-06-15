@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 
 const SystemSettingsContext = createContext(null);
@@ -21,6 +21,7 @@ export const SystemSettingsProvider = ({ children }) => {
   const [automationSettings, setAutomationSettings] = useState(null);
   const [generalSettings, setGeneralSettings] = useState(null);
   const [loading, setLoading] = useState(true);
+  const lastRefreshRef = useRef(0);
 
   useEffect(() => {
     loadSettings();
@@ -38,8 +39,11 @@ export const SystemSettingsProvider = ({ children }) => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // רענון שקט - ללא מסך טעינה (לשימוש כש-visibility חוזר)
+  // רענון שקט - ללא מסך טעינה (לשימוש כש-visibility חוזר) - מקסימום פעם ב-60 שניות
   const refreshSettingsSilently = async () => {
+    const now = Date.now();
+    if (now - lastRefreshRef.current < 60000) return;
+    lastRefreshRef.current = now;
     try {
       const [design, texts, statuses, tStatuses, cStatuses, lSources, automation, general] = await Promise.all([
         base44.entities.DesignSettings.list(),

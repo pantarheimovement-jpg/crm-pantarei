@@ -50,10 +50,20 @@ export default function CourseHeader({ course, registeredCount, leadsCount }) {
             {course.location}
           </div>
         )}
-        {course.price && (
-          <div className="flex items-center gap-2 text-sm text-[var(--crm-text)] opacity-80">
-            <DollarSign className="w-4 h-4" />
-            ₪{course.price}
+        {(course.price_early || course.price_late) && (
+          <div className="flex flex-col gap-1 text-sm text-[var(--crm-text)] opacity-80">
+            {course.price_early && (
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                <span>מוקדם: ₪{course.price_early}</span>
+              </div>
+            )}
+            {course.price_late && (
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                <span>מאוחר: ₪{course.price_late}</span>
+              </div>
+            )}
           </div>
         )}
         {(course.start_date || course.end_date) && (

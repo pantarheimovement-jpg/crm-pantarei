@@ -20,13 +20,17 @@ export default function Courses() {
   const [editingCourse, setEditingCourse] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [viewMode, setViewMode] = useState('cards');
+  const [openPriceAccordion, setOpenPriceAccordion] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     type: 'קורס קבוע',
     description: '',
     schedule: '',
     location: '',
-    price: '',
+    price_early: '',
+    price_late: '',
+    price_early_week1: '', price_early_week2: '', price_early_two_weeks: '', price_early_3days_week1: '', price_early_3days_week2: '',
+    price_late_week1: '', price_late_week2: '', price_late_two_weeks: '', price_late_3days_week1: '', price_late_3days_week2: '',
     max_students: '',
     current_students: 0,
     start_date: '',
@@ -169,7 +173,10 @@ export default function Courses() {
         description: '',
         schedule: '',
         location: '',
-        price: '',
+        price_early: '',
+        price_late: '',
+        price_early_week1: '', price_early_week2: '', price_early_two_weeks: '', price_early_3days_week1: '', price_early_3days_week2: '',
+        price_late_week1: '', price_late_week2: '', price_late_two_weeks: '', price_late_3days_week1: '', price_late_3days_week2: '',
         max_students: '',
         current_students: 0,
         start_date: '',
@@ -192,10 +199,10 @@ export default function Courses() {
     course.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const exportHeaders = ['שם הקורס', 'סוג', 'סטטוס', 'לוז', 'מיקום', 'מחיר', 'רשומים', 'לידים', 'מקסימום', 'אימייל מורה'];
+  const exportHeaders = ['שם הקורס', 'סוג', 'סטטוס', 'לוז', 'מיקום', 'מחיר מוקדם', 'מחיר מאוחר', 'רשומים', 'לידים', 'מקסימום', 'אימייל מורה'];
   const exportRows = filteredCourses.map(c => [
     c.name, c.type, c.status, c.schedule || '', c.location || '',
-    c.price || '', c.current_students || 0, c.leads_count || 0,
+    c.price_early || '', c.price_late || '', c.current_students || 0, c.leads_count || 0,
     c.max_students || '', c.teacher_email || ''
   ]);
 
@@ -385,10 +392,12 @@ export default function Courses() {
                       {course.location}
                     </div>
                   )}
-                  {course.price && (
+                  {(course.price_early || course.price_late) && (
                     <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-80">
                       <DollarSign className="w-4 h-4" />
-                      ₪{course.price}
+                      {course.price_early && <span>מוקדם: ₪{course.price_early}</span>}
+                      {course.price_early && course.price_late && <span className="mx-1">|</span>}
+                      {course.price_late && <span>מאוחר: ₪{course.price_late}</span>}
                     </div>
                   )}
                   <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-80">
@@ -466,7 +475,9 @@ export default function Courses() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{course.schedule || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{course.location || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{course.price ? `₪${course.price}` : '-'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {course.price_early ? `מוקדם: ₪${course.price_early}` : ''}{course.price_early && course.price_late ? ' | ' : ''}{course.price_late ? `מאוחר: ₪${course.price_late}` : ''}{!course.price_early && !course.price_late ? '-' : ''}
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {course.current_students || 0} {course.max_students ? `/ ${course.max_students}` : ''}
                       </td>
@@ -579,14 +590,98 @@ export default function Courses() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">מחיר</label>
+                  <label className="block text-sm font-medium mb-2">מחיר הרשמה מוקדמת ₪</label>
                   <Input
                     type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: e.target.value})}
+                    value={formData.price_early}
+                    onChange={(e) => setFormData({...formData, price_early: e.target.value})}
                     placeholder="0"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">מחיר הרשמה מאוחרת ₪</label>
+                  <Input
+                    type="number"
+                    value={formData.price_late}
+                    onChange={(e) => setFormData({...formData, price_late: e.target.value})}
+                    placeholder="0"
+                  />
+                </div>
+
+                {/* אקורדיאון מחירים לסמסטר קיץ נענע */}
+                {formData.name && formData.name.includes('סמסטר קיץ נענע') && (
+                  <div className="md:col-span-2 border border-purple-200 rounded-xl overflow-hidden">
+                    <div className="bg-purple-50 px-4 py-2">
+                      <p className="text-sm font-bold text-purple-800">📅 מחירי סמסטר קיץ נענע</p>
+                    </div>
+
+                    {/* הרשמה מוקדמת */}
+                    <div className="border-b border-purple-100">
+                      <button
+                        type="button"
+                        onClick={() => setOpenPriceAccordion(openPriceAccordion === 'early' ? null : 'early')}
+                        className="w-full px-4 py-3 flex justify-between items-center text-right hover:bg-purple-50 transition-colors"
+                      >
+                        <span className="font-medium text-purple-900">🟢 הרשמה מוקדמת</span>
+                        <span className="text-purple-500">{openPriceAccordion === 'early' ? '▲' : '▼'}</span>
+                      </button>
+                      {openPriceAccordion === 'early' && (
+                        <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {[
+                            { key: 'price_early_week1', label: 'שבוע ראשון' },
+                            { key: 'price_early_week2', label: 'שבוע שני' },
+                            { key: 'price_early_two_weeks', label: 'שבועיים מלאים' },
+                            { key: 'price_early_3days_week1', label: '3 ימים מהשבוע הראשון' },
+                            { key: 'price_early_3days_week2', label: '3 ימים מהשבוע השני' },
+                          ].map(({ key, label }) => (
+                            <div key={key}>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">{label} ₪</label>
+                              <Input
+                                type="number"
+                                value={formData[key]}
+                                onChange={(e) => setFormData({...formData, [key]: e.target.value})}
+                                placeholder="0"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* הרשמה מאוחרת */}
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setOpenPriceAccordion(openPriceAccordion === 'late' ? null : 'late')}
+                        className="w-full px-4 py-3 flex justify-between items-center text-right hover:bg-purple-50 transition-colors"
+                      >
+                        <span className="font-medium text-purple-900">🔴 הרשמה מאוחרת</span>
+                        <span className="text-purple-500">{openPriceAccordion === 'late' ? '▲' : '▼'}</span>
+                      </button>
+                      {openPriceAccordion === 'late' && (
+                        <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {[
+                            { key: 'price_late_week1', label: 'שבוע ראשון' },
+                            { key: 'price_late_week2', label: 'שבוע שני' },
+                            { key: 'price_late_two_weeks', label: 'שבועיים מלאים' },
+                            { key: 'price_late_3days_week1', label: '3 ימים מהשבוע הראשון' },
+                            { key: 'price_late_3days_week2', label: '3 ימים מהשבוע השני' },
+                          ].map(({ key, label }) => (
+                            <div key={key}>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">{label} ₪</label>
+                              <Input
+                                type="number"
+                                value={formData[key]}
+                                onChange={(e) => setFormData({...formData, [key]: e.target.value})}
+                                placeholder="0"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium mb-2">מספר משתתפים מקסימלי</label>
                   <Input

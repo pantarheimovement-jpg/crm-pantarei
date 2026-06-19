@@ -1069,6 +1069,28 @@ export default function Students() {
                 </div>
               </div>
 
+              {/* שדות סמסטר קיץ נענע */}
+              {((formData.courses || []).some(c => c.course_name === 'סמסטר קיץ נענע') || formData.course_name === 'סמסטר קיץ נענע') && (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-3">
+                  <h3 className="text-sm font-bold text-[var(--crm-primary)]">🌿 סמסטר קיץ נענע</h3>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">אפשרות רישום</label>
+                    <select
+                      value={formData.nana_option || ''}
+                      onChange={(e) => setFormData({...formData, nana_option: e.target.value || undefined})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="">— בחר אפשרות —</option>
+                      <option value="5-16.7">שבועיים מלאים (5-16.7)</option>
+                      <option value="5-9.7">שבוע ראשון (5-9.7)</option>
+                      <option value="12-16.7">שבוע שני (12-16.7)</option>
+                      <option value="5-7.7">שלושה ימים 5-7.7</option>
+                      <option value="12-14.7">שלושה ימים 12-14.7</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div className="md:col-span-2">
                 <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
                   <input

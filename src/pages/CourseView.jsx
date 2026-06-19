@@ -5,6 +5,7 @@ import { Loader2, ShieldX } from 'lucide-react';
 import CourseHeader from '../components/course/CourseHeader';
 import StudentsList from '../components/course/StudentsList';
 import AttendanceManager from '../components/course/AttendanceManager';
+import NanaSummerBreakdown from '../components/course/NanaSummerBreakdown';
 
 export default function CourseView() {
   const { courseId } = useParams();
@@ -118,6 +119,10 @@ export default function CourseView() {
           registeredCount={registeredStudents.length}
           leadsCount={leadsCount}
         />
+
+        {course?.name === 'סמסטר קיץ נענע' && (
+          <NanaSummerBreakdown students={registeredStudents} />
+        )}
 
         <AttendanceManager 
           courseId={courseId} 

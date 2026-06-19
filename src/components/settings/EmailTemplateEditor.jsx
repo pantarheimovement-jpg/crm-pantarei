@@ -365,25 +365,33 @@ export default function EmailTemplateEditor() {
 
   const handleSave = async () => {
     if (!templateName.trim()) { alert('אנא הזיני שם לתבנית'); return; }
+
+    // בדיקת שם כפול
+    const duplicate = templates.find(t => t.name === templateName.trim() && t.id !== selectedId);
+    if (duplicate) {
+      const confirmSave = window.confirm(`קיימת כבר תבנית בשם "${templateName}". האם לשמור בכל זאת? (מומלץ לשנות את השם)`);
+      if (!confirmSave) return;
+    }
+
     setSaving(true);
     try {
       const html = buildHtmlFromSections(sections, generalSettings);
-      const sectionsToSave = { ...sections };
       const data = { 
         name: templateName, 
         subject: templateSubject, 
         body: html, 
-        sections_json: JSON.stringify(sectionsToSave),
+        sections_json: JSON.stringify({ ...sections }),
         active: true 
       };
       if (selectedId && !creatingNew) {
         await base44.entities.EmailTemplate.update(selectedId, data);
+        setTemplates(prev => prev.map(t => t.id === selectedId ? { ...t, ...data } : t));
       } else {
         const created = await base44.entities.EmailTemplate.create(data);
         setSelectedId(created.id);
+        setCreatingNew(false);
+        setTemplates(prev => [...prev, { ...created, ...data }]);
       }
-      await loadTemplates();
-      setCreatingNew(false);
       setSavedIndicator(true);
       setTimeout(() => setSavedIndicator(false), 3000);
     } finally {

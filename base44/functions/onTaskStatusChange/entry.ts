@@ -71,6 +71,31 @@ async function sendWhatsappToNumber(whatsappNumber, messageContent) {
   };
 }
 
+function studentHasNanaCourse(student, courseById) {
+  const entries = student?.courses || [];
+  for (const entry of entries) {
+    const course = courseById.get(entry.course_id);
+    if (course && course.name && course.name.includes('נענע') && course.name !== 'נענע – בית ספר למחול ותנועה סומטית') {
+      return true;
+    }
+    // גם קורס קיץ נענע
+    if (course && course.name && (course.name.includes('סמסטר קיץ') || course.name.includes('יום היכרות נענע'))) {
+      return true;
+    }
+  }
+  // בדיקה גם ב-course_id הראשי
+  if (student?.course_name && (student.course_name.includes('סמסטר קיץ') || student.course_name.includes('יום היכרות נענע'))) {
+    return true;
+  }
+  return false;
+}
+
+function isLbmsTask(task) {
+  const name = String(task?.name || '').toLowerCase();
+  const desc = String(task?.description || '').toLowerCase();
+  return name.includes('lbms') || desc.includes('lbms');
+}
+
 async function findOpenTargetCourseForTask(base44, student, task) {
   const courses = await base44.asServiceRole.entities.Course.list();
   const studentEntries = [...(student?.courses || [])]
@@ -89,6 +114,12 @@ async function findOpenTargetCourseForTask(base44, student, task) {
     if (mainCourse && !candidates.some((course) => course.id === mainCourse.id)) {
       candidates.unshift(mainCourse);
     }
+  }
+
+  // אם המשימה היא LBMS אבל לסטודנטית יש קורס נענע — לא לשלוח
+  if (isLbmsTask(task) && studentHasNanaCourse(student, courseById)) {
+    console.log('⚠️ LBMS task but student has Nana course — skipping WhatsApp send');
+    return null;
   }
 
   const openTargetCourses = candidates.filter((course) =>

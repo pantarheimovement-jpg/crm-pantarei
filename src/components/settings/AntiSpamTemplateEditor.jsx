@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown, ShieldCheck, Upload, Copy } from 'lucide-react';
+import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown, ShieldCheck, Upload, Copy, Send } from 'lucide-react';
 
 const DEFAULT_BLOCK = () => ({ id: Date.now() + Math.random(), type: 'text', title: '', content: '', button_text: '', button_url: '', image_url: '', alt_text: '', video_url: '', video_thumbnail_url: '' });
 
@@ -193,6 +193,10 @@ export default function AntiSpamTemplateEditor() {
   const [showPreview, setShowPreview] = useState(false);
   const [creatingNew, setCreatingNew] = useState(false);
   const [savedIndicator, setSavedIndicator] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testEmail, setTestEmail] = useState('');
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState(null);
 
   useEffect(() => {
     loadTemplates();
@@ -303,6 +307,25 @@ export default function AntiSpamTemplateEditor() {
     setTemplateName('תבנית חדשה (Anti-Spam)');
     setTemplateSubject('');
     setSections({ ...ANTI_SPAM_DEFAULT_SECTIONS });
+  };
+
+  const handleSendTest = async () => {
+    if (!testEmail.trim()) { alert('אנא הכניסי כתובת מייל'); return; }
+    setSendingTest(true);
+    setTestResult(null);
+    try {
+      const html = buildAntiSpamHtml(sections, generalSettings);
+      const res = await base44.functions.invoke('sendEmailSES', {
+        to: testEmail.trim(),
+        subject: `[ניסיון] ${templateSubject || 'תבנית Anti-Spam'}`,
+        html_content: html,
+      });
+      setTestResult({ success: true, msg: 'המייל נשלח בהצלחה! ✅' });
+    } catch (err) {
+      setTestResult({ success: false, msg: `שגיאה: ${err?.response?.data?.error || err.message}` });
+    } finally {
+      setSendingTest(false);
+    }
   };
 
   const previewHtml = buildAntiSpamHtml(sections, generalSettings);
@@ -542,14 +565,47 @@ export default function AntiSpamTemplateEditor() {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3 pt-2">
+      <div className="flex gap-3 pt-2 flex-wrap">
         <button onClick={handleSave} disabled={saving} className={`flex-1 py-3 rounded-full font-semibold flex items-center justify-center gap-2 transition-colors ${savedIndicator ? 'bg-green-600 text-white' : 'bg-[#6D436D] text-white hover:bg-[#5a365a] disabled:bg-gray-400'}`}>
           {saving ? <><Loader2 className="w-5 h-5 animate-spin" />שומר...</> : savedIndicator ? '✅ נשמר!' : <><Save className="w-5 h-5" />שמור תבנית</>}
         </button>
         <button onClick={() => setShowPreview(!showPreview)} className="px-6 py-3 border-2 border-[#6D436D] text-[#6D436D] rounded-full font-semibold flex items-center gap-2 hover:bg-[#6D436D]/10">
           <Eye className="w-5 h-5" />{showPreview ? 'סגור תצוגה' : 'תצוגה מקדימה'}
         </button>
+        <button onClick={() => { setShowTestModal(true); setTestResult(null); }} className="px-6 py-3 border-2 border-blue-500 text-blue-600 rounded-full font-semibold flex items-center gap-2 hover:bg-blue-50">
+          <Send className="w-5 h-5" /> שלחי מייל ניסיון
+        </button>
       </div>
+
+      {/* Test Email Modal */}
+      {showTestModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-800">שליחת מייל ניסיון</h3>
+              <button onClick={() => setShowTestModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-gray-600">יישלח מייל ניסיון עם התבנית הנוכחית (כפי שהיא כרגע, לפני שמירה).</p>
+            <input
+              type="email"
+              value={testEmail}
+              onChange={e => setTestEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+              dir="ltr"
+            />
+            {testResult && (
+              <p className={`text-sm font-medium ${testResult.success ? 'text-green-600' : 'text-red-600'}`}>{testResult.msg}</p>
+            )}
+            <div className="flex gap-3">
+              <button onClick={handleSendTest} disabled={sendingTest} className="flex-1 py-2.5 bg-blue-600 text-white rounded-full font-semibold flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50">
+                {sendingTest ? <><Loader2 className="w-4 h-4 animate-spin" />שולח...</> : <><Send className="w-4 h-4" />שלח</>}
+              </button>
+              <button onClick={() => setShowTestModal(false)} className="px-5 py-2.5 border border-gray-300 text-gray-600 rounded-full hover:bg-gray-50">ביטול</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showPreview && (
         <div className="border border-gray-200 rounded-xl overflow-hidden">

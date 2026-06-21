@@ -172,11 +172,9 @@ export default function EmailTemplateEditor() {
   const { generalSettings: ctxGeneralSettings } = useSystemSettings();
   const [templates, setTemplates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [sections, setSections] = useState(() => {
-    try { const s = localStorage.getItem('emailTemplate_sections'); return s ? JSON.parse(s) : DEFAULT_SECTIONS; } catch { return DEFAULT_SECTIONS; }
-  });
-  const [templateName, setTemplateName] = useState(() => localStorage.getItem('emailTemplate_name') || '');
-  const [templateSubject, setTemplateSubject] = useState(() => localStorage.getItem('emailTemplate_subject') || '');
+  const [sections, setSections] = useState(DEFAULT_SECTIONS);
+  const [templateName, setTemplateName] = useState('');
+  const [templateSubject, setTemplateSubject] = useState('');
   const generalSettings = ctxGeneralSettings || null;
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -190,9 +188,7 @@ export default function EmailTemplateEditor() {
   useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
   useEffect(() => { creatingNewRef.current = creatingNew; }, [creatingNew]);
 
-  useEffect(() => { localStorage.setItem('emailTemplate_sections', JSON.stringify(sections)); }, [sections]);
-  useEffect(() => { localStorage.setItem('emailTemplate_name', templateName); }, [templateName]);
-  useEffect(() => { localStorage.setItem('emailTemplate_subject', templateSubject); }, [templateSubject]);
+
 
   useEffect(() => {
     loadTemplates();

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../components/LanguageContext';
 import { base44 } from '@/api/base44Client';
 import { useSiteSettings } from '../components/SiteSettingsContext';
-import { Mail, Upload, Users, Send, Loader2, CheckCircle, XCircle, Calendar, Plus, FileCode, Layout, Edit3, MessageCircle, BarChart3 } from 'lucide-react';
+import { Mail, Upload, Users, Send, Loader2, CheckCircle, XCircle, Calendar, Plus, FileCode, Layout, Edit3, MessageCircle, BarChart3, StopCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import RichTextEditor from '../components/admin/RichTextEditor';
@@ -48,6 +48,8 @@ export default function NewsletterManager() {
   const [ctaButtons, setCtaButtons] = useState([]);
   const [uploadingCtaImage, setUploadingCtaImage] = useState(false);
 
+  const [queueProgress, setQueueProgress] = useState(null); // { total, sent, failed, batch_id }
+  const [queuePolling, setQueuePolling] = useState(null);
   const [showResendModal, setShowResendModal] = useState(false);
   const [resendData, setResendData] = useState(null);
   const [resendSubject, setResendSubject] = useState('');
@@ -244,6 +246,40 @@ ${ctaButtonsHtml}
 </body></html>`;
   };
 
+  const startQueuePolling = (batchId) => {
+    const interval = setInterval(async () => {
+      try {
+        const pending = await base44.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'pending' }, 'created_date', 1);
+        const sent = await base44.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'sent' });
+        const failed = await base44.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'failed' });
+        const sentCount = sent ? sent.length : 0;
+        const failedCount = failed ? failed.length : 0;
+        const total = sentCount + failedCount + (pending ? pending.length : 0);
+        setQueueProgress({ total, sent: sentCount, failed: failedCount, batch_id: batchId, done: !pending || pending.length === 0 });
+        if (!pending || pending.length === 0) {
+          clearInterval(interval);
+          setQueuePolling(null);
+          setSending(false);
+          loadLogs();
+        }
+      } catch (e) { console.error('polling error', e); }
+    }, 10000);
+    setQueuePolling(interval);
+  };
+
+  const handleCancelQueue = async () => {
+    if (!queueProgress?.batch_id) return;
+    if (!confirm('לבטל את שאר השליחה?')) return;
+    // Mark all pending as cancelled
+    const pending = await base44.entities.NewsletterQueue.filter({ batch_id: queueProgress.batch_id, status: 'pending' });
+    for (const item of (pending || [])) {
+      await base44.entities.NewsletterQueue.update(item.id, { status: 'cancelled' });
+    }
+    if (queuePolling) { clearInterval(queuePolling); setQueuePolling(null); }
+    setSending(false);
+    setQueueProgress(prev => ({ ...prev, done: true }));
+  };
+
   const handleSendClick = () => {
     // Validation
     if ((sendChannel === 'email' || sendChannel === 'both') && !subject) { alert(t('אנא מלאי נושא לאימייל', 'Please fill in email subject')); return; }
@@ -256,103 +292,92 @@ ${ctaButtonsHtml}
   };
 
   const handleSendNewsletter = async () => {
-    let recipients;
-    if (sendMode === 'single') {
-      const matchingSub = subscribers.find(s => s.email?.toLowerCase() === singleRecipient.email.toLowerCase());
-      recipients = [matchingSub || { email: singleRecipient.email, name: singleRecipient.name || '', unsubscribe_token: '' }];
-      if (!confirm(t(`לשלוח ל-${singleRecipient.email}?`, `Send to ${singleRecipient.email}?`))) return;
-    } else {
-      let allSubscribers = await base44.entities.Subscribers.filter({ subscribed: true });
-      if (selectedGroup && selectedGroup !== 'כל הרשימה') {
-        // Filter by group OR groups array
-        allSubscribers = allSubscribers.filter(s => 
-          s.group === selectedGroup || 
-          (s.groups && Array.isArray(s.groups) && s.groups.includes(selectedGroup))
-        );
-      }
-      console.log('Newsletter send - filter group:', selectedGroup, 'found:', allSubscribers?.length);
-      recipients = allSubscribers;
-      if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים פעילים בקבוצה זו', 'No active subscribers found')); return; }
-      if (!confirm(t(`לשלוח ל-${recipients.length} מנויים בקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send to ${recipients.length} subscribers in "${selectedGroup || 'All'}"?`))) return;
-    }
-
     setSending(true); setSendStatus(null);
     const finalEmailContent = buildFinalEmailContent();
 
+    // Single recipient — send directly (no queue needed)
+    if (sendMode === 'single') {
+      if (!confirm(t(`לשלוח ל-${singleRecipient.email}?`, `Send to ${singleRecipient.email}?`))) { setSending(false); return; }
+      try {
+        const matchingSub = subscribers.find(s => s.email?.toLowerCase() === singleRecipient.email.toLowerCase());
+        const recipient = matchingSub || { email: singleRecipient.email, name: singleRecipient.name || '', unsubscribe_token: '' };
+        const personalizedHtml = finalEmailContent
+          .replace(/\{\{unsubscribe_link\}\}/g, getUnsubscribeUrl(recipient.unsubscribe_token))
+          .replace(/\{\{name\}\}/g, recipient.name || '');
+        await base44.functions.invoke('sendEmailSES', {
+          to: recipient.email, subject, html_content: personalizedHtml,
+          from_name: 'פנטהריי', unsubscribe_token: recipient.unsubscribe_token,
+          app_base_url: 'https://crm-pantarei-4738bca7.base44.app',
+        });
+        setSendStatus('success');
+        alert(`✅ נשלח בהצלחה ל-${recipient.email}`);
+      } catch (error) {
+        setSendStatus('error');
+        alert(t('שגיאה בשליחה: ' + error.message, 'Error: ' + error.message));
+      } finally { setSending(false); }
+      return;
+    }
+
+    // WhatsApp only — queue to WhatsAppQueue directly
+    if (sendChannel === 'whatsapp') {
+      let allSubs = await base44.entities.Subscribers.filter({ subscribed: true });
+      if (selectedGroup && selectedGroup !== 'כל הרשימה') {
+        allSubs = allSubs.filter(s => s.group === selectedGroup || (s.groups && s.groups.includes(selectedGroup)));
+      }
+      const waSubs = allSubs.filter(r => r.whatsapp).map(r => ({
+        subscriber_id: r.id, subscriber_name: r.name || '',
+        whatsapp_number: r.whatsapp,
+        message_content: whatsappMessage.replace(/\{\{name\}\}/g, r.name || ''),
+        status: 'pending'
+      }));
+      if (!waSubs.length) { alert('לא נמצאו מנויים עם וואטסאפ'); setSending(false); return; }
+      if (!confirm(`לשלוח ל-${waSubs.length} מנויים בוואטסאפ?`)) { setSending(false); return; }
+      await base44.entities.WhatsappQueue.bulkCreate(waSubs);
+      await base44.entities.NewsletterLogs.create({ subject: 'הודעת וואטסאפ', content: whatsappMessage, group: selectedGroup, recipients_count: waSubs.length, status: 'נשלח בהצלחה', sent_date: new Date().toISOString(), sent_by: 'WhatsApp' });
+      setSendStatus('success');
+      setSending(false);
+      alert(`✅ ${waSubs.length} הודעות נוספו לתור הוואטסאפ!`);
+      loadLogs();
+      return;
+    }
+
+    // Email or both — use backend queue (can close browser!)
+    const batchId = `newsletter_${Date.now()}`;
+    if (!confirm(t(`השליחה תתבצע ברקע — ניתן לסגור את הדפדפן!\nלשלוח לקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send will run in background — you can close the browser!\nSend to group "${selectedGroup || 'All'}"?`))) {
+      setSending(false); return;
+    }
+
     try {
-      let emailSuccessCount = 0, emailErrorCount = 0, whatsappSuccessCount = 0, whatsappErrorCount = 0;
-      let lastSentVia = 'SES';
-      const BATCH_SIZE = SUBSCRIBERS_PER_GROUP;
-      const totalBatches = Math.ceil(recipients.length / BATCH_SIZE);
+      const res = await base44.functions.invoke('queueNewsletter', {
+        subject, html_content: finalEmailContent, group: selectedGroup, batch_id: batchId
+      });
+      const queued = res.data?.queued || 0;
+      setQueueProgress({ total: queued, sent: 0, failed: 0, batch_id: batchId, done: false });
+      startQueuePolling(batchId);
 
-      for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-        const batchRecipients = recipients.slice(batchIndex * BATCH_SIZE, Math.min((batchIndex + 1) * BATCH_SIZE, recipients.length));
-
-        if (sendChannel === 'email' || sendChannel === 'both') {
-          const emailRecipients = batchRecipients.filter(r => r.email);
-          console.log('Newsletter send - batch', batchIndex, 'emailRecipients:', emailRecipients.length);
-          for (const recipient of emailRecipients) {
-            const personalizedHtml = finalEmailContent
-              .replace(/\{\{unsubscribe_link\}\}/g, getUnsubscribeUrl(recipient.unsubscribe_token))
-              .replace(/\{\{name\}\}/g, recipient.name || '');
-            try {
-              const res = await base44.functions.invoke('sendEmailSES', {
-                to: recipient.email,
-                subject,
-                html_content: personalizedHtml,
-                from_name: 'פנטהריי',
-                unsubscribe_token: recipient.unsubscribe_token,
-                app_base_url: 'https://crm-pantarei-4738bca7.base44.app',
-              });
-              if (res.data?.sent_via) lastSentVia = res.data.sent_via === 'gmail' ? 'Gmail' : 'SES';
-              emailSuccessCount++;
-            } catch (error) {
-              console.error('Email send error for', recipient.email, error);
-              emailErrorCount++;
-            }
-          }
+      // Handle WhatsApp part of "both" immediately
+      if (sendChannel === 'both' && whatsappMessage.trim()) {
+        let allSubs = await base44.entities.Subscribers.filter({ subscribed: true });
+        if (selectedGroup && selectedGroup !== 'כל הרשימה') {
+          allSubs = allSubs.filter(s => s.group === selectedGroup || (s.groups && s.groups.includes(selectedGroup)));
         }
-
-        if (sendChannel === 'whatsapp' || sendChannel === 'both') {
-          const whatsappRecipientsRaw = batchRecipients.filter(r => r.whatsapp);
-          const whatsappRecipients = [];
-          for (const recipient of whatsappRecipientsRaw) {
-            const msgContent = whatsappMessage.replace(/\{\{name\}\}/g, recipient.name || '');
-            whatsappRecipients.push({
-              subscriber_id: recipient.id, subscriber_name: recipient.name || '',
-              whatsapp_number: recipient.whatsapp,
-              message_content: msgContent,
-              status: 'pending'
-            });
-          }
-          if (whatsappRecipients.length > 0) {
-            try { await base44.entities.WhatsappQueue.bulkCreate(whatsappRecipients); whatsappSuccessCount += whatsappRecipients.length; }
-            catch (error) { whatsappErrorCount += whatsappRecipients.length; }
-          }
-        }
+        const waSubs = allSubs.filter(r => r.whatsapp).map(r => ({
+          subscriber_id: r.id, subscriber_name: r.name || '',
+          whatsapp_number: r.whatsapp,
+          message_content: whatsappMessage.replace(/\{\{name\}\}/g, r.name || ''),
+          status: 'pending'
+        }));
+        if (waSubs.length > 0) await base44.entities.WhatsappQueue.bulkCreate(waSubs);
       }
 
-      const totalLogRecipients = (sendChannel !== 'whatsapp' ? emailSuccessCount : 0) + (sendChannel !== 'email' ? whatsappSuccessCount : 0);
-      const emailProvider = lastSentVia || 'SES';
-      console.log('Newsletter send complete - emails:', emailSuccessCount, 'errors:', emailErrorCount, 'whatsapp:', whatsappSuccessCount, 'via:', emailProvider);
-      await base44.entities.NewsletterLogs.create({
-        subject: subject || t('הודעת וואטסאפ', 'WhatsApp Message'),
-        content: sendChannel === 'whatsapp' ? whatsappMessage : finalEmailContent,
-        group: selectedGroup, recipients_count: totalLogRecipients,
-        status: (emailErrorCount + whatsappErrorCount) > 0 ? `נשלח חלקית (${emailErrorCount + whatsappErrorCount} שגיאות)` : 'נשלח בהצלחה',
-        sent_date: new Date().toISOString(),
-        sent_by: sendChannel === 'both' ? `${emailProvider} + WhatsApp` : sendChannel === 'email' ? emailProvider : 'WhatsApp'
-      });
-
       setSendStatus('success');
-      alert(t(`✅ השליחה הושלמה!\n📧 אימיילים: ${emailSuccessCount}\n💬 וואטסאפ: ${whatsappSuccessCount}`, `✅ Done!\n📧 Emails: ${emailSuccessCount}\n💬 WhatsApp: ${whatsappSuccessCount}`));
-      setSubject(''); setContent(''); setHtmlContent(''); setWhatsappMessage(''); setCtaButtons([]); setSingleRecipient(null);
-      loadLogs();
+      alert(`✅ ${queued} מיילים נוספו לתור!\nהשליחה מתבצעת ברקע — ניתן לסגור את הדפדפן.\nדוח יישלח למייל כשיסתיים.`);
+      setSubject(''); setContent(''); setHtmlContent(''); setCtaButtons([]);
     } catch (error) {
       setSendStatus('error');
-      await base44.entities.NewsletterLogs.create({ subject: subject || 'הודעת וואטסאפ', content: finalEmailContent || whatsappMessage, group: selectedGroup, recipients_count: 0, status: 'נכשל', sent_date: new Date().toISOString(), error_message: error.message });
-      alert(t('שגיאה בשליחת הניוזלטר: ' + error.message, 'Error: ' + error.message));
-    } finally { setSending(false); }
+      setSending(false);
+      alert(t('שגיאה: ' + error.message, 'Error: ' + error.message));
+    }
   };
 
   const handleResendNewsletter = async (log) => {
@@ -649,7 +674,30 @@ ${ctaButtonsHtml}
                   </div>
                 )}
 
-                {sendStatus === 'success' && (
+                {queueProgress && !queueProgress.done && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold text-blue-800">📤 שליחה מתבצעת ברקע — ניתן לסגור את הדפדפן</span>
+                      <button onClick={handleCancelQueue} className="text-red-600 hover:text-red-800 flex items-center gap-1 text-sm">
+                        <StopCircle className="w-4 h-4" /> עצור
+                      </button>
+                    </div>
+                    <div className="w-full bg-blue-200 rounded-full h-3 mb-1">
+                      <div className="bg-blue-600 h-3 rounded-full transition-all" style={{ width: `${queueProgress.total > 0 ? Math.round(((queueProgress.sent + queueProgress.failed) / queueProgress.total) * 100) : 0}%` }} />
+                    </div>
+                    <p className="text-sm text-blue-700">
+                      נשלחו {queueProgress.sent} מתוך {queueProgress.total}
+                      {queueProgress.failed > 0 && ` • ${queueProgress.failed} שגיאות`}
+                    </p>
+                  </div>
+                )}
+                {queueProgress?.done && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <span className="text-green-800">✅ השליחה הושלמה! נשלחו {queueProgress.sent} מיילים. דוח נשלח למייל.</span>
+                  </div>
+                )}
+                {!queueProgress && sendStatus === 'success' && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
                     <CheckCircle className="w-5 h-5 text-green-600" />
                     <span className="text-green-800">{t('הניוזלטר נשלח בהצלחה!', 'Newsletter sent successfully!')}</span>

@@ -183,6 +183,8 @@ export default function EmailTemplateEditor() {
   const [uploadingField, setUploadingField] = useState(null);
   const [creatingNew, setCreatingNew] = useState(false);
   const [savedIndicator, setSavedIndicator] = useState(false);
+  const selectedIdRef = useRef(null);
+  const creatingNewRef = useRef(false);
 
   useEffect(() => { localStorage.setItem('emailTemplate_sections', JSON.stringify(sections)); }, [sections]);
   useEffect(() => { localStorage.setItem('emailTemplate_name', templateName); }, [templateName]);
@@ -345,9 +347,9 @@ export default function EmailTemplateEditor() {
 
   const loadTemplate = (template) => {
     setSelectedId(template.id);
+    selectedIdRef.current = template.id;
     setTemplateName(template.name || '');
     setTemplateSubject(template.subject || '');
-    // If sections_json exists, use it directly (accurate). Otherwise fall back to HTML parsing.
     if (template.sections_json) {
       try {
         const parsed = JSON.parse(template.sections_json);
@@ -361,13 +363,17 @@ export default function EmailTemplateEditor() {
       setSections(parsed);
     }
     setCreatingNew(false);
+    creatingNewRef.current = false;
   };
 
   const handleSave = async () => {
     if (!templateName.trim()) { alert('אנא הזיני שם לתבנית'); return; }
 
+    const currentId = selectedIdRef.current;
+    const isNew = creatingNewRef.current || !currentId;
+
     // בדיקת שם כפול
-    const duplicate = templates.find(t => t.name === templateName.trim() && t.id !== selectedId);
+    const duplicate = templates.find(t => t.name === templateName.trim() && t.id !== currentId);
     if (duplicate) {
       const confirmSave = window.confirm(`קיימת כבר תבנית בשם "${templateName}". האם לשמור בכל זאת? (מומלץ לשנות את השם)`);
       if (!confirmSave) return;
@@ -383,11 +389,13 @@ export default function EmailTemplateEditor() {
         sections_json: JSON.stringify({ ...sections }),
         active: true 
       };
-      if (selectedId && !creatingNew) {
-        await base44.entities.EmailTemplate.update(selectedId, data);
-        setTemplates(prev => prev.map(t => t.id === selectedId ? { ...t, ...data } : t));
+      if (!isNew) {
+        await base44.entities.EmailTemplate.update(currentId, data);
+        setTemplates(prev => prev.map(t => t.id === currentId ? { ...t, ...data } : t));
       } else {
         const created = await base44.entities.EmailTemplate.create(data);
+        selectedIdRef.current = created.id;
+        creatingNewRef.current = false;
         setSelectedId(created.id);
         setCreatingNew(false);
         setTemplates(prev => [...prev, { ...created, ...data }]);
@@ -457,7 +465,9 @@ export default function EmailTemplateEditor() {
 
   const startNew = () => {
     setCreatingNew(true);
+    creatingNewRef.current = true;
     setSelectedId(null);
+    selectedIdRef.current = null;
     setTemplateName('תבנית חדשה');
     setTemplateSubject('');
     setSections({ ...DEFAULT_SECTIONS });

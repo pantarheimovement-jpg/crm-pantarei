@@ -183,8 +183,12 @@ export default function EmailTemplateEditor() {
   const [uploadingField, setUploadingField] = useState(null);
   const [creatingNew, setCreatingNew] = useState(false);
   const [savedIndicator, setSavedIndicator] = useState(false);
-  const selectedIdRef = useRef(null);
+  const selectedIdRef = useRef(selectedId);
   const creatingNewRef = useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
+  useEffect(() => { creatingNewRef.current = creatingNew; }, [creatingNew]);
 
   useEffect(() => { localStorage.setItem('emailTemplate_sections', JSON.stringify(sections)); }, [sections]);
   useEffect(() => { localStorage.setItem('emailTemplate_name', templateName); }, [templateName]);

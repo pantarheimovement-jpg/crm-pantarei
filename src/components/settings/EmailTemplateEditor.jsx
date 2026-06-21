@@ -186,7 +186,6 @@ export default function EmailTemplateEditor() {
 
   // Keep ref in sync with state
   useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
-  useEffect(() => { creatingNewRef.current = creatingNew; }, [creatingNew]);
 
 
 
@@ -194,16 +193,13 @@ export default function EmailTemplateEditor() {
     loadTemplates();
   }, []);
 
-  const loadTemplatesRef = useRef(null);
+  const lastLoadRef = useRef(0);
   const loadTemplates = async () => {
-    if (loadTemplatesRef.current) return;
-    loadTemplatesRef.current = true;
-    try {
-      const data = await base44.entities.EmailTemplate.list();
-      setTemplates(data || []);
-    } finally {
-      setTimeout(() => { loadTemplatesRef.current = false; }, 3000);
-    }
+    const now = Date.now();
+    if (now - lastLoadRef.current < 5000) return;
+    lastLoadRef.current = now;
+    const data = await base44.entities.EmailTemplate.list();
+    setTemplates(data || []);
   };
 
   const parseHtmlToSections = (html) => {

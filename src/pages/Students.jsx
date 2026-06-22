@@ -429,7 +429,19 @@ export default function Students() {
         student.status !== 'Historical Lead' &&
         student.lead_source !== 'ייבוא היסטורי LBMS';
     } else if (statusFilter === 'registered') {
-      matchesStatus = student.status === 'נרשם' || student.status === 'רשום';
+      if (courseFilter) {
+        // כשיש גם סינון קורס — לבדוק את הסטטוס הספציפי לקורס הזה
+        const courseEntry = (student.courses || []).find(c => c.course_id === courseFilter);
+        if (courseEntry) {
+          matchesStatus = courseEntry.status === 'נרשם' || courseEntry.status === 'רשום';
+        } else if (student.course_id === courseFilter) {
+          matchesStatus = student.status === 'נרשם' || student.status === 'רשום';
+        } else {
+          matchesStatus = false;
+        }
+      } else {
+        matchesStatus = student.status === 'נרשם' || student.status === 'רשום';
+      }
     } else if (statusFilter !== 'all') {
       matchesStatus = student.status === statusFilter;
     }

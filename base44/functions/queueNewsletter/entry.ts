@@ -36,10 +36,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No subscribers found' }, { status: 400 });
     }
 
-    // Build personalized queue records
+    // Build personalized queue records — ensure every subscriber has a token
     const APP_BASE_URL = 'https://crm-pantarei-4738bca7.base44.app';
+
+    // Generate tokens for subscribers that are missing one
+    const tokenUpdates = emailSubscribers.filter(s => !s.unsubscribe_token);
+    for (const s of tokenUpdates) {
+      const token = crypto.randomUUID();
+      await base44.asServiceRole.entities.Subscribers.update(s.id, { unsubscribe_token: token });
+      s.unsubscribe_token = token;
+    }
+    if (tokenUpdates.length > 0) {
+      console.log(`✅ Generated tokens for ${tokenUpdates.length} subscribers missing one`);
+    }
+
     const records = emailSubscribers.map(s => {
-      const unsubscribeUrl = `${APP_BASE_URL}/functions/unsubscribeHandler?token=${s.unsubscribe_token || ''}`;
+      const unsubscribeUrl = `${APP_BASE_URL}/functions/unsubscribeHandler?token=${s.unsubscribe_token}`;
       const personalizedHtml = html_content
         .replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl)
         .replace(/\{\{name\}\}/g, s.name || '');
@@ -49,7 +61,7 @@ Deno.serve(async (req) => {
         name: s.name || '',
         subject,
         html_content: personalizedHtml,
-        unsubscribe_token: s.unsubscribe_token || '',
+        unsubscribe_token: s.unsubscribe_token,
         status: 'pending'
       };
     });

@@ -6,6 +6,13 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
+    // Wait until 20:30 Israel time on 27 June 2026 (= 17:30 UTC)
+    const now = new Date();
+    const startTime = new Date('2026-06-27T17:30:00Z');
+    if (now < startTime) {
+      return Response.json({ success: true, processed: 0, message: `Waiting until 20:30 IL time. Now: ${now.toISOString()}` });
+    }
+
     // Load pending items - process 100 per run
     const pending = await base44.asServiceRole.entities.NewsletterQueue.filter(
       { status: 'pending' }, 'created_date', 100

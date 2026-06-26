@@ -39,14 +39,18 @@ Deno.serve(async (req) => {
     // Build personalized queue records — ensure every subscriber has a token
     const APP_BASE_URL = 'https://crm-pantarei-4738bca7.base44.app';
 
-    // Generate tokens for subscribers that are missing one
+    // Generate tokens for subscribers that are missing one — bulk update
     const tokenUpdates = emailSubscribers.filter(s => !s.unsubscribe_token);
-    for (const s of tokenUpdates) {
-      const token = crypto.randomUUID();
-      await base44.asServiceRole.entities.Subscribers.update(s.id, { unsubscribe_token: token });
-      s.unsubscribe_token = token;
-    }
     if (tokenUpdates.length > 0) {
+      const bulkData = tokenUpdates.map(s => {
+        const token = crypto.randomUUID();
+        s.unsubscribe_token = token;
+        return { id: s.id, unsubscribe_token: token };
+      });
+      const BULK_SIZE = 500;
+      for (let i = 0; i < bulkData.length; i += BULK_SIZE) {
+        await base44.asServiceRole.entities.Subscribers.bulkUpdate(bulkData.slice(i, i + BULK_SIZE));
+      }
       console.log(`✅ Generated tokens for ${tokenUpdates.length} subscribers missing one`);
     }
 

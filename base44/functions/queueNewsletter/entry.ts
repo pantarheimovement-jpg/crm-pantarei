@@ -36,9 +36,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No subscribers found' }, { status: 400 });
     }
 
-    // Build personalized queue records — ensure every subscriber has a token
-    const APP_BASE_URL = 'https://crm-pantarei-4738bca7.base44.app';
-
     // Generate tokens for subscribers that are missing one — bulk update
     const tokenUpdates = emailSubscribers.filter(s => !s.unsubscribe_token);
     if (tokenUpdates.length > 0) {
@@ -54,24 +51,30 @@ Deno.serve(async (req) => {
       console.log(`✅ Generated tokens for ${tokenUpdates.length} subscribers missing one`);
     }
 
-    const records = emailSubscribers.map(s => {
-      const unsubscribeUrl = `${APP_BASE_URL}/functions/unsubscribeHandler?token=${s.unsubscribe_token}`;
-      const personalizedHtml = html_content
-        .replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl)
-        .replace(/\{\{name\}\}/g, s.name || '');
-      return {
-        batch_id,
-        email: s.email,
-        name: s.name || '',
-        subject,
-        html_content: personalizedHtml,
-        unsubscribe_token: s.unsubscribe_token,
-        status: 'pending'
-      };
+    // Save the HTML template ONCE in NewsletterLogs as a draft
+    await base44.asServiceRole.entities.NewsletterLogs.create({
+      subject,
+      content: html_content,
+      group: group || 'כל הרשימה',
+      recipients_count: emailSubscribers.length,
+      status: 'בתהליך',
+      sent_date: new Date().toISOString(),
+      sent_by: 'SES (Queue)',
+      error_message: batch_id // store batch_id here temporarily for lookup
     });
 
-    // BulkCreate in chunks of 200 to avoid payload limits
-    const CHUNK_SIZE = 200;
+    // Build slim queue records — NO html_content per record
+    const records = emailSubscribers.map(s => ({
+      batch_id,
+      email: s.email,
+      name: s.name || '',
+      subject,
+      unsubscribe_token: s.unsubscribe_token,
+      status: 'pending'
+    }));
+
+    // BulkCreate in chunks of 500
+    const CHUNK_SIZE = 500;
     let totalQueued = 0;
     for (let i = 0; i < records.length; i += CHUNK_SIZE) {
       const chunk = records.slice(i, i + CHUNK_SIZE);

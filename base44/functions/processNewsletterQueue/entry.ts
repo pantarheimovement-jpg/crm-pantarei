@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
+const APP_BASE_URL = 'https://crm-pantarei-4738bca7.base44.app';
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -13,17 +15,33 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, processed: 0, message: 'No pending items' });
     }
 
+    const batchId = pending[0].batch_id;
+
+    // Load the HTML template from NewsletterLogs (stored once per batch)
+    const logs = await base44.asServiceRole.entities.NewsletterLogs.filter({ error_message: batchId });
+    const htmlTemplate = logs && logs.length > 0 ? logs[0].content : null;
+
+    if (!htmlTemplate) {
+      return Response.json({ error: 'HTML template not found for batch ' + batchId }, { status: 400 });
+    }
+
     let sent = 0, failed = 0;
 
     for (const item of pending) {
       try {
-          await base44.asServiceRole.functions.invoke('sendEmailSES', {
+        // Personalize HTML at send time
+        const unsubscribeUrl = `${APP_BASE_URL}/functions/unsubscribeHandler?token=${item.unsubscribe_token}`;
+        const personalizedHtml = htmlTemplate
+          .replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl)
+          .replace(/\{\{name\}\}/g, item.name || '');
+
+        await base44.asServiceRole.functions.invoke('sendEmailSES', {
           to: item.email,
           subject: item.subject,
-          html_content: item.html_content,
+          html_content: personalizedHtml,
           from_name: 'פנטהריי',
           unsubscribe_token: item.unsubscribe_token,
-          app_base_url: 'https://crm-pantarei-4738bca7.base44.app',
+          app_base_url: APP_BASE_URL,
         });
 
         await base44.asServiceRole.entities.NewsletterQueue.update(item.id, {
@@ -41,34 +59,27 @@ Deno.serve(async (req) => {
     }
 
     // Check if this batch_id is now fully complete → send summary email
-    if (pending.length > 0) {
-      const batchId = pending[0].batch_id;
-      const remaining = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'pending' }, 'created_date', 1);
-      const totalSent = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'sent' });
-      const totalFailed = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'failed' });
+    const remaining = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'pending' }, 'created_date', 1);
+    const totalSent = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'sent' });
+    const totalFailed = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'failed' });
 
-      if (!remaining || remaining.length === 0) {
-        // All done - send summary email + create log
-        const totalSentCount = totalSent ? totalSent.length : 0;
-        const totalFailedCount = totalFailed ? totalFailed.length : 0;
+    if (!remaining || remaining.length === 0) {
+      const totalSentCount = totalSent ? totalSent.length : 0;
+      const totalFailedCount = totalFailed ? totalFailed.length : 0;
+      const batchSubject = pending[0].subject || 'ניוזלטר';
 
-        // Get subject from batch
-        const batchSubject = pending[0].subject || 'ניוזלטר';
+      await base44.asServiceRole.integrations.Core.SendEmail({
+        to: 'pantarhei.movement@gmail.com',
+        subject: `✅ שליחת הניוזלטר הושלמה`,
+        body: `שליחת הניוזלטר "${batchSubject}" הושלמה בהצלחה!\n\n📧 נשלח ל-${totalSentCount} נמענים\n❌ נכשל: ${totalFailedCount}\n\nקמפיין: ${batchId}`
+      });
 
-        await base44.asServiceRole.integrations.Core.SendEmail({
-          to: 'pantarhei.movement@gmail.com',
-          subject: `✅ שליחת הניוזלטר הושלמה`,
-          body: `שליחת הניוזלטר "${batchSubject}" הושלמה בהצלחה!\n\n📧 נשלח ל-${totalSentCount} נמענים\n❌ נכשל: ${totalFailedCount}\n\nקמפיין: ${batchId}`
-        });
-
-        // Create newsletter log
-        await base44.asServiceRole.entities.NewsletterLogs.create({
-          subject: batchSubject,
-          group: 'queue',
+      // Update the log record (find by batch_id stored in error_message)
+      if (logs && logs.length > 0) {
+        await base44.asServiceRole.entities.NewsletterLogs.update(logs[0].id, {
           recipients_count: totalSentCount,
           status: totalFailedCount > 0 ? `נשלח חלקית (${totalFailedCount} שגיאות)` : 'נשלח בהצלחה',
-          sent_date: new Date().toISOString(),
-          sent_by: 'SES (Queue)'
+          error_message: totalFailedCount > 0 ? `${totalFailedCount} כשלונות` : null
         });
       }
     }

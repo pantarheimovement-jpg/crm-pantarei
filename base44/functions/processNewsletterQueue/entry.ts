@@ -6,16 +6,14 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Wait until 20:30 Israel time on 27 June 2026 (= 17:30 UTC)
-    const now = new Date();
-    const startTime = new Date('2026-06-27T17:30:00Z');
-    if (now < startTime) {
-      return Response.json({ success: true, processed: 0, message: `Waiting until 20:30 IL time. Now: ${now.toISOString()}` });
-    }
+    // Support test_mode: process only 1 item and don't mark as sent
+    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    const testMode = body.test_mode === true;
+    const limit = testMode ? 1 : 200;
 
-    // Load pending items - process 100 per run
+    // Load pending items
     const pending = await base44.asServiceRole.entities.NewsletterQueue.filter(
-      { status: 'pending' }, 'created_date', 100
+      { status: 'pending' }, 'created_date', limit
     );
 
     if (!pending || pending.length === 0) {
@@ -24,23 +22,39 @@ Deno.serve(async (req) => {
 
     const batchId = pending[0].batch_id;
 
-    // Load the HTML template from NewsletterLogs (stored once per batch)
+    // Try to load HTML from NewsletterLogs (fallback: use html_content from item itself)
     const logs = await base44.asServiceRole.entities.NewsletterLogs.filter({ error_message: batchId });
-    const htmlTemplate = logs && logs.length > 0 ? logs[0].content : null;
-
-    if (!htmlTemplate) {
-      return Response.json({ error: 'HTML template not found for batch ' + batchId }, { status: 400 });
-    }
+    const logHtmlTemplate = logs && logs.length > 0 ? logs[0].content : null;
 
     let sent = 0, failed = 0;
 
     for (const item of pending) {
       try {
-        // Personalize HTML at send time
+        // Use log template if available, otherwise fall back to item's own html_content
+        const htmlTemplate = logHtmlTemplate || item.html_content;
+
+        if (!htmlTemplate) {
+          throw new Error('No HTML content found for item ' + item.id);
+        }
+
         const unsubscribeUrl = `${APP_BASE_URL}/functions/unsubscribeHandler?token=${item.unsubscribe_token}`;
         const personalizedHtml = htmlTemplate
           .replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl)
           .replace(/\{\{name\}\}/g, item.name || '');
+
+        if (testMode) {
+          // In test mode, just return the first item's details without sending
+          return Response.json({
+            test_mode: true,
+            item_id: item.id,
+            email: item.email,
+            subject: item.subject,
+            html_source: logHtmlTemplate ? 'NewsletterLogs' : 'item.html_content',
+            html_length: htmlTemplate.length,
+            has_unsubscribe_token: !!item.unsubscribe_token,
+            message: 'Test mode: no email sent'
+          });
+        }
 
         await base44.asServiceRole.functions.invoke('sendEmailSES', {
           to: item.email,
@@ -67,10 +81,10 @@ Deno.serve(async (req) => {
 
     // Check if this batch_id is now fully complete → send summary email
     const remaining = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'pending' }, 'created_date', 1);
-    const totalSent = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'sent' });
-    const totalFailed = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'failed' });
 
     if (!remaining || remaining.length === 0) {
+      const totalSent = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'sent' });
+      const totalFailed = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'failed' });
       const totalSentCount = totalSent ? totalSent.length : 0;
       const totalFailedCount = totalFailed ? totalFailed.length : 0;
       const batchSubject = pending[0].subject || 'ניוזלטר';
@@ -81,7 +95,6 @@ Deno.serve(async (req) => {
         body: `שליחת הניוזלטר "${batchSubject}" הושלמה בהצלחה!\n\n📧 נשלח ל-${totalSentCount} נמענים\n❌ נכשל: ${totalFailedCount}\n\nקמפיין: ${batchId}`
       });
 
-      // Update the log record (find by batch_id stored in error_message)
       if (logs && logs.length > 0) {
         await base44.asServiceRole.entities.NewsletterLogs.update(logs[0].id, {
           recipients_count: totalSentCount,

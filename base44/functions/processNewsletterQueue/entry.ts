@@ -1,8 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const APP_BASE_URL = 'https://crm-pantarei-4738bca7.base44.app';
-const BATCH_SIZE = 14;
-const DELAY_MS = 200;
+const BATCH_SIZE = 100;
+const DELAY_MS = 100;
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 

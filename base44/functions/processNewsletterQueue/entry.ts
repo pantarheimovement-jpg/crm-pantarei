@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { SESClient, SendRawEmailCommand } from 'npm:@aws-sdk/client-ses@^3';
 
 const APP_BASE_URL = 'https://crm-pantarei-4738bca7.base44.app';
 const BATCH_SIZE = 14;
@@ -6,12 +7,90 @@ const DELAY_MS = 200;
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+function encodeBase64Utf8(value) {
+  const bytes = new TextEncoder().encode(String(value || ''));
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function htmlToPlainText(html) {
+  return String(html || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s+\n/g, '\n\n')
+    .trim();
+}
+
+async function sendViaSES(to, subject, htmlContent, unsubscribeToken) {
+  const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID');
+  const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY');
+  const region = Deno.env.get('AWS_REGION') || 'eu-north-1';
+  const configSet = Deno.env.get('SES_CONFIGURATION_SET') || 'pantarhei-tracking';
+
+  const client = new SESClient({ region, credentials: { accessKeyId, secretAccessKey } });
+
+  const subjectB64 = encodeBase64Utf8(subject);
+  const htmlB64 = encodeBase64Utf8(htmlContent);
+  const textB64 = encodeBase64Utf8(htmlToPlainText(htmlContent));
+  const boundary = `pantarhei_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+  const unsubUrl = unsubscribeToken
+    ? `<mailto:pantarhei.movement@gmail.com?subject=unsubscribe>, <${APP_BASE_URL}/functions/unsubscribeHandler?token=${unsubscribeToken}>`
+    : `<mailto:pantarhei.movement@gmail.com?subject=unsubscribe>`;
+
+  const rawMessage = [
+    `From: פנטהריי <newsletter@pantarhei-studio.co.il>`,
+    `To: ${to}`,
+    `Reply-To: info@pantarhei-studio.co.il`,
+    `Subject: =?UTF-8?B?${subjectB64}?=`,
+    `MIME-Version: 1.0`,
+    `List-Unsubscribe: ${unsubUrl}`,
+    `List-Unsubscribe-Post: List-Unsubscribe=One-Click`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    ``,
+    `--${boundary}`,
+    `Content-Type: text/plain; charset=UTF-8`,
+    `Content-Transfer-Encoding: base64`,
+    ``,
+    textB64,
+    `--${boundary}`,
+    `Content-Type: text/html; charset=UTF-8`,
+    `Content-Transfer-Encoding: base64`,
+    ``,
+    htmlB64,
+    `--${boundary}--`,
+  ].join('\r\n');
+
+  const encoder = new TextEncoder();
+  const command = new SendRawEmailCommand({
+    RawMessage: { Data: encoder.encode(rawMessage) },
+    ConfigurationSetName: configSet,
+  });
+
+  await client.send(command);
+  console.log(`✅ Sent to ${to}`);
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
 
-    // === TEST MODE: send directly to a test email, don't touch queue ===
+    // === TEST MODE ===
     if (body.test_mode === true && body.send_test_to && body.batch_id) {
       const logs = await base44.asServiceRole.entities.NewsletterLogs.filter({ error_message: body.batch_id });
       const log = logs && logs[0];
@@ -22,15 +101,7 @@ Deno.serve(async (req) => {
         .replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl)
         .replace(/\{\{name\}\}/g, 'איינת');
 
-      await base44.asServiceRole.functions.invoke('sendEmailSES', {
-        to: body.send_test_to,
-        subject: log.subject,
-        html_content: personalizedHtml,
-        from_name: 'פנטהריי',
-        unsubscribe_token: 'test-preview-token',
-        app_base_url: APP_BASE_URL,
-      });
-
+      await sendViaSES(body.send_test_to, log.subject, personalizedHtml, 'test-preview-token');
       return Response.json({ success: true, sent_to: body.send_test_to, subject: log.subject });
     }
 
@@ -59,14 +130,7 @@ Deno.serve(async (req) => {
           .replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl)
           .replace(/\{\{name\}\}/g, item.name || '');
 
-        await base44.asServiceRole.functions.invoke('sendEmailSES', {
-          to: item.email,
-          subject: item.subject,
-          html_content: personalizedHtml,
-          from_name: 'פנטהריי',
-          unsubscribe_token: item.unsubscribe_token,
-          app_base_url: APP_BASE_URL,
-        });
+        await sendViaSES(item.email, item.subject, personalizedHtml, item.unsubscribe_token);
 
         await base44.asServiceRole.entities.NewsletterQueue.update(item.id, {
           status: 'sent',
@@ -75,6 +139,7 @@ Deno.serve(async (req) => {
         sent++;
         await sleep(DELAY_MS);
       } catch (err) {
+        console.error(`❌ Failed for ${item.email}: ${err.message}`);
         await base44.asServiceRole.entities.NewsletterQueue.update(item.id, {
           status: 'failed',
           error_message: err.message
@@ -112,6 +177,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ success: true, processed: pending.length, sent, failed });
   } catch (error) {
+    console.error('processNewsletterQueue error:', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

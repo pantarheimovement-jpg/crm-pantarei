@@ -114,6 +114,7 @@ Deno.serve(async (req) => {
     const logHtmlTemplate = logs && logs.length > 0 ? logs[0].content : null;
 
     let sent = 0, failed = 0;
+    const errors = [];
     for (const item of pending) {
       try {
         const htmlTemplate = logHtmlTemplate || item.html_content;
@@ -134,6 +135,7 @@ Deno.serve(async (req) => {
           status: 'failed', error_message: err.message
         });
         failed++;
+        errors.push({ email: item.email, error: String(err && err.message || err), stack: String(err && err.stack || '') });
       }
     }
 
@@ -161,7 +163,7 @@ Deno.serve(async (req) => {
         });
       }
     }
-    return Response.json({ success: true, processed: pending.length, sent, failed });
+    return Response.json({ success: true, processed: pending.length, sent, failed, errors: errors.slice(0, 3) });
   } catch (error) {
     console.error('processNewsletterQueue error:', error.message);
     return Response.json({ error: error.message }, { status: 500 });

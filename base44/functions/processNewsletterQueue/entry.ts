@@ -1,19 +1,42 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const APP_BASE_URL = 'https://crm-pantarei-4738bca7.base44.app';
+const BATCH_SIZE = 14;
+const DELAY_MS = 200;
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-
-    // Support test_mode: process only 1 item and don't mark as sent
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-    const testMode = body.test_mode === true;
-    const limit = testMode ? 1 : 200;
 
-    // Load pending items
+    // === TEST MODE: send directly to a test email, don't touch queue ===
+    if (body.test_mode === true && body.send_test_to && body.batch_id) {
+      const logs = await base44.asServiceRole.entities.NewsletterLogs.filter({ error_message: body.batch_id });
+      const log = logs && logs[0];
+      if (!log) return Response.json({ error: 'No log found for batch_id ' + body.batch_id }, { status: 404 });
+
+      const unsubscribeUrl = `${APP_BASE_URL}/functions/unsubscribeHandler?token=test-preview-token`;
+      const personalizedHtml = log.content
+        .replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl)
+        .replace(/\{\{name\}\}/g, 'איינת');
+
+      await base44.asServiceRole.functions.invoke('sendEmailSES', {
+        to: body.send_test_to,
+        subject: log.subject,
+        html_content: personalizedHtml,
+        from_name: 'פנטהריי',
+        unsubscribe_token: 'test-preview-token',
+        app_base_url: APP_BASE_URL,
+      });
+
+      return Response.json({ success: true, sent_to: body.send_test_to, subject: log.subject });
+    }
+
+    // === NORMAL MODE: process pending queue items ===
     const pending = await base44.asServiceRole.entities.NewsletterQueue.filter(
-      { status: 'pending' }, 'created_date', limit
+      { status: 'pending' }, 'created_date', BATCH_SIZE
     );
 
     if (!pending || pending.length === 0) {
@@ -21,8 +44,6 @@ Deno.serve(async (req) => {
     }
 
     const batchId = pending[0].batch_id;
-
-    // Try to load HTML from NewsletterLogs (fallback: use html_content from item itself)
     const logs = await base44.asServiceRole.entities.NewsletterLogs.filter({ error_message: batchId });
     const logHtmlTemplate = logs && logs.length > 0 ? logs[0].content : null;
 
@@ -30,51 +51,13 @@ Deno.serve(async (req) => {
 
     for (const item of pending) {
       try {
-        // Use log template if available, otherwise fall back to item's own html_content
         const htmlTemplate = logHtmlTemplate || item.html_content;
-
-        if (!htmlTemplate) {
-          throw new Error('No HTML content found for item ' + item.id);
-        }
+        if (!htmlTemplate) throw new Error('No HTML content found for item ' + item.id);
 
         const unsubscribeUrl = `${APP_BASE_URL}/functions/unsubscribeHandler?token=${item.unsubscribe_token}`;
         const personalizedHtml = htmlTemplate
           .replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl)
           .replace(/\{\{name\}\}/g, item.name || '');
-
-        if (testMode) {
-          const sendTestTo = body.send_test_to;
-          if (sendTestTo) {
-            // Send one real email to the test address
-            await base44.asServiceRole.functions.invoke('sendEmailSES', {
-              to: sendTestTo,
-              subject: item.subject,
-              html_content: personalizedHtml,
-              from_name: 'פנטהריי',
-              unsubscribe_token: item.unsubscribe_token,
-              app_base_url: APP_BASE_URL,
-            });
-            return Response.json({
-              test_mode: true,
-              sent_to: sendTestTo,
-              original_recipient: item.email,
-              subject: item.subject,
-              html_source: logHtmlTemplate ? 'NewsletterLogs' : 'item.html_content',
-              message: 'Test email sent successfully'
-            });
-          }
-          // No send_test_to: dry run only
-          return Response.json({
-            test_mode: true,
-            item_id: item.id,
-            email: item.email,
-            subject: item.subject,
-            html_source: logHtmlTemplate ? 'NewsletterLogs' : 'item.html_content',
-            html_length: htmlTemplate.length,
-            has_unsubscribe_token: !!item.unsubscribe_token,
-            message: 'Test mode: no email sent'
-          });
-        }
 
         await base44.asServiceRole.functions.invoke('sendEmailSES', {
           to: item.email,
@@ -90,6 +73,7 @@ Deno.serve(async (req) => {
           sent_at: new Date().toISOString()
         });
         sent++;
+        await sleep(DELAY_MS);
       } catch (err) {
         await base44.asServiceRole.entities.NewsletterQueue.update(item.id, {
           status: 'failed',
@@ -99,8 +83,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check if this batch_id is now fully complete → send summary email
-    const remaining = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'pending' }, 'created_date', 1);
+    // Check if batch is fully complete
+    const remaining = await base44.asServiceRole.entities.NewsletterQueue.filter(
+      { batch_id: batchId, status: 'pending' }, 'created_date', 1
+    );
 
     if (!remaining || remaining.length === 0) {
       const totalSent = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'sent' });
@@ -112,7 +98,7 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.integrations.Core.SendEmail({
         to: 'pantarhei.movement@gmail.com',
         subject: `✅ שליחת הניוזלטר הושלמה`,
-        body: `שליחת הניוזלטר "${batchSubject}" הושלמה בהצלחה!\n\n📧 נשלח ל-${totalSentCount} נמענים\n❌ נכשל: ${totalFailedCount}\n\nקמפיין: ${batchId}`
+        body: `שליחת הניוזלטר "${batchSubject}" הושלמה!\n\n📧 נשלח: ${totalSentCount}\n❌ נכשל: ${totalFailedCount}\n\nקמפיין: ${batchId}`
       });
 
       if (logs && logs.length > 0) {

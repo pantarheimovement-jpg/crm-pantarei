@@ -106,23 +106,15 @@ Deno.serve(async (req) => {
     }
 
     // === NORMAL MODE: process pending queue items ===
-    // Find the oldest pending batch first, then fetch only items from that batch
-    const firstPending = await base44.asServiceRole.entities.NewsletterQueue.filter(
-      { status: 'pending' }, 'created_date', 1
-    );
-
-    if (!firstPending || firstPending.length === 0) {
-      return Response.json({ success: true, processed: 0, message: 'No pending items' });
-    }
-
-    const batchId = firstPending[0].batch_id;
     const pending = await base44.asServiceRole.entities.NewsletterQueue.filter(
-      { batch_id: batchId, status: 'pending' }, 'created_date', BATCH_SIZE
+      { status: 'pending' }, 'created_date', BATCH_SIZE
     );
 
     if (!pending || pending.length === 0) {
       return Response.json({ success: true, processed: 0, message: 'No pending items' });
     }
+
+    const batchId = pending[0].batch_id;
     const logs = await base44.asServiceRole.entities.NewsletterLogs.filter({ error_message: batchId });
     const logHtmlTemplate = logs && logs.length > 0 ? logs[0].content : null;
 

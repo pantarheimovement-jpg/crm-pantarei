@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     console.log(`📦 Config: hours_back=${hoursBack}, dry_run=${dryRun}`);
 
     // Get Gmail access token
-    const { accessToken } = await base44.asServiceRole.connectors.getConnection("gmail");
+    const { accessToken } = await base44.connectors.getConnection("gmail");
 
     if (!accessToken) {
       console.error('❌ No Gmail access token');

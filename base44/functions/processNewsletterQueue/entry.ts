@@ -43,7 +43,27 @@ Deno.serve(async (req) => {
           .replace(/\{\{name\}\}/g, item.name || '');
 
         if (testMode) {
-          // In test mode, just return the first item's details without sending
+          const sendTestTo = body.send_test_to;
+          if (sendTestTo) {
+            // Send one real email to the test address
+            await base44.asServiceRole.functions.invoke('sendEmailSES', {
+              to: sendTestTo,
+              subject: item.subject,
+              html_content: personalizedHtml,
+              from_name: 'פנטהריי',
+              unsubscribe_token: item.unsubscribe_token,
+              app_base_url: APP_BASE_URL,
+            });
+            return Response.json({
+              test_mode: true,
+              sent_to: sendTestTo,
+              original_recipient: item.email,
+              subject: item.subject,
+              html_source: logHtmlTemplate ? 'NewsletterLogs' : 'item.html_content',
+              message: 'Test email sent successfully'
+            });
+          }
+          // No send_test_to: dry run only
           return Response.json({
             test_mode: true,
             item_id: item.id,

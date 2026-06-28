@@ -36,17 +36,19 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No subscribers found' }, { status: 400 });
     }
 
-    // Generate tokens for subscribers that are missing one — bulk update
+    // Generate tokens for subscribers that are missing one — parallel batches of 20
     const tokenUpdates = emailSubscribers.filter(s => !s.unsubscribe_token);
     if (tokenUpdates.length > 0) {
-      const bulkData = tokenUpdates.map(s => {
-        const token = crypto.randomUUID();
-        s.unsubscribe_token = token;
-        return { id: s.id, unsubscribe_token: token };
-      });
-      const BULK_SIZE = 500;
-      for (let i = 0; i < bulkData.length; i += BULK_SIZE) {
-        await base44.asServiceRole.entities.Subscribers.bulkUpdate(bulkData.slice(i, i + BULK_SIZE));
+      for (const s of tokenUpdates) {
+        s.unsubscribe_token = crypto.randomUUID();
+      }
+      const PARALLEL = 20;
+      for (let i = 0; i < tokenUpdates.length; i += PARALLEL) {
+        await Promise.all(
+          tokenUpdates.slice(i, i + PARALLEL).map(s =>
+            base44.asServiceRole.entities.Subscribers.update(s.id, { unsubscribe_token: s.unsubscribe_token })
+          )
+        );
       }
       console.log(`✅ Generated tokens for ${tokenUpdates.length} subscribers missing one`);
     }

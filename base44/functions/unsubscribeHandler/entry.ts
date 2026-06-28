@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
     // GET = show confirmation page, POST = actually unsubscribe
     if (method === 'GET') {
-      const actionUrl = `https://pantarhei-studio.co.il/functions/unsubscribeHandler`;
+      const actionUrl = `https://crm-pantarei-4738bca7.base44.app/functions/unsubscribeHandler`;
       return new Response(renderConfirmPage(subscriber, token, actionUrl), {
         status: 200,
         headers: { 'Content-Type': 'text/html; charset=UTF-8' },

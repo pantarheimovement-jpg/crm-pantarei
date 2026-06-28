@@ -106,15 +106,23 @@ Deno.serve(async (req) => {
     }
 
     // === NORMAL MODE: process pending queue items ===
+    // Find the oldest pending batch first, then fetch only items from that batch
+    const firstPending = await base44.asServiceRole.entities.NewsletterQueue.filter(
+      { status: 'pending' }, 'created_date', 1
+    );
+
+    if (!firstPending || firstPending.length === 0) {
+      return Response.json({ success: true, processed: 0, message: 'No pending items' });
+    }
+
+    const batchId = firstPending[0].batch_id;
     const pending = await base44.asServiceRole.entities.NewsletterQueue.filter(
-      { status: 'pending' }, 'created_date', BATCH_SIZE
+      { batch_id: batchId, status: 'pending' }, 'created_date', BATCH_SIZE
     );
 
     if (!pending || pending.length === 0) {
       return Response.json({ success: true, processed: 0, message: 'No pending items' });
     }
-
-    const batchId = pending[0].batch_id;
     const logs = await base44.asServiceRole.entities.NewsletterLogs.filter({ error_message: batchId });
     const logHtmlTemplate = logs && logs.length > 0 ? logs[0].content : null;
 
@@ -154,10 +162,12 @@ Deno.serve(async (req) => {
     );
 
     if (!remaining || remaining.length === 0) {
-      const totalSent = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'sent' });
-      const totalFailed = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: batchId, status: 'failed' });
-      const totalSentCount = totalSent ? totalSent.length : 0;
-      const totalFailedCount = totalFailed ? totalFailed.length : 0;
+      const failedItems = await base44.asServiceRole.entities.NewsletterQueue.filter(
+        { batch_id: batchId, status: 'failed' }, 'created_date', 5000
+      );
+      const totalFailedCount = failedItems ? failedItems.length : 0;
+      const logTotal = logs && logs.length > 0 ? (logs[0].recipients_count || 0) : 0;
+      const totalSentCount = logTotal - totalFailedCount;
       const batchSubject = pending[0].subject || 'ניוזלטר';
 
       await base44.asServiceRole.integrations.Core.SendEmail({

@@ -134,6 +134,29 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
 
+    if (body.write_test === true) {
+      const fp = await base44.asServiceRole.entities.NewsletterQueue.filter({ status: 'pending' }, 'created_date', 1);
+      if (!fp || fp.length === 0) return Response.json({ write_test: true, error: 'no pending item' });
+      const it = fp[0];
+      const marker = 'writetest_' + Date.now();
+      let updateError = null;
+      try {
+        await base44.asServiceRole.entities.NewsletterQueue.update(it.id, { error_message: marker });
+      } catch (e) {
+        updateError = String(e && e.message || e);
+      }
+      const found = await base44.asServiceRole.entities.NewsletterQueue.filter({ error_message: marker }, 'created_date', 1);
+      const rePending = await base44.asServiceRole.entities.NewsletterQueue.filter({ status: 'pending' }, 'created_date', 1);
+      return Response.json({
+        write_test: true,
+        item_id: it.id,
+        marker,
+        updateError,
+        persisted: found && found.length > 0,
+        first_pending_id_now: rePending && rePending[0] ? rePending[0].id : null
+      });
+    }
+
     if (body.test_mode === true && body.send_test_to && body.batch_id) {
       const logs = await base44.asServiceRole.entities.NewsletterLogs.filter({ error_message: body.batch_id });
       const log = logs && logs[0];

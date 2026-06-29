@@ -211,11 +211,12 @@ Deno.serve(async (req) => {
     if (body.report_mode === true && body.batch_id) {
       const rb = body.batch_id;
       const logsR = await base44.asServiceRole.entities.NewsletterLogs.filter({ error_message: rb });
-      const subjR = (logsR && logsR[0] ? logsR[0].subject : null) || 'ניוזלטר';
+      const sampleR = await base44.asServiceRole.entities.NewsletterQueue.filter({ batch_id: rb }, 'created_date', 1);
+      const subjR = (sampleR && sampleR[0] ? sampleR[0].subject : null) || (logsR && logsR[0] ? logsR[0].subject : null) || 'ניוזלטר';
       const sentR = await countByStatus(base44, rb, 'sent');
       const failedR = await countByStatus(base44, rb, 'failed');
       const cancelledR = await countByStatus(base44, rb, 'cancelled');
-      await sendViaSES('pantarhei.movement@gmail.com', `דוח שליחת הניוזלטר — ${subjR}`, buildReportHtml(subjR, sentR, failedR, cancelledR, rb), null);
+      await sendViaSES('pantarhei.movement@gmail.com', `דוח שליחת הניוזלטר "${subjR}"`, buildReportHtml(subjR, sentR, failedR, cancelledR, rb), null);
       return Response.json({ success: true, report: true, sent: sentR, failed: failedR, cancelled: cancelledR });
     }
 
@@ -269,8 +270,8 @@ Deno.serve(async (req) => {
       const sentCount = await countByStatus(base44, batchId, 'sent');
       const failedCount = await countByStatus(base44, batchId, 'failed');
       const cancelledCount = await countByStatus(base44, batchId, 'cancelled');
-      const batchSubject = (logs && logs[0] ? logs[0].subject : null) || pending[0].subject || 'ניוזלטר';
-      await sendViaSES('pantarhei.movement@gmail.com', `דוח שליחת הניוזלטר — ${batchSubject}`, buildReportHtml(batchSubject, sentCount, failedCount, cancelledCount, batchId), null);
+      const batchSubject = (pending && pending[0] ? pending[0].subject : null) || (logs && logs[0] ? logs[0].subject : null) || 'ניוזלטר';
+      await sendViaSES('pantarhei.movement@gmail.com', `דוח שליחת הניוזלטר "${batchSubject}"`, buildReportHtml(batchSubject, sentCount, failedCount, cancelledCount, batchId), null);
       if (logs && logs.length > 0) {
         await base44.asServiceRole.entities.NewsletterLogs.update(logs[0].id, {
           recipients_count: sentCount,

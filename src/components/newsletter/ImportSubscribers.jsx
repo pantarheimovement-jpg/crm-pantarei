@@ -57,27 +57,64 @@ function detectHeaders(firstRow) {
   return detected ? mapping : null;
 }
 
+function normalizePhone(phone) {
+  if (!phone) return '';
+  // Remove all non-digit characters (including RTL/LTR marks, spaces, dashes, parentheses)
+  const digits = phone.replace(/[^\d]/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('972')) return digits;
+  if (digits.startsWith('0')) return '972' + digits.slice(1);
+  if (digits.length === 9) return '972' + digits; // e.g. 541234567
+  return digits;
+}
+
+function isPhoneNumber(str) {
+  const digits = str.replace(/[^\d]/g, '');
+  return digits.length >= 9 && digits.length <= 13;
+}
+
 function parseItems(text) {
   const lines = text.split(/\r?\n/).filter(l => l.trim());
   if (lines.length === 0) return [];
 
   const firstRow = parseCSVLine(lines[0]);
   const headerMapping = detectHeaders(firstRow);
+
+  // Detect tab-separated format (phone\tname or name\tphone)
+  const isTabFormat = !headerMapping && lines.some(l => l.includes('\t'));
+
   const startIdx = headerMapping ? 1 : 0;
 
   const items = [];
   for (let i = startIdx; i < lines.length; i++) {
-    const cols = parseCSVLine(lines[i]);
+    const line = lines[i].trim();
+    if (!line) continue;
     const item = {};
-    if (headerMapping) {
-      for (const [colIdx, field] of Object.entries(headerMapping)) {
-        item[field] = cols[parseInt(colIdx)] || '';
+
+    if (isTabFormat) {
+      const parts = line.split('\t').map(p => p.trim());
+      let phone = '', name = '';
+      for (const part of parts) {
+        if (isPhoneNumber(part)) phone = part;
+        else if (part) name = part;
       }
+      item.whatsapp = normalizePhone(phone);
+      item.name = name;
+      item.email = '';
     } else {
-      for (let j = 0; j < FIXED_ORDER.length; j++) {
-        item[FIXED_ORDER[j]] = cols[j] || '';
+      const cols = parseCSVLine(line);
+      if (headerMapping) {
+        for (const [colIdx, field] of Object.entries(headerMapping)) {
+          item[field] = cols[parseInt(colIdx)] || '';
+        }
+      } else {
+        for (let j = 0; j < FIXED_ORDER.length; j++) {
+          item[FIXED_ORDER[j]] = cols[j] || '';
+        }
       }
+      if (item.whatsapp) item.whatsapp = normalizePhone(item.whatsapp);
     }
+
     if (item.email || item.whatsapp) items.push(item);
   }
   return items;

@@ -1,10 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const WHATSAPP_MIN_INTERVAL_MS = 10 * 60 * 1000;
-const DAILY_LIMIT = 10;
+const WHATSAPP_MIN_INTERVAL_MS = 3 * 60 * 1000;
+const DAILY_LIMIT = 60;
 const TIME_ZONE = 'Asia/Jerusalem';
 const SEND_WINDOW_START = 9;
-const SEND_WINDOW_END = 20;
+const SEND_WINDOW_END = 21;
 
 function getIsraelParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -28,6 +28,16 @@ function getIsraelDateKey(date = new Date()) {
 
 function getIsraelHour(date = new Date()) {
   return Number(getIsraelParts(date).hour);
+}
+
+function normalizeWaNumber(raw) {
+  let num = String(raw || '').replace(/\D/g, '');
+  if (!num) return '';
+  if (num.startsWith('00')) num = num.slice(2);
+  if (num.startsWith('972')) return num;
+  if (num.startsWith('0')) return '972' + num.slice(1);
+  if (num.length === 9 && num.startsWith('5')) return '972' + num;
+  return num;
 }
 
 function isWithinSendingWindow(date = new Date()) {
@@ -116,7 +126,7 @@ Deno.serve(async (req) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          chatId: `${message.whatsapp_number}@c.us`,
+          chatId: `${normalizeWaNumber(message.whatsapp_number)}@c.us`,
           message: message.message_content
         })
       }

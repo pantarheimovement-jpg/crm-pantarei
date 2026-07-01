@@ -5,7 +5,7 @@ import { useLanguage } from '../LanguageContext';
 import { useSiteSettings } from '../SiteSettingsContext';
 import { useSystemSettings } from '../SystemSettingsContext';
 import { base44 } from '@/api/base44Client';
-import { Menu, X, Globe, Settings, LogIn, LogOut, MoreVertical, LayoutDashboard, GraduationCap, Users, MessageSquare, CheckSquare, Mail, BarChart3 } from 'lucide-react';
+import { Menu, X, Globe, Settings, LogIn, LogOut, MoreVertical, LayoutDashboard, GraduationCap, Users, MessageSquare, CheckSquare, Mail, BarChart3, DollarSign } from 'lucide-react';
 
 // Hook לניהול משתמש
 function useUser() {
@@ -94,6 +94,13 @@ export default function Header() {
       labelEn: 'Newsletter',
       path: 'NewsletterManager',
       icon: Mail
+    },
+    {
+      key: 'revenue',
+      label: 'הכנסות',
+      labelEn: 'Revenue',
+      path: 'CourseRevenue',
+      icon: DollarSign
     }
   ];
 

@@ -552,8 +552,8 @@ export default function SubscribersList({ subscribers, students, loading, active
                     <td className="px-4 py-4 text-center">
                       <input type="checkbox" checked={selectedIds.includes(sub.id)} onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, sub.id] : selectedIds.filter(id => id !== sub.id))} className="w-5 h-5" />
                     </td>
-                    <td className="px-4 py-4 text-sm font-medium" style={{ wordBreak: 'break-all' }}>{sub.email || '-'}</td>
-                    <td className="px-4 py-4 text-sm" style={{ wordBreak: 'break-all' }}>
+                    <td className="px-4 py-4 text-sm font-medium" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.email || '-'}</td>
+                    <td className="px-4 py-4 text-sm" style={{ whiteSpace: 'nowrap' }}>
                       {sub.whatsapp ? (
                         <div className="flex items-center gap-2">
                           <span>{sub.whatsapp}</span>

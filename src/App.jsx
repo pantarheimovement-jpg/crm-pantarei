@@ -8,6 +8,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import CourseView from './pages/CourseView';
+import CourseRevenue from './pages/CourseRevenue';
 import NewsletterAnalytics from './pages/NewsletterAnalytics';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -63,6 +64,11 @@ const AuthenticatedApp = () => {
       <Route path="/CourseView/:courseId" element={
         <LayoutWrapper currentPageName="CourseView">
           <CourseView />
+        </LayoutWrapper>
+      } />
+      <Route path="/CourseRevenue" element={
+        <LayoutWrapper currentPageName="CourseRevenue">
+          <CourseRevenue />
         </LayoutWrapper>
       } />
       <Route path="/NewsletterAnalytics" element={

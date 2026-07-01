@@ -165,40 +165,22 @@ export default function Students() {
         cleanedData.courses = updatedCourses;
       }
 
+      // עדכן is_customer אם יש קורס רשום/נרשם
+      const hasRegistered = (cleanedData.courses || []).some(c => c.status === 'רשום' || c.status === 'נרשם');
+      if (hasRegistered) cleanedData.is_customer = true;
+
       if (editingStudent) {
         await base44.entities.Student.update(editingStudent.id, cleanedData);
       } else {
         await base44.entities.Student.create(cleanedData);
       }
 
-      // === סנכרון Subscribers אם יש email ו-marketing_consent ===
-      const savedEmail = cleanedData.email?.toLowerCase().trim();
-      if (savedEmail && cleanedData.marketing_consent) {
-        try {
-          const existingSubs = await base44.entities.Subscribers.filter({ email: savedEmail });
-          const courseGroups = (cleanedData.courses || []).map(c => c.course_name).filter(Boolean);
-          const mainGroup = cleanedData.course_name || courseGroups[0] || '';
-          
-          if (existingSubs && existingSubs.length > 0) {
-            const sub = existingSubs[0];
-            const updatedGroups = [...(sub.groups || [])];
-            courseGroups.forEach(g => { if (!updatedGroups.includes(g)) updatedGroups.push(g); });
-            await base44.entities.Subscribers.update(sub.id, {
-              subscribed: true, marketing_consent: true, name: cleanedData.full_name,
-              group: mainGroup || sub.group, groups: updatedGroups
-            });
-          } else {
-            await base44.entities.Subscribers.create({
-              email: savedEmail, name: cleanedData.full_name,
-              whatsapp: cleanedData.phone ? (cleanedData.phone.startsWith('0') ? '972' + cleanedData.phone.substring(1) : cleanedData.phone) : '',
-              subscribed: true, marketing_consent: true, source: 'ידני',
-              group: mainGroup, groups: courseGroups.length > 0 ? courseGroups : (mainGroup ? [mainGroup] : [])
-            });
-          }
-        } catch (subErr) {
-          console.error('Subscriber sync error:', subErr);
-        }
-      }
+      // === סנכרון Subscribers לפי קבוצות קורסים ===
+      await syncSubscriberGroups(
+        { ...cleanedData, email: cleanedData.email },
+        cleanedData.courses || [],
+        originalStudent?.courses || []
+      );
 
       // עדכון חכם של current_students בקורס
       if (formData.course_id) {
@@ -481,6 +463,10 @@ export default function Students() {
         student.status !== 'ליד היסטורי' &&
         student.status !== 'Historical Lead' &&
         student.lead_source !== 'ייבוא היסטורי LBMS';
+    } else if (statusFilter === 'customers') {
+      matchesStatus = student.is_customer === true;
+    } else if (statusFilter === 'open_lead') {
+      matchesStatus = student.is_customer === true && !!getOpenCourse(student);
     } else if (statusFilter === 'registered') {
       if (courseFilter) {
         // כשיש גם סינון קורס — לבדוק את הסטטוס הספציפי לקורס הזה
@@ -618,7 +604,9 @@ export default function Students() {
           {[
             { key: 'all', label: 'הכל' },
             { key: 'leads', label: 'לידים חדשים' },
-            { key: 'registered', label: 'רשומים' }
+            { key: 'registered', label: 'רשומים' },
+            { key: 'customers', label: 'לקוחות' },
+            { key: 'open_lead', label: 'לקוחות עם ליד פתוח' }
           ].map(filter => (
             <button
               key={filter.key}
@@ -711,6 +699,18 @@ export default function Students() {
                     >
                       {student.status}
                     </span>
+                    {student.is_customer && (() => {
+                      const openCourse = getOpenCourse(student);
+                      return openCourse ? (
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-300">
+                          לקוחה • ליד פתוח בקורס {openCourse.course_name}
+                        </span>
+                      ) : (
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-300">
+                          לקוחה
+                        </span>
+                      );
+                    })()}
                   </div>
                   <div className="flex gap-2">
                     <button

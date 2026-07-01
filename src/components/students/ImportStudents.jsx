@@ -166,6 +166,30 @@ export default function ImportStudents({ onImportComplete }) {
     setIsProcessing(false);
   };
 
+  const syncSubscriberForImport = async (student, courseName) => {
+    const email = student.email?.toLowerCase().trim();
+    if (!email) return;
+    const group = courseName ? `${courseName} - רשומים` : 'ייבוא Summit';
+    try {
+      const existing = await base44.entities.Subscribers.filter({ email });
+      if (existing?.length > 0) {
+        const sub = existing[0];
+        const groups = [...(sub.groups || [])];
+        if (!groups.includes(group)) groups.push(group);
+        await base44.entities.Subscribers.update(sub.id, { groups, name: student.full_name });
+      } else {
+        const phone = student.phone || '';
+        await base44.entities.Subscribers.create({
+          email, name: student.full_name,
+          whatsapp: phone.startsWith('0') ? '972' + phone.slice(1) : phone,
+          subscribed: true, source: 'ייבוא Summit', groups: [group]
+        });
+      }
+    } catch (e) {
+      console.error('Subscriber sync error:', e);
+    }
+  };
+
   const processImport = async (studentsToAdd, studentsToMerge = [], studentsSkipped = []) => {
     console.log(`📥 Importing ${studentsToAdd.length} students, merging ${studentsToMerge.length}`);
     
@@ -183,10 +207,12 @@ export default function ImportStudents({ onImportComplete }) {
           phone: student.phone || "",
           email: student.email || "",
           status: "רשום",
+          is_customer: true,
           lead_source: "ייבוא Summit",
           notes: student.description || "",
           registration_date: student.parsedDate ? student.parsedDate.split('T')[0] : null
         });
+        await syncSubscriberForImport(student, student.course_name || '');
         results.added.push({ name: student.full_name });
         console.log(`✅ Added: ${student.full_name}`);
       } catch (err) {

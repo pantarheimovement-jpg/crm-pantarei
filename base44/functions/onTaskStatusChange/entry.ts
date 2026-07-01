@@ -300,23 +300,23 @@ Deno.serve(async (req) => {
           return c;
         });
         updateData.courses = updatedCourses;
-        
-        // חישוב סטטוס כללי לפי עדיפות
-        const STATUS_PRIORITY = ['רשום', 'נרשם', 'ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'לא רלוונטי'];
-        let bestStatus = newStudentStatus;
-        let bestPriority = STATUS_PRIORITY.indexOf(newStudentStatus);
-        if (bestPriority === -1) bestPriority = STATUS_PRIORITY.length;
-        
-        for (const c of updatedCourses) {
-          const idx = STATUS_PRIORITY.indexOf(c.status);
-          const priority = idx === -1 ? STATUS_PRIORITY.length : idx;
-          if (priority < bestPriority) {
-            bestPriority = priority;
-            bestStatus = c.status;
-          }
+
+        // חישוב סטטוס ראשי (מודל דו-ממדי):
+        // הליד הפתוח החם ביותר גובר; אם אין לידים פתוחים — "רשום" (אם לקוחה)
+        const OPEN_LEAD_STATUSES = ['ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'בבדיקה'];
+        const REGISTERED_SET = ['רשום', 'נרשם'];
+
+        let bestStatus = null;
+        for (const status of OPEN_LEAD_STATUSES) {
+          if (updatedCourses.some(c => c.status === status)) { bestStatus = status; break; }
         }
-        
+        const hasRegistered = updatedCourses.some(c => REGISTERED_SET.includes(c.status) || c.status === 'הסתיים');
+        if (!bestStatus) {
+          bestStatus = hasRegistered ? 'רשום' : newStudentStatus;
+        }
+
         updateData.status = bestStatus;
+        if (hasRegistered) updateData.is_customer = true;
         console.log(`📊 Per-course update: course ${targetCourseId} → "${newStudentStatus}", general status → "${bestStatus}"`);
       } else {
         // אין מערך courses או לא מצאנו קורס — עדכון סטטוס כללי בלבד (כמו קודם)

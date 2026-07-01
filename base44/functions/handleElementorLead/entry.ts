@@ -406,12 +406,16 @@ Deno.serve(async (req) => {
           }
         }
 
-        // שיוך קבוצה לפי שם הקורס
-        const subscriberGroup = course_name || (course ? course.name : '');
-        
+        // שיוך קבוצה לפי שם הקורס — ליד חדש נכנס לקבוצת "מתעניינים"
+        const baseCourseName = course_name || (course ? course.name : '');
+        const subscriberGroup = baseCourseName ? `${baseCourseName} - מתעניינים` : '';
+        const registeredGroup = baseCourseName ? `${baseCourseName} - רשומים` : '';
+
         if (existingSub) {
           const updatedGroups = existingSub.groups || [];
-          if (subscriberGroup && !updatedGroups.includes(subscriberGroup)) {
+          // לא מוסיפים ל"מתעניינים" אם כבר רשומה לקורס הזה
+          const alreadyRegistered = registeredGroup && updatedGroups.includes(registeredGroup);
+          if (subscriberGroup && !alreadyRegistered && !updatedGroups.includes(subscriberGroup)) {
             updatedGroups.push(subscriberGroup);
           }
           await base44.asServiceRole.entities.Subscribers.update(existingSub.id, {

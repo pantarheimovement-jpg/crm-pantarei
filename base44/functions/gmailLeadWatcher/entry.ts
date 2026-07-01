@@ -268,6 +268,55 @@ ${emailBody}
         createdCount++;
 
         // =============================================
+        // STEP 5b: Subscriber sync — קבוצת "{קורס} - מתעניינים"
+        // =============================================
+        if (course && studentData.email) {
+          try {
+            const interestedGroup = `${course.name} - מתעניינים`;
+            const registeredGroup = `${course.name} - רשומים`;
+            let whatsappNum = '';
+            if (storedPhone) {
+              whatsappNum = storedPhone.startsWith('0') ? '972' + storedPhone.substring(1) : storedPhone;
+            }
+
+            let existingSub = null;
+            const bySubEmail = await base44.asServiceRole.entities.Subscribers.filter({ email: studentData.email });
+            if (bySubEmail?.length) existingSub = bySubEmail[0];
+            if (!existingSub && whatsappNum) {
+              const bySubPhone = await base44.asServiceRole.entities.Subscribers.filter({ whatsapp: whatsappNum });
+              if (bySubPhone?.length) existingSub = bySubPhone[0];
+            }
+
+            if (existingSub) {
+              const groups = existingSub.groups || [];
+              const alreadyRegistered = groups.includes(registeredGroup);
+              if (!alreadyRegistered && !groups.includes(interestedGroup)) {
+                groups.push(interestedGroup);
+                await base44.asServiceRole.entities.Subscribers.update(existingSub.id, {
+                  group: existingSub.group || interestedGroup,
+                  groups
+                });
+                console.log(`✅ Subscriber added to "${interestedGroup}"`);
+              }
+            } else {
+              await base44.asServiceRole.entities.Subscribers.create({
+                email: studentData.email,
+                name: newStudent.full_name,
+                whatsapp: whatsappNum,
+                subscribed: true,
+                marketing_consent: false,
+                source: 'ליד ממייל',
+                group: interestedGroup,
+                groups: [interestedGroup]
+              });
+              console.log(`✅ New subscriber in "${interestedGroup}"`);
+            }
+          } catch (subError) {
+            console.error('⚠️ Subscriber sync error (non-fatal):', subError.message);
+          }
+        }
+
+        // =============================================
         // STEP 6: Create introduction task
         // =============================================
         const scheduledDate = new Date();

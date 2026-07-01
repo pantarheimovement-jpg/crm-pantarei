@@ -394,6 +394,59 @@ export default function Students() {
     student.status === 'Historical Lead' ||
     student.lead_source === 'ייבוא היסטורי LBMS';
 
+  const OPEN_STATUSES = new Set([
+    'ליד חדש', 'חדש', 'במעקב ראשוני', 'לחזור לקראת הרשמה',
+    'בבדיקה', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה'
+  ]);
+
+  const getOpenCourse = (student) =>
+    (student.courses || []).find(c => OPEN_STATUSES.has(c.status));
+
+  // סנכרון Subscribers לפי קורסים — ללא תלות ב-marketing_consent
+  const syncSubscriberGroups = async (student, updatedCourses, previousCourses) => {
+    const email = student.email?.toLowerCase().trim();
+    if (!email) return;
+    try {
+      const existingSubs = await base44.entities.Subscribers.filter({ email });
+      const sub = existingSubs?.[0];
+      let groups = sub ? [...(sub.groups || [])] : [];
+
+      // הסר קבוצות של קורסים שנמחקו
+      const prevIds = new Set((previousCourses || []).map(c => c.course_id));
+      const newIds = new Set((updatedCourses || []).map(c => c.course_id));
+      for (const pc of (previousCourses || [])) {
+        if (!newIds.has(pc.course_id)) {
+          groups = groups.filter(g => g !== `${pc.course_name} - מתעניינים` && g !== `${pc.course_name} - רשומים`);
+        }
+      }
+
+      // עדכן קבוצות לפי סטטוס כל קורס
+      for (const c of (updatedCourses || [])) {
+        const interested = `${c.course_name} - מתעניינים`;
+        const registered = `${c.course_name} - רשומים`;
+        if (c.status === 'רשום' || c.status === 'נרשם') {
+          if (!groups.includes(registered)) groups.push(registered);
+          groups = groups.filter(g => g !== interested);
+        } else if (OPEN_STATUSES.has(c.status)) {
+          if (!groups.includes(interested)) groups.push(interested);
+          groups = groups.filter(g => g !== registered);
+        }
+      }
+
+      if (sub) {
+        await base44.entities.Subscribers.update(sub.id, { groups, name: student.full_name });
+      } else {
+        await base44.entities.Subscribers.create({
+          email, name: student.full_name,
+          whatsapp: student.phone ? (student.phone.startsWith('0') ? '972' + student.phone.slice(1) : student.phone) : '',
+          subscribed: true, source: 'ידני', groups
+        });
+      }
+    } catch (e) {
+      console.error('Subscriber sync error:', e);
+    }
+  };
+
   // חיפוש וסינון משתתפים
   const filteredStudents = students.filter(student => {
     const term = (searchTerm || '').trim().toLowerCase();

@@ -75,6 +75,18 @@
             "type": "string",
             "format": "date",
             "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05e8\u05d9\u05e9\u05d5\u05dd \u05dc\u05e7\u05d5\u05e8\u05e1"
+          },
+          "total_price": {
+            "type": "number",
+            "description": "\u05d4\u05e1\u05db\u05d5\u05dd \u05d4\u05db\u05d5\u05dc\u05dc \u05e2\u05d1\u05d5\u05e8 \u05d4\u05e7\u05d5\u05e8\u05e1"
+          },
+          "installment_amount": {
+            "type": "number",
+            "description": "\u05e1\u05db\u05d5\u05dd \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd \u05d4\u05d7\u05d5\u05d3\u05e9\u05d9"
+          },
+          "payments_total": {
+            "type": "number",
+            "description": "\u05de\u05e1\u05e4\u05e8 \u05d4\u05ea\u05e9\u05dc\u05d5\u05de\u05d9\u05dd \u05d4\u05db\u05d5\u05dc\u05dc"
           }
         },
         "required": [
@@ -124,6 +136,11 @@
         "12-14.7"
       ],
       "description": "\u05d0\u05e4\u05e9\u05e8\u05d5\u05ea \u05e8\u05d9\u05e9\u05d5\u05dd \u05dc\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2"
+    },
+    "is_customer": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05e4\u05da \u05dc\u05dc\u05e7\u05d5\u05d7 (\u05e0\u05e8\u05e9\u05dd \u05dc\u05e4\u05d7\u05d5\u05ea \u05dc\u05e7\u05d5\u05e8\u05e1 \u05d0\u05d7\u05d3)"
     }
   },
   "required": [

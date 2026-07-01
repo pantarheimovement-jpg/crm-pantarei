@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const WHATSAPP_MIN_INTERVAL_MS = 3 * 60 * 1000;
-const DAILY_LIMIT = 60;
+const WA_MIN_INTERVAL_MS = 6 * 60 * 1000;
+const WA_MAX_INTERVAL_MS = 12 * 60 * 1000;
+const DAILY_LIMIT = 25;
 const TIME_ZONE = 'Asia/Jerusalem';
 const SEND_WINDOW_START = 9;
 const SEND_WINDOW_END = 21;
@@ -86,10 +87,11 @@ Deno.serve(async (req) => {
     if (lastSentMessage?.sent_at) {
       const lastSentAt = new Date(lastSentMessage.sent_at).getTime();
       const elapsed = Date.now() - lastSentAt;
+      const requiredInterval = WA_MIN_INTERVAL_MS + Math.floor(Math.random() * (WA_MAX_INTERVAL_MS - WA_MIN_INTERVAL_MS));
 
-      if (elapsed < WHATSAPP_MIN_INTERVAL_MS) {
-        const nextAllowedAt = new Date(lastSentAt + WHATSAPP_MIN_INTERVAL_MS).toISOString();
-        const waitSeconds = Math.ceil((WHATSAPP_MIN_INTERVAL_MS - elapsed) / 1000);
+      if (elapsed < requiredInterval) {
+        const nextAllowedAt = new Date(lastSentAt + requiredInterval).toISOString();
+        const waitSeconds = Math.ceil((requiredInterval - elapsed) / 1000);
         console.log(`WhatsApp safety delay active. Waiting ${waitSeconds} seconds before next send.`);
         return Response.json({
           success: true,

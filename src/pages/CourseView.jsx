@@ -6,6 +6,7 @@ import CourseHeader from '../components/course/CourseHeader';
 import StudentsList from '../components/course/StudentsList';
 import AttendanceManager from '../components/course/AttendanceManager';
 import NanaSummerBreakdown from '../components/course/NanaSummerBreakdown';
+import CollapsibleSection from '../components/course/CollapsibleSection';
 
 export default function CourseView() {
   const { courseId } = useParams();
@@ -174,25 +175,33 @@ export default function CourseView() {
         />
 
         {course?.name === 'סמסטר קיץ נענע' && (
-          <NanaSummerBreakdown students={registeredStudents} />
+          <CollapsibleSection title="סיכום רשומים לפי אפשרות">
+            <NanaSummerBreakdown students={registeredStudents} />
+          </CollapsibleSection>
         )}
 
-        <AttendanceManager 
-          courseId={courseId} 
-          students={registeredStudents} 
-        />
+        <CollapsibleSection title="מעקב נוכחות">
+          <AttendanceManager 
+            courseId={courseId} 
+            students={registeredStudents} 
+          />
+        </CollapsibleSection>
 
-        <StudentsList 
-          students={registeredStudents}
-          title="משתתפים רשומים"
-          onCancelRegistration={isAdmin ? handleCancelRegistration : undefined}
-        />
+        <CollapsibleSection title="משתתפים רשומים" badge={registeredStudents.length}>
+          <StudentsList 
+            students={registeredStudents}
+            title="משתתפים רשומים"
+            onCancelRegistration={isAdmin ? handleCancelRegistration : undefined}
+          />
+        </CollapsibleSection>
 
         {leadStudents.length > 0 && (
-          <StudentsList 
-            students={leadStudents}
-            title="לידים משויכים"
-          />
+          <CollapsibleSection title="לידים משויכים" badge={leadStudents.length}>
+            <StudentsList 
+              students={leadStudents}
+              title="לידים משויכים"
+            />
+          </CollapsibleSection>
         )}
       </div>
     </div>

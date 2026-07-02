@@ -47,6 +47,35 @@ function normalizeWhatsapp(phone) {
   return digits;
 }
 
+// מיפוי מוצרים → קורס-אב + מסלול ("קורס גדול עם מסלולים")
+// מוצרי סמסטר קיץ ("סמסטר קיץ שבוע ראשון 5-9.7") נכנסים כולם
+// לקורס "סמסטר קיץ נענע" עם ציון המסלול ב-nana_option
+const COURSE_MAPPINGS = [
+  {
+    matches: (productName) => normalizeName(productName).startsWith('סמסטר קיץ'),
+    courseName: 'סמסטר קיץ נענע',
+    extractOption: (productName) => {
+      const m = String(productName).match(/(\d{1,2}-\d{1,2}\.\d{1,2})/);
+      return m ? m[1] : null;
+    },
+    optionField: 'nana_option'
+  }
+];
+
+function resolveCourseMapping(productName) {
+  if (!productName) return null;
+  for (const mapping of COURSE_MAPPINGS) {
+    if (mapping.matches(productName)) {
+      return {
+        courseName: mapping.courseName,
+        option: mapping.extractOption ? mapping.extractOption(productName) : null,
+        optionField: mapping.optionField || null
+      };
+    }
+  }
+  return null;
+}
+
 // סטטוס ראשי: הליד הפתוח החם ביותר; אם אין לידים פתוחים — "רשום"
 function computeMainStatus(courses, fallback) {
   const list = courses || [];
@@ -79,7 +108,13 @@ Deno.serve(async (req) => {
     const customerName = properties.Property_2?.[0]?.Name || null;
     const customerEmail = pickProperty(properties, ['Property_6', 'כתובת מייל']) || null;
     const customerPhone = pickProperty(properties, ['Property_7', 'טלפון']) || 'לא זמין';
-    const courseName = properties.Property_3?.[0]?.Name || null;
+    const productName = properties.Property_3?.[0]?.Name || null;
+
+    // מיפוי מוצר → קורס-אב (למשל: כל מוצרי "סמסטר קיץ" → "סמסטר קיץ נענע")
+    const mapping = resolveCourseMapping(productName);
+    const courseName = mapping ? mapping.courseName : productName;
+    const courseOption = mapping ? mapping.option : null;
+    if (mapping) console.log(`🗺️ Product "${productName}" mapped → course "${courseName}"${courseOption ? ` (option: ${courseOption})` : ''}`);
     const billingDate = (pickProperty(properties, ['Property_1']) || new Date().toISOString()).split('T')[0];
     const documentName = properties['Property_M-1']?.[0]?.Name || null;
 
@@ -161,7 +196,7 @@ Deno.serve(async (req) => {
     const isRecurringCharge = Boolean(existingEntry && REGISTERED_STATUSES.includes(existingEntry.status));
     const isNewRegistration = !isRecurringCharge && Boolean(course);
 
-    const noteText = `תשלום ${paymentNumber}${paymentsTotal ? `/${paymentsTotal}` : ''} דרך Summit בתאריך ${billingDate}${installmentAmount ? ` (₪${installmentAmount})` : ''}${documentName ? ` — ${documentName}` : ''}`;
+    const noteText = `תשלום ${paymentNumber}${paymentsTotal ? `/${paymentsTotal}` : ''} דרך Summit בתאריך ${billingDate}${installmentAmount ? ` (₪${installmentAmount})` : ''}${mapping && productName !== courseName ? ` — מסלול: ${productName}` : ''}${documentName ? ` — ${documentName}` : ''}`;
 
     // --- 4. בניית רשומת הקורס המעודכנת ---
     const courseEntryData = course ? {
@@ -202,6 +237,10 @@ Deno.serve(async (req) => {
       ...(customerPhone && customerPhone !== 'לא זמין' && { phone: customerPhone })
     };
     if (updatedCourses.length > 0) studentData.courses = updatedCourses;
+    // שמירת המסלול (למשל nana_option לסמסטר קיץ)
+    if (mapping && mapping.optionField && courseOption) {
+      studentData[mapping.optionField] = courseOption;
+    }
 
     let student;
     if (existingStudent) {

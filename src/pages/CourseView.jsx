@@ -87,7 +87,7 @@ export default function CourseView() {
       if (isLinked) {
         if (courseStatus === 'נרשם' || courseStatus === 'רשום') {
           registered.push({ ...student, courseStatus });
-        } else {
+        } else if (courseStatus !== 'לא רלוונטי') {
           leadStudentsList.push({ ...student, courseStatus });
           leads++;
         }

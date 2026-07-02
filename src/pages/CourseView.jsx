@@ -64,6 +64,7 @@ export default function CourseView() {
       allStudents = allStudents.concat(batch);
       if (batch.length < pageSize) break;
       page++;
+      await new Promise(r => setTimeout(r, 300));
     }
     let registered = [];
     let leadStudentsList = [];

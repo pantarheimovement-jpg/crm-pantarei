@@ -39,10 +39,10 @@ export const SystemSettingsProvider = ({ children }) => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // רענון שקט - ללא מסך טעינה (לשימוש כש-visibility חוזר) - מקסימום פעם ב-60 שניות
+  // רענון שקט - ללא מסך טעינה (לשימוש כש-visibility חוזר) - מקסימום פעם ב-5 דקות
   const refreshSettingsSilently = async () => {
     const now = Date.now();
-    if (now - lastRefreshRef.current < 60000) return;
+    if (now - lastRefreshRef.current < 300000) return;
     lastRefreshRef.current = now;
     try {
       const [design, texts, statuses, tStatuses, cStatuses, lSources, automation, general] = await Promise.all([

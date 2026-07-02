@@ -99,6 +99,50 @@ export default function CourseView() {
     setLoading(false);
   };
 
+  const STATUS_PRIORITY = ['רשום', 'נרשם', 'ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'לא רלוונטי'];
+
+  const handleCancelRegistration = async (student) => {
+    if (!confirm(`לבטל את הרישום של ${student.full_name} לקורס "${course.name}"?\nהסטטוס בקורס ישתנה ל"לא רלוונטי" והיא תוסר מקבוצת הרשומים ברשימת התפוצה.`)) return;
+
+    // עדכון סטטוס הקורס במערך הקורסים
+    let updatedCourses;
+    if (student.courses && student.courses.length > 0) {
+      updatedCourses = student.courses.map(c =>
+        c.course_id === courseId ? { ...c, status: 'לא רלוונטי' } : c
+      );
+    } else {
+      updatedCourses = [{ course_id: courseId, course_name: course.name, status: 'לא רלוונטי' }];
+    }
+
+    // חישוב סטטוס כללי מחדש לפי שאר הקורסים
+    let generalStatus = 'לא רלוונטי';
+    let best = STATUS_PRIORITY.length;
+    for (const c of updatedCourses) {
+      const idx = STATUS_PRIORITY.indexOf(c.status);
+      const p = idx === -1 ? STATUS_PRIORITY.length : idx;
+      if (p < best) { best = p; generalStatus = c.status; }
+    }
+
+    await base44.entities.Student.update(student.id, { courses: updatedCourses, status: generalStatus });
+
+    // הסרה מקבוצת "רשומים" ברשימת התפוצה
+    if (student.email) {
+      const subs = await base44.entities.Subscribers.filter({ email: student.email.toLowerCase().trim() });
+      const sub = subs?.[0];
+      if (sub) {
+        const groups = (sub.groups || []).filter(g => g !== `${course.name} - רשומים`);
+        await base44.entities.Subscribers.update(sub.id, { groups });
+      }
+    }
+
+    // עדכון מונה המשתתפים בקורס
+    await base44.entities.Course.update(courseId, {
+      current_students: Math.max(0, (course.current_students || 0) - 1)
+    });
+
+    await checkAccessAndLoad();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -141,6 +185,7 @@ export default function CourseView() {
         <StudentsList 
           students={registeredStudents}
           title="משתתפים רשומים"
+          onCancelRegistration={isAdmin ? handleCancelRegistration : undefined}
         />
 
         {leadStudents.length > 0 && (

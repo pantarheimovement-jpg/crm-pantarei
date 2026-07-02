@@ -143,12 +143,18 @@ export default function Students() {
         const existingCourses = originalStudent?.courses || [];
         const courseIndex = existingCourses.findIndex(c => c.course_id === cleanedData.course_id);
         
+        // דריסת סטטוס הקורס רק אם הסטטוס הכללי שונה בפועל בטופס, או שזה שיוך חדש
+        const statusChanged = !originalStudent || cleanedData.status !== originalStudent.status;
+        const entryStatus = (courseIndex >= 0 && !statusChanged)
+          ? existingCourses[courseIndex].status
+          : cleanedData.status;
+
         const courseEntry = {
           course_id: cleanedData.course_id,
           course_name: cleanedData.course_name,
-          status: cleanedData.status,
-          registration_date: (cleanedData.status === 'נרשם' || cleanedData.status === 'רשום') 
-            ? (cleanedData.registration_date || new Date().toISOString().split('T')[0])
+          status: entryStatus,
+          registration_date: (entryStatus === 'נרשם' || entryStatus === 'רשום')
+            ? (cleanedData.registration_date || existingCourses[courseIndex]?.registration_date || new Date().toISOString().split('T')[0])
             : (existingCourses[courseIndex]?.registration_date || new Date().toISOString().split('T')[0]),
           trial_date: cleanedData.trial_date || existingCourses[courseIndex]?.trial_date
         };

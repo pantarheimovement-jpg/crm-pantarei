@@ -1,7 +1,7 @@
 import React from 'react';
-import { Users, Phone, Mail } from 'lucide-react';
+import { Users, Phone, Mail, UserX } from 'lucide-react';
 
-export default function StudentsList({ students, title }) {
+export default function StudentsList({ students, title, onCancelRegistration }) {
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 mt-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
       <div className="flex items-center gap-2 mb-4">
@@ -39,6 +39,16 @@ export default function StudentsList({ students, title }) {
                     <Mail className="w-3.5 h-3.5" />
                     {student.email}
                   </a>
+                )}
+                {onCancelRegistration && (
+                  <button
+                    onClick={() => onCancelRegistration(student)}
+                    className="flex items-center gap-1 text-red-400 hover:text-red-600 text-xs border border-red-200 rounded-full px-2 py-1 hover:bg-red-50 transition-colors"
+                    title="ביטול רישום לקורס"
+                  >
+                    <UserX className="w-3.5 h-3.5" />
+                    ביטול רישום
+                  </button>
                 )}
               </div>
             </div>

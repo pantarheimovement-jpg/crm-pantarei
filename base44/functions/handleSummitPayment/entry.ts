@@ -116,7 +116,15 @@ Deno.serve(async (req) => {
         body: JSON.stringify(bodyObj)
       });
       const text = await res.text();
-      return Response.json({ debug: true, status: res.status, body: text.slice(0, 3000) });
+      return Response.json({
+        debug: true,
+        status: res.status,
+        body: text.slice(0, 3000),
+        cidParsed: Number(String(cid).trim()),
+        keyLen: String(key).length,
+        keyHasWhitespace: /\s/.test(String(key)),
+        keyPrefix: String(key).slice(0, 4)
+      });
     }
 
     const properties = payload.Properties || {};

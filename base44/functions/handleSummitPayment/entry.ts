@@ -139,10 +139,19 @@ Deno.serve(async (req) => {
     // זיהוי הוראת קבע (מסמך מחזורי) לעומת תשלום רגיל
     const isStandingOrder = Boolean(properties.Billing_CustomerItems?.[0]?.Name?.includes('הוראת קבע'));
 
-    // חיוב שנכשל (Billing_Valid=false) — לא רושמים! מדלגים בשקט
-    if (Array.isArray(properties.Billing_Valid) && properties.Billing_Valid[0] === false) {
-      console.log('⏭️ Skipping invalid/failed charge (Billing_Valid=false)');
-      return Response.json({ success: true, skipped: 'invalid_charge' });
+    // חיוב שנכשל — לא רושמים! מדלגים בשקט.
+    // Billing_Valid חייב להיות true במפורש; אצל חיובים כושלים הוא false/ריק,
+    // וגם אין מסמך חשבון/קבלה (Accounting_Document)
+    if ('Billing_Valid' in properties) {
+      const billingValid = Array.isArray(properties.Billing_Valid) ? properties.Billing_Valid[0] : properties.Billing_Valid;
+      if (billingValid !== true) {
+        console.log('⏭️ Skipping invalid/failed charge (Billing_Valid !== true)');
+        return Response.json({ success: true, skipped: 'invalid_charge' });
+      }
+    } else if (properties.Billing_Date && !properties.Accounting_Document?.length) {
+      // פורמט חדש בלי מסמך = חיוב שלא הופק עליו מסמך (נכשל)
+      console.log('⏭️ Skipping charge without accounting document');
+      return Response.json({ success: true, skipped: 'no_document' });
     }
 
     // מיפוי מוצר → קורס-אב (למשל: כל מוצרי "סמסטר קיץ" → "סמסטר קיץ נענע")

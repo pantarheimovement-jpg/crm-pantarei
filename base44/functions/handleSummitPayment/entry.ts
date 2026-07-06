@@ -107,14 +107,13 @@ Deno.serve(async (req) => {
       const key = Deno.env.get('SUMIT_API_KEY');
       const cid = Deno.env.get('SUMIT_COMPANY_ID');
       if (!key || !cid) return Response.json({ debug: true, error: 'missing secrets', hasKey: !!key, hasCid: !!cid });
-      const endpoint = payload.debug_endpoint || 'https://api.sumit.co.il/accounting/customers/getdetails/';
+      const endpoint = payload.debug_endpoint || 'https://api.sumit.co.il/crm/data/getentity/';
+      const bodyObj = payload.debug_body || { EntityID: payload.debug_customer_lookup };
+      bodyObj.Credentials = { CompanyID: Number(cid), APIKey: key };
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          Credentials: { CompanyID: Number(cid), APIKey: key },
-          Customer: { ID: payload.debug_customer_lookup }
-        })
+        body: JSON.stringify(bodyObj)
       });
       const text = await res.text();
       return Response.json({ debug: true, status: res.status, body: text.slice(0, 3000) });

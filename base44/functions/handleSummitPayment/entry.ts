@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
         debug: true,
         status: res.status,
         body: text.slice(0, 3000),
-        cidParsed: Number(String(cid).trim()),
+        cidParsed: Number(String(cid).replace(/\D/g, '')),
         keyLen: String(key).length,
         keyHasWhitespace: /\s/.test(String(key)),
         keyPrefix: String(key).slice(0, 4)
@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            Credentials: { CompanyID: Number(SUMIT_COMPANY_ID), APIKey: SUMIT_API_KEY },
+            Credentials: { CompanyID: Number(String(SUMIT_COMPANY_ID).replace(/\D/g, '')), APIKey: String(SUMIT_API_KEY).trim() },
             Customer: { ID: sumitCustomerId }
           })
         });

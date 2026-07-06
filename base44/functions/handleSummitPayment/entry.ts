@@ -104,29 +104,60 @@ Deno.serve(async (req) => {
 
     const properties = payload.Properties || {};
 
-    // --- חילוץ שדות מהתצוגה של הטריגר ---
-    const customerName = properties.Property_2?.[0]?.Name || null;
-    const customerEmail = pickProperty(properties, ['Property_6', 'כתובת מייל']) || null;
-    const customerPhone = pickProperty(properties, ['Property_7', 'טלפון']) || 'לא זמין';
-    const productName = properties.Property_3?.[0]?.Name || null;
+    // --- חילוץ שדות ---
+    // פורמט חדש (עמותה, תצוגת "כל השדות"): Billing_Customer / Billing_Items / Billing_Date...
+    // פורמט ישן (תצוגה מותאמת): Property_N
+    const customerName =
+      properties.Billing_Customer?.[0]?.Name ||
+      properties.Property_2?.[0]?.Name || null;
+
+    // מייל/טלפון: חיפוש לפי שמות שדות מוכרים, ואם אין — סריקה גנרית של כל הערכים
+    function scanValues(props) {
+      const values = [];
+      for (const key of Object.keys(props || {})) {
+        const raw = props[key];
+        const arr = Array.isArray(raw) ? raw : [raw];
+        for (const v of arr) {
+          if (typeof v === 'string') values.push(v);
+        }
+      }
+      return values;
+    }
+    const allValues = scanValues(properties);
+    const emailByName = pickProperty(properties, ['Billing_CustomerEmailAddress', 'EmailAddress', 'Email', 'Property_6', 'כתובת מייל']);
+    const emailByScan = allValues.find((v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()));
+    const customerEmail = (emailByName || emailByScan || '').trim().toLowerCase() || null;
+
+    const phoneByName = pickProperty(properties, ['Billing_CustomerPhone', 'Phone', 'Property_7', 'טלפון']);
+    const phoneByScan = allValues.find((v) => /^(\+972|972|0)?5\d[\d\s\-]{7,}$/.test(v.trim()));
+    const customerPhone = (phoneByName || phoneByScan || 'לא זמין');
+
+    const productName =
+      properties.Billing_Items?.[0]?.Name ||
+      properties.Property_3?.[0]?.Name || null;
+
+    // זיהוי הוראת קבע (מסמך מחזורי) לעומת תשלום רגיל
+    const isStandingOrder = Boolean(properties.Billing_CustomerItems?.[0]?.Name?.includes('הוראת קבע'));
 
     // מיפוי מוצר → קורס-אב (למשל: כל מוצרי "סמסטר קיץ" → "סמסטר קיץ נענע")
     const mapping = resolveCourseMapping(productName);
     const courseName = mapping ? mapping.courseName : productName;
     const courseOption = mapping ? mapping.option : null;
     if (mapping) console.log(`🗺️ Product "${productName}" mapped → course "${courseName}"${courseOption ? ` (option: ${courseOption})` : ''}`);
-    const billingDate = (pickProperty(properties, ['Property_1']) || new Date().toISOString()).split('T')[0];
-    const documentName = properties['Property_M-1']?.[0]?.Name || null;
+    const billingDate = (pickProperty(properties, ['Billing_Date', 'Property_1']) || new Date().toISOString()).split('T')[0];
+    const documentName =
+      properties.Accounting_Document?.[0]?.Name ||
+      properties['Property_M-1']?.[0]?.Name || null;
 
-    // "מספר תשלומים" בסאמיט = סה"כ התשלומים בעסקה (לא התשלום הנוכחי!)
-    const paymentsTotal = parseNum(pickProperty(properties, ['מספר תשלומים', 'סה״כ תשלומים', 'סה"כ תשלומים']));
+    // "מספר תשלומים" — סה"כ התשלומים בעסקה (בפורמט החדש לא תמיד נשלח)
+    const paymentsTotal = parseNum(pickProperty(properties, ['Billing_PaymentsCount', 'מספר תשלומים', 'סה״כ תשלומים', 'סה"כ תשלומים']));
     // תשלום נוכחי — אם סאמיט שולח (מחזור בהוראת קבע). אם לא, נחשב לבד.
-    const currentPaymentRaw = parseNum(pickProperty(properties, ['תשלום נוכחי', 'מספר תשלום', 'מספר חיוב', 'מחזור']));
-    // סכומים
-    const installmentAmount = parseNum(pickProperty(properties, ['סכום התשלום למחזור', 'סכום התשלום', 'מחיר כולל מע"מ']));
-    const totalAmount = parseNum(pickProperty(properties, ['סה"כ', 'סה״כ', 'סכום כולל', 'סה"כ כולל מע"מ']));
+    const currentPaymentRaw = parseNum(pickProperty(properties, ['Billing_PaymentIndex', 'תשלום נוכחי', 'מספר תשלום', 'מספר חיוב', 'מחזור']));
+    // סכומים: Billing_Amount = הסכום שחויב בפועל בחיוב הזה
+    const installmentAmount = parseNum(pickProperty(properties, ['Billing_Amount', 'סכום התשלום למחזור', 'סכום התשלום', 'מחיר כולל מע"מ']));
+    const totalAmount = parseNum(pickProperty(properties, ['Billing_TotalAmount', 'סה"כ', 'סה״כ', 'סכום כולל', 'סה"כ כולל מע"מ']));
 
-    console.log('✅ Extracted:', { customerName, customerEmail, customerPhone, courseName, paymentsTotal, currentPaymentRaw, installmentAmount, totalAmount });
+    console.log('✅ Extracted:', { customerName, customerEmail, customerPhone, courseName, paymentsTotal, currentPaymentRaw, installmentAmount, totalAmount, isStandingOrder });
 
     if (!customerName) {
       // DEBUG (זמני): שמירת ה-payload הגולמי כדי למפות את שדות התצוגה החדשה

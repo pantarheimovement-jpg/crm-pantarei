@@ -129,6 +129,18 @@ Deno.serve(async (req) => {
     console.log('✅ Extracted:', { customerName, customerEmail, customerPhone, courseName, paymentsTotal, currentPaymentRaw, installmentAmount, totalAmount });
 
     if (!customerName) {
+      // DEBUG (זמני): שמירת ה-payload הגולמי כדי למפות את שדות התצוגה החדשה
+      try {
+        await base44.asServiceRole.entities.NewsletterLogs.create({
+          subject: 'WEBHOOK_DEBUG handleSummitPayment',
+          content: JSON.stringify(payload).slice(0, 100000),
+          recipients_count: 0,
+          status: 'בתהליך'
+        });
+        console.log('🐛 Debug payload stored');
+      } catch (dbgErr) {
+        console.error('debug store failed:', dbgErr.message);
+      }
       return Response.json({ error: 'Customer name is required' }, { status: 400 });
     }
 

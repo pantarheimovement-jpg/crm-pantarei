@@ -139,20 +139,31 @@ Deno.serve(async (req) => {
     // זיהוי הוראת קבע (מסמך מחזורי) לעומת תשלום רגיל
     const isStandingOrder = Boolean(properties.Billing_CustomerItems?.[0]?.Name?.includes('הוראת קבע'));
 
-    // חיוב שנכשל — לא רושמים! מדלגים בשקט.
-    // Billing_Valid חייב להיות true במפורש; אצל חיובים כושלים הוא false/ריק,
-    // וגם אין מסמך חשבון/קבלה (Accounting_Document)
-    if ('Billing_Valid' in properties) {
-      const billingValid = Array.isArray(properties.Billing_Valid) ? properties.Billing_Valid[0] : properties.Billing_Valid;
-      if (billingValid !== true) {
-        console.log('⏭️ Skipping invalid/failed charge (Billing_Valid !== true)');
-        return Response.json({ success: true, skipped: 'invalid_charge' });
-      }
-    } else if (properties.Billing_Date && !properties.Accounting_Document?.length) {
-      // פורמט חדש בלי מסמך = חיוב שלא הופק עליו מסמך (נכשל)
-      console.log('⏭️ Skipping charge without accounting document');
-      return Response.json({ success: true, skipped: 'no_document' });
+    // חיוב שנכשל — לא רושמים! מדלגים רק כשהמערכת אומרת במפורש שהחיוב לא תקין.
+    // (בטריגר על "יצירת כרטיס" ייתכן שהשדה עוד ריק — אז ממשיכים לעבד)
+    const billingValidRaw = Array.isArray(properties.Billing_Valid) ? properties.Billing_Valid[0] : properties.Billing_Valid;
+    if (billingValidRaw === false) {
+      try {
+        await base44.asServiceRole.entities.NewsletterLogs.create({
+          subject: 'WEBHOOK_SKIP handleSummitPayment',
+          content: JSON.stringify(payload).slice(0, 100000),
+          recipients_count: 0,
+          status: 'בתהליך'
+        });
+      } catch (_) { /* non-fatal */ }
+      console.log('⏭️ Skipping invalid/failed charge (Billing_Valid === false)');
+      return Response.json({ success: true, skipped: 'invalid_charge' });
     }
+
+    // DEBUG (זמני): תיעוד כל payload נכנס לצורך אימות שדות מייל/טלפון
+    try {
+      await base44.asServiceRole.entities.NewsletterLogs.create({
+        subject: 'WEBHOOK_TRACE handleSummitPayment',
+        content: JSON.stringify(payload).slice(0, 100000),
+        recipients_count: 0,
+        status: 'בתהליך'
+      });
+    } catch (_) { /* non-fatal */ }
 
     // מיפוי מוצר → קורס-אב (למשל: כל מוצרי "סמסטר קיץ" → "סמסטר קיץ נענע")
     const mapping = resolveCourseMapping(productName);

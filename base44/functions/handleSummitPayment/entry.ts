@@ -130,7 +130,33 @@ Deno.serve(async (req) => {
 
     const phoneByName = pickProperty(properties, ['Billing_CustomerPhone', 'Phone', 'Property_7', 'טלפון']);
     const phoneByScan = allValues.find((v) => /^(\+972|972|0)?5\d[\d\s\-]{7,}$/.test(v.trim()));
-    const customerPhone = (phoneByName || phoneByScan || 'לא זמין');
+    let customerPhone = (phoneByName || phoneByScan || 'לא זמין');
+    let resolvedEmail = customerEmail;
+
+    // העשרה מ-API של סאמיט: ה-payload של הטריגר לא כולל מייל/טלפון,
+    // אז שולפים אותם מכרטיס הלקוח לפי ID (דורש SUMIT_API_KEY + SUMIT_COMPANY_ID ב-Secrets)
+    const sumitCustomerId = properties.Billing_Customer?.[0]?.ID;
+    const SUMIT_API_KEY = Deno.env.get('SUMIT_API_KEY');
+    const SUMIT_COMPANY_ID = Deno.env.get('SUMIT_COMPANY_ID');
+    if (sumitCustomerId && SUMIT_API_KEY && SUMIT_COMPANY_ID && (!resolvedEmail || customerPhone === 'לא זמין')) {
+      try {
+        const apiRes = await fetch('https://api.sumit.co.il/accounting/customers/getdetails/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            Credentials: { CompanyID: Number(SUMIT_COMPANY_ID), APIKey: SUMIT_API_KEY },
+            Customer: { ID: sumitCustomerId }
+          })
+        });
+        const apiData = await apiRes.json();
+        console.log('📇 Sumit customer API:', JSON.stringify(apiData).slice(0, 800));
+        const cust = apiData?.Data?.Customer || apiData?.Data || {};
+        if (!resolvedEmail && (cust.EmailAddress || cust.Email)) resolvedEmail = String(cust.EmailAddress || cust.Email).trim().toLowerCase();
+        if (customerPhone === 'לא זמין' && (cust.Phone || cust.PhoneNumber)) customerPhone = String(cust.Phone || cust.PhoneNumber).trim();
+      } catch (apiErr) {
+        console.error('⚠️ Sumit customer API error (non-fatal):', apiErr.message);
+      }
+    }
 
     const productName =
       properties.Billing_Items?.[0]?.Name ||
@@ -183,7 +209,7 @@ Deno.serve(async (req) => {
     const installmentAmount = parseNum(pickProperty(properties, ['Billing_Amount', 'סכום התשלום למחזור', 'סכום התשלום', 'מחיר כולל מע"מ']));
     const totalAmount = parseNum(pickProperty(properties, ['Billing_TotalAmount', 'סה"כ', 'סה״כ', 'סכום כולל', 'סה"כ כולל מע"מ']));
 
-    console.log('✅ Extracted:', { customerName, customerEmail, customerPhone, courseName, paymentsTotal, currentPaymentRaw, installmentAmount, totalAmount, isStandingOrder });
+    console.log('✅ Extracted:', { customerName, resolvedEmail, customerPhone, courseName, paymentsTotal, currentPaymentRaw, installmentAmount, totalAmount, isStandingOrder });
 
     if (!customerName) {
       // DEBUG (זמני): שמירת ה-payload הגולמי כדי למפות את שדות התצוגה החדשה
@@ -231,8 +257,8 @@ Deno.serve(async (req) => {
     // --- 2. איתור משתתפ.ת (מייל → טלפון → שם) ---
     let existingStudent = null;
 
-    if (customerEmail) {
-      const byEmail = await base44.asServiceRole.entities.Student.filter({ email: customerEmail });
+    if (resolvedEmail) {
+      const byEmail = await base44.asServiceRole.entities.Student.filter({ email: resolvedEmail });
       if (byEmail?.[0]) existingStudent = byEmail[0];
     }
     if (!existingStudent && customerPhone && customerPhone !== 'לא זמין') {
@@ -245,6 +271,13 @@ Deno.serve(async (req) => {
     }
 
     console.log(existingStudent ? `✅ Found student: ${existingStudent.full_name} (${existingStudent.id})` : '👤 New student');
+
+    // מניעת עיבוד כפול: אם המסמך הזה כבר נרשם אצל המשתתפ.ת — מדלגים
+    // (סאמיט לעיתים שולח את אותו אירוע פעמיים בגלל timeout/retry)
+    if (existingStudent && documentName && (existingStudent.notes || '').includes(documentName)) {
+      console.log(`⏭️ Duplicate delivery for document "${documentName}" — skipping`);
+      return Response.json({ success: true, skipped: 'duplicate_document', document: documentName });
+    }
 
     const registeredStatus = 'רשום';
 
@@ -306,7 +339,7 @@ Deno.serve(async (req) => {
       payment_number: paymentNumber,
       amount_paid: amountPaid,
       ...(paymentsTotal && { total_payments: paymentsTotal }),
-      ...(customerEmail && { email: customerEmail }),
+      ...(resolvedEmail && { email: resolvedEmail }),
       ...(customerPhone && customerPhone !== 'לא זמין' && { phone: customerPhone })
     };
     if (updatedCourses.length > 0) studentData.courses = updatedCourses;
@@ -364,13 +397,13 @@ Deno.serve(async (req) => {
     }
 
     // --- 8. סנכרון Subscribers: העברה מ"מתעניינים" ל"רשומים" ---
-    if (customerEmail && course) {
+    if (resolvedEmail && course) {
       try {
         const interestedGroup = `${course.name} - מתעניינים`;
         const registeredGroup = `${course.name} - רשומים`;
 
         let existingSub = null;
-        const bySubEmail = await base44.asServiceRole.entities.Subscribers.filter({ email: customerEmail });
+        const bySubEmail = await base44.asServiceRole.entities.Subscribers.filter({ email: resolvedEmail });
         if (bySubEmail?.length) existingSub = bySubEmail[0];
 
         let whatsappNum = '';
@@ -395,7 +428,7 @@ Deno.serve(async (req) => {
           console.log(`✅ Subscriber moved to "${registeredGroup}"`);
         } else {
           await base44.asServiceRole.entities.Subscribers.create({
-            email: customerEmail,
+            email: resolvedEmail,
             name: customerName || '',
             whatsapp: whatsappNum,
             subscribed: true,

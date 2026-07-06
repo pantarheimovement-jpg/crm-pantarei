@@ -102,6 +102,24 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
+    // DEBUG (זמני): בדיקת קריאת ה-API של סאמיט ישירות, בלי לעבד תשלום
+    if (payload.debug_customer_lookup) {
+      const key = Deno.env.get('SUMIT_API_KEY');
+      const cid = Deno.env.get('SUMIT_COMPANY_ID');
+      if (!key || !cid) return Response.json({ debug: true, error: 'missing secrets', hasKey: !!key, hasCid: !!cid });
+      const endpoint = payload.debug_endpoint || 'https://api.sumit.co.il/accounting/customers/getdetails/';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Credentials: { CompanyID: Number(cid), APIKey: key },
+          Customer: { ID: payload.debug_customer_lookup }
+        })
+      });
+      const text = await res.text();
+      return Response.json({ debug: true, status: res.status, body: text.slice(0, 3000) });
+    }
+
     const properties = payload.Properties || {};
 
     // --- חילוץ שדות ---

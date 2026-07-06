@@ -296,6 +296,7 @@ Deno.serve(async (req) => {
     } else {
       studentData.lead_source = 'אחר';
       studentData.notes = noteText;
+      if (!studentData.phone) studentData.phone = 'לא זמין'; // phone הוא שדה חובה בסכימה
       student = await base44.asServiceRole.entities.Student.create(studentData);
       console.log(`✅ Student created: ${student.id}`);
     }

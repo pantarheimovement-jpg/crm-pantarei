@@ -139,6 +139,12 @@ Deno.serve(async (req) => {
     // זיהוי הוראת קבע (מסמך מחזורי) לעומת תשלום רגיל
     const isStandingOrder = Boolean(properties.Billing_CustomerItems?.[0]?.Name?.includes('הוראת קבע'));
 
+    // חיוב שנכשל (Billing_Valid=false) — לא רושמים! מדלגים בשקט
+    if (Array.isArray(properties.Billing_Valid) && properties.Billing_Valid[0] === false) {
+      console.log('⏭️ Skipping invalid/failed charge (Billing_Valid=false)');
+      return Response.json({ success: true, skipped: 'invalid_charge' });
+    }
+
     // מיפוי מוצר → קורס-אב (למשל: כל מוצרי "סמסטר קיץ" → "סמסטר קיץ נענע")
     const mapping = resolveCourseMapping(productName);
     const courseName = mapping ? mapping.courseName : productName;

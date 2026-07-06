@@ -282,6 +282,9 @@ Deno.serve(async (req) => {
     // --- 5. יצירה/עדכון משתתפ.ת ---
     const mainStatus = computeMainStatus(updatedCourses, registeredStatus);
 
+    // סכום ששולם בפועל — מצטבר על פני כל החיובים
+    const amountPaid = (existingStudent?.amount_paid || 0) + (installmentAmount || 0);
+
     const studentData = {
       full_name: customerName,
       status: mainStatus,
@@ -290,6 +293,7 @@ Deno.serve(async (req) => {
       course_id: course?.id,
       course_name: course?.name,
       payment_number: paymentNumber,
+      amount_paid: amountPaid,
       ...(paymentsTotal && { total_payments: paymentsTotal }),
       ...(customerEmail && { email: customerEmail }),
       ...(customerPhone && customerPhone !== 'לא זמין' && { phone: customerPhone })

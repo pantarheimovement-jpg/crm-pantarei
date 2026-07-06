@@ -40,7 +40,8 @@ export default function Students() {
     notes: '',
     tags: [],
     payment_number: '',
-    total_payments: ''
+    total_payments: '',
+    amount_paid: ''
   });
 
   useEffect(() => {
@@ -135,7 +136,8 @@ export default function Students() {
       const cleanedData = {
         ...formData,
         payment_number: formData.payment_number === '' ? null : formData.payment_number,
-        total_payments: formData.total_payments === '' ? null : formData.total_payments
+        total_payments: formData.total_payments === '' ? null : formData.total_payments,
+        amount_paid: formData.amount_paid === '' ? null : formData.amount_paid
       };
 
       // עדכון מערך courses אם נבחר קורס - חיוני למניעת דריסת סטטוס על ידי webhooks
@@ -342,7 +344,8 @@ export default function Students() {
         notes: '',
         tags: [],
         payment_number: '',
-        total_payments: ''
+        total_payments: '',
+        amount_paid: ''
       });
     }
     setShowModal(true);
@@ -774,10 +777,10 @@ export default function Students() {
                       כניסה: {new Date(student.lead_entry_date).toLocaleDateString('he-IL')}
                     </div>
                   )}
-                  {student.total_payments && (
+                  {(student.amount_paid || student.total_payments) && (
                     <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-80">
                       <span className="font-medium">שולם:</span>
-                      ₪{student.total_payments}
+                      ₪{student.amount_paid || student.total_payments}
                     </div>
                   )}
                   </div>
@@ -918,7 +921,7 @@ export default function Students() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {student.total_payments ? `₪${student.total_payments}` : '-'}
+                          {(student.amount_paid || student.total_payments) ? `₪${student.amount_paid || student.total_payments}` : '-'}
                         </td>
                         <td className="px-4 py-3">
                           <button
@@ -1133,8 +1136,8 @@ export default function Students() {
                   <label className="block text-sm font-medium mb-2">סכום ששולם ₪</label>
                   <Input
                     type="number"
-                    value={formData.total_payments}
-                    onChange={(e) => setFormData({...formData, total_payments: e.target.value})}
+                    value={formData.amount_paid}
+                    onChange={(e) => setFormData({...formData, amount_paid: e.target.value})}
                     placeholder="0"
                   />
                 </div>

@@ -102,31 +102,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
 
-    // DEBUG (זמני): בדיקת קריאת ה-API של סאמיט ישירות, בלי לעבד תשלום
-    if (payload.debug_customer_lookup) {
-      const key = Deno.env.get('SUMIT_API_KEY');
-      const cid = Deno.env.get('SUMIT_COMPANY_ID');
-      if (!key || !cid) return Response.json({ debug: true, error: 'missing secrets', hasKey: !!key, hasCid: !!cid });
-      const endpoint = payload.debug_endpoint || 'https://api.sumit.co.il/crm/data/getentity/';
-      const bodyObj = payload.debug_body || { EntityID: payload.debug_customer_lookup };
-      bodyObj.Credentials = { CompanyID: Number(cid), APIKey: key };
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyObj)
-      });
-      const text = await res.text();
-      return Response.json({
-        debug: true,
-        status: res.status,
-        body: text.slice(0, 3000),
-        cidParsed: Number(String(cid).replace(/\D/g, '')),
-        keyLen: String(key).length,
-        keyHasWhitespace: /\s/.test(String(key)),
-        keyPrefix: String(key).slice(0, 4)
-      });
-    }
-
     const properties = payload.Properties || {};
 
     // --- חילוץ שדות ---
@@ -165,19 +140,27 @@ Deno.serve(async (req) => {
     const SUMIT_COMPANY_ID = Deno.env.get('SUMIT_COMPANY_ID');
     if (sumitCustomerId && SUMIT_API_KEY && SUMIT_COMPANY_ID && (!resolvedEmail || customerPhone === 'לא זמין')) {
       try {
-        const apiRes = await fetch('https://api.sumit.co.il/accounting/customers/getdetails/', {
+        const apiRes = await fetch('https://api.sumit.co.il/crm/data/getentity/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            Credentials: { CompanyID: Number(String(SUMIT_COMPANY_ID).replace(/\D/g, '')), APIKey: String(SUMIT_API_KEY).trim() },
-            Customer: { ID: sumitCustomerId }
+            Credentials: {
+              CompanyID: Number(String(SUMIT_COMPANY_ID).replace(/\D/g, '')),
+              APIKey: String(SUMIT_API_KEY).trim()
+            },
+            EntityID: sumitCustomerId,
+            IncludeFields: true
           })
         });
         const apiData = await apiRes.json();
-        console.log('📇 Sumit customer API:', JSON.stringify(apiData).slice(0, 800));
-        const cust = apiData?.Data?.Customer || apiData?.Data || {};
-        if (!resolvedEmail && (cust.EmailAddress || cust.Email)) resolvedEmail = String(cust.EmailAddress || cust.Email).trim().toLowerCase();
-        if (customerPhone === 'לא זמין' && (cust.Phone || cust.PhoneNumber)) customerPhone = String(cust.Phone || cust.PhoneNumber).trim();
+        const ent = apiData?.Data?.Entity || {};
+        // סאמיט מחזיר את הערכים כמערכים תחת שמות Customers_*
+        const apiEmail = ent.Customers_EmailAddress?.[0] || ent.EmailAddress || null;
+        const apiPhone = ent.Customers_Phone?.[0] || ent.Phone || null;
+        const apiName = ent.Customers_FullName?.[0] || null;
+        console.log('📇 Sumit customer API:', JSON.stringify({ apiEmail, apiPhone, apiName }));
+        if (!resolvedEmail && apiEmail) resolvedEmail = String(apiEmail).trim().toLowerCase();
+        if (customerPhone === 'לא זמין' && apiPhone) customerPhone = String(apiPhone).trim();
       } catch (apiErr) {
         console.error('⚠️ Sumit customer API error (non-fatal):', apiErr.message);
       }
@@ -194,27 +177,9 @@ Deno.serve(async (req) => {
     // (בטריגר על "יצירת כרטיס" ייתכן שהשדה עוד ריק — אז ממשיכים לעבד)
     const billingValidRaw = Array.isArray(properties.Billing_Valid) ? properties.Billing_Valid[0] : properties.Billing_Valid;
     if (billingValidRaw === false) {
-      try {
-        await base44.asServiceRole.entities.NewsletterLogs.create({
-          subject: 'WEBHOOK_SKIP handleSummitPayment',
-          content: JSON.stringify(payload).slice(0, 100000),
-          recipients_count: 0,
-          status: 'בתהליך'
-        });
-      } catch (_) { /* non-fatal */ }
       console.log('⏭️ Skipping invalid/failed charge (Billing_Valid === false)');
       return Response.json({ success: true, skipped: 'invalid_charge' });
     }
-
-    // DEBUG (זמני): תיעוד כל payload נכנס לצורך אימות שדות מייל/טלפון
-    try {
-      await base44.asServiceRole.entities.NewsletterLogs.create({
-        subject: 'WEBHOOK_TRACE handleSummitPayment',
-        content: JSON.stringify(payload).slice(0, 100000),
-        recipients_count: 0,
-        status: 'בתהליך'
-      });
-    } catch (_) { /* non-fatal */ }
 
     // מיפוי מוצר → קורס-אב (למשל: כל מוצרי "סמסטר קיץ" → "סמסטר קיץ נענע")
     const mapping = resolveCourseMapping(productName);
@@ -237,18 +202,6 @@ Deno.serve(async (req) => {
     console.log('✅ Extracted:', { customerName, resolvedEmail, customerPhone, courseName, paymentsTotal, currentPaymentRaw, installmentAmount, totalAmount, isStandingOrder });
 
     if (!customerName) {
-      // DEBUG (זמני): שמירת ה-payload הגולמי כדי למפות את שדות התצוגה החדשה
-      try {
-        await base44.asServiceRole.entities.NewsletterLogs.create({
-          subject: 'WEBHOOK_DEBUG handleSummitPayment',
-          content: JSON.stringify(payload).slice(0, 100000),
-          recipients_count: 0,
-          status: 'בתהליך'
-        });
-        console.log('🐛 Debug payload stored');
-      } catch (dbgErr) {
-        console.error('debug store failed:', dbgErr.message);
-      }
       return Response.json({ error: 'Customer name is required' }, { status: 400 });
     }
 

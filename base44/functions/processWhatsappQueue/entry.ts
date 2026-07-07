@@ -1,35 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const WA_MIN_INTERVAL_MS = 6 * 60 * 1000;
-const WA_MAX_INTERVAL_MS = 12 * 60 * 1000;
-const DAILY_LIMIT = 25;
-const TIME_ZONE = 'Asia/Jerusalem';
-const SEND_WINDOW_START = 9;
-const SEND_WINDOW_END = 21;
-
-function getIsraelParts(date = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).formatToParts(date);
-
-  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
-}
-
-function getIsraelDateKey(date = new Date()) {
-  const parts = getIsraelParts(date);
-  return `${parts.year}-${parts.month}-${parts.day}`;
-}
-
-function getIsraelHour(date = new Date()) {
-  return Number(getIsraelParts(date).hour);
-}
+// Official WhatsApp Cloud API (approved templates) — no ban risk.
+// Operational messages are sent immediately: no hours window, no daily limit, no random delays.
+// A short pause between sends protects Meta template quality rating (~30/min max).
+const BETWEEN_SENDS_MS = 2000;
 
 function normalizeWaNumber(raw) {
   let num = String(raw || '').replace(/\D/g, '');

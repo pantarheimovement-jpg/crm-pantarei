@@ -94,98 +94,51 @@ async function sendWhatsapp(phone972, text, template = null) {
   return { ok: false, error: result.message || JSON.stringify(result) || 'Unknown error' };
 }
 
-function isWithinSendingWindow(date = new Date()) {
-  const hour = getIsraelHour(date);
-  return hour >= SEND_WINDOW_START && hour < SEND_WINDOW_END;
-}
-
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   try {
-    const now = new Date();
-
-    if (!isWithinSendingWindow(now)) {
-      return Response.json({
-        success: true,
-        delayed: true,
-        reason: 'outside_sending_window',
-        message: 'WhatsApp sending is allowed only between 09:00 and 20:00 Israel time.',
-        timezone: TIME_ZONE,
-      });
-    }
-
-    const recentSentMessages = await base44.asServiceRole.entities.WhatsappQueue.filter({
-      status: 'sent'
-    }, '-sent_at', 500);
-
-    const todayKey = getIsraelDateKey(now);
-    const sentToday = (recentSentMessages || []).filter((item) =>
-      item.sent_at && getIsraelDateKey(new Date(item.sent_at)) === todayKey
-    );
-
-    if (sentToday.length >= DAILY_LIMIT) {
-      return Response.json({
-        success: true,
-        delayed: true,
-        reason: 'daily_limit_reached',
-        message: `Daily WhatsApp limit reached (${DAILY_LIMIT}). Pending messages will continue tomorrow after 09:00 Israel time.`,
-        sent_today: sentToday.length,
-        daily_limit: DAILY_LIMIT,
-      });
-    }
-
-    const lastSentMessage = (recentSentMessages || []).find((item) => item.sent_at);
-
-    if (lastSentMessage?.sent_at) {
-      const lastSentAt = new Date(lastSentMessage.sent_at).getTime();
-      const elapsed = Date.now() - lastSentAt;
-      const requiredInterval = WA_MIN_INTERVAL_MS + Math.floor(Math.random() * (WA_MAX_INTERVAL_MS - WA_MIN_INTERVAL_MS));
-
-      if (elapsed < requiredInterval) {
-        const nextAllowedAt = new Date(lastSentAt + requiredInterval).toISOString();
-        const waitSeconds = Math.ceil((requiredInterval - elapsed) / 1000);
-        console.log(`WhatsApp safety delay active. Waiting ${waitSeconds} seconds before next send.`);
-        return Response.json({
-          success: true,
-          delayed: true,
-          reason: 'minimum_interval_active',
-          message: `Safety delay active. Next WhatsApp can be sent at ${nextAllowedAt}`,
-          next_allowed_at: nextAllowedAt,
-          wait_seconds: waitSeconds
-        });
-      }
-    }
-
+    // Send ALL pending messages immediately — official Cloud API, no window/limit needed.
     const pendingMessages = await base44.asServiceRole.entities.WhatsappQueue.filter({
       status: 'pending'
-    }, 'created_date', 1);
+    }, 'created_date', 50);
 
     if (!pendingMessages || pendingMessages.length === 0) {
       return Response.json({ message: 'No pending messages found in queue.' });
     }
 
-    const message = pendingMessages[0];
-    console.log(`Processing message ID: ${message.id} for subscriber: ${message.subscriber_name}`);
+    const results = [];
+    for (let i = 0; i < pendingMessages.length; i++) {
+      const message = pendingMessages[i];
+      console.log(`Processing message ID: ${message.id} for subscriber: ${message.subscriber_name}`);
 
-    const template = message.template_name
-      ? { name: message.template_name, lang: message.template_lang || 'he', params: message.template_params || {} }
-      : null;
-    const sendResult = await sendWhatsapp(normalizeWaNumber(message.whatsapp_number), message.message_content, template);
+      const template = message.template_name
+        ? { name: message.template_name, lang: message.template_lang || 'he', params: message.template_params || {} }
+        : null;
+      const sendResult = await sendWhatsapp(normalizeWaNumber(message.whatsapp_number), message.message_content, template);
 
-    if (sendResult.ok) {
-      await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {
-        status: 'sent',
-        sent_at: new Date().toISOString()
-      });
-      return Response.json({ success: true, sent_to: message.subscriber_name, sent_today: sentToday.length + 1 });
+      if (sendResult.ok) {
+        await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {
+          status: 'sent',
+          sent_at: new Date().toISOString()
+        });
+        results.push({ name: message.subscriber_name, sent: true });
+      } else {
+        await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {
+          status: 'failed',
+          error_message: sendResult.error || 'Unknown error'
+        });
+        results.push({ name: message.subscriber_name, sent: false, error: sendResult.error });
+      }
+
+      // Short pause between sends to protect Meta template quality rating (~30/min)
+      if (i < pendingMessages.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, BETWEEN_SENDS_MS));
+      }
     }
 
-    await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {
-      status: 'failed',
-      error_message: sendResult.error || 'Unknown error'
-    });
-    return Response.json({ success: false, error: sendResult.error });
+    const sentCount = results.filter((r) => r.sent).length;
+    return Response.json({ success: true, sent: sentCount, failed: results.length - sentCount, results });
   } catch (error) {
     console.error('processWhatsappQueue error:', error.message);
     return Response.json({ success: false, error: error.message }, { status: 500 });

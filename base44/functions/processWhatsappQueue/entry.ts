@@ -62,12 +62,15 @@ async function sendWhatsapp(phone972, text, template = null) {
         headers,
         body: JSON.stringify({ user_ns: userNs, name: template.name, lang: template.lang || 'he', params })
       });
-      if (tplResp.ok) {
+      const tplBody = await tplResp.text();
+      console.log(`uchat template response (${tplResp.status}): ${tplBody}`);
+      let tplJson = {};
+      try { tplJson = JSON.parse(tplBody); } catch (_e) { tplJson = {}; }
+      if (tplResp.ok && tplJson.status !== 'error' && !tplJson.error) {
         console.log(`uchat: template "${template.name}" sent to ${phone972}`);
         return { ok: true };
       }
-      const tplErr = await tplResp.text();
-      return { ok: false, error: `uchat template send failed: ${tplErr}` };
+      return { ok: false, error: `uchat template send failed (${tplResp.status}): ${tplBody}` };
     }
 
     const sendResp = await fetch('https://www.uchat.com.au/api/subscriber/send-text', {
@@ -75,9 +78,12 @@ async function sendWhatsapp(phone972, text, template = null) {
       headers,
       body: JSON.stringify({ user_ns: userNs, text })
     });
-    if (sendResp.ok) return { ok: true };
-    const errText = await sendResp.text();
-    return { ok: false, error: `uchat send failed: ${errText}` };
+    const sendBody = await sendResp.text();
+    console.log(`uchat send-text response (${sendResp.status}): ${sendBody}`);
+    let sendJson = {};
+    try { sendJson = JSON.parse(sendBody); } catch (_e) { sendJson = {}; }
+    if (sendResp.ok && sendJson.status !== 'error' && !sendJson.error) return { ok: true };
+    return { ok: false, error: `uchat send failed (${sendResp.status}): ${sendBody}` };
   }
 
   const GREEN_ID = Deno.env.get('GREEN_ID');

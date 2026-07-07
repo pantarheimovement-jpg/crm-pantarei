@@ -52,7 +52,26 @@ async function sendWhatsapp(phone972, text, template = null) {
     const infoResp = await fetch(`https://www.uchat.com.au/api/subscriber/get-info-by-user-id?user_id=${encodeURIComponent(phone972)}`, { headers });
     let info = {};
     try { info = await infoResp.json(); } catch (_e) { info = {}; }
-    const userNs = info?.user_ns || info?.data?.user_ns;
+    let userNs = info?.user_ns || info?.data?.user_ns;
+
+    // Subscriber doesn't exist yet (never messaged us) — create it in uChat and get user_ns
+    if (!userNs && template?.name) {
+      console.log(`uchat: subscriber not found for ${phone972}, creating...`);
+      const createResp = await fetch('https://www.uchat.com.au/api/subscriber/create', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ phone: phone972, first_name: template.params?.['1'] || '' })
+      });
+      let created = {};
+      try { created = await createResp.json(); } catch (_e) { created = {}; }
+      userNs = created?.data?.user_ns || created?.user_ns;
+      if (!userNs) {
+        const createErr = JSON.stringify(created);
+        return { ok: false, error: `uchat: create subscriber failed for ${phone972}: ${createErr}` };
+      }
+      console.log(`uchat: subscriber created for ${phone972} (${userNs})`);
+    }
+
     if (!userNs) {
       console.log(`uchat: subscriber not found for ${phone972}`);
       return { ok: false, error: `uchat: subscriber not found for ${phone972}` };

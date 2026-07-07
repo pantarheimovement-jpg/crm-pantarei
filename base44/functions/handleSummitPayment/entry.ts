@@ -59,6 +59,37 @@ const COURSE_MAPPINGS = [
       return m ? m[1] : null;
     },
     optionField: 'nana_option'
+  },
+  {
+    matches: (p) => normalizeName(p).startsWith('מסיבת פתיחת שנה'),
+    courseName: 'מסיבת פתיחת שנה 20.11',
+    extractOption: (p) => (String(p).match(/["״]([^"״]+)["״]/) || [])[1] || null
+  },
+  {
+    matches: (p) => normalizeName(p).startsWith('מופע יצירה'),
+    courseName: 'מופע יצירה 3.12',
+    extractOption: (p) => { const parts = String(p).split('-'); return parts.length > 1 ? parts.slice(1).join('-').trim() : null; }
+  },
+  {
+    matches: (p) => normalizeName(p).startsWith('שיעורי גיטרה'),
+    courseName: 'יאיר בר צורי- שיעורי גיטרה בחנתון',
+    extractOption: (p) => { const parts = String(p).split('-'); return parts.length > 1 ? parts.slice(1).join('-').trim() : null; }
+  },
+  {
+    matches: (p) => normalizeName(p).includes('הורים וילדים') && !normalizeName(p).startsWith('סדנת קיץ'),
+    courseName: 'סדנת קיץ "הורים וילדים"',
+    extractOption: (p) => {
+      const n = normalizeName(p);
+      if (n.startsWith('3 סדנאות')) return '3 סדנאות';
+      const m = String(p).match(/(\d{1,2}\.\d{1,2})/);
+      if (n.includes('בודדת')) return 'סדנא בודדת' + (m ? ' ' + m[1] : '');
+      return null;
+    }
+  },
+  {
+    matches: (p) => normalizeName(p).startsWith('מפגשי ליווי'),
+    courseName: 'מפגשי ליווי עם אביטל בר צורי',
+    extractOption: (p) => { const parts = String(p).split('-'); return parts.length > 1 ? parts.slice(1).join('-').trim() : null; }
   }
 ];
 
@@ -283,6 +314,7 @@ Deno.serve(async (req) => {
       course_id: course.id,
       course_name: course.name,
       status: registeredStatus,
+      ...(mapping && !mapping.optionField && courseOption ? { option: courseOption } : {}),
       registration_date: existingEntry?.registration_date || billingDate,
       payment_number: paymentNumber,
       ...(paymentsTotal && { payments_total: paymentsTotal }),

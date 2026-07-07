@@ -7,6 +7,7 @@ import StudentsList from '../components/course/StudentsList';
 import AttendanceManager from '../components/course/AttendanceManager';
 import NanaSummerBreakdown from '../components/course/NanaSummerBreakdown';
 import CollapsibleSection from '../components/course/CollapsibleSection';
+import CourseOptionsBreakdown from '../components/course/CourseOptionsBreakdown';
 
 export default function CourseView() {
   const { courseId } = useParams();
@@ -178,6 +179,12 @@ export default function CourseView() {
         {course?.name === 'סמסטר קיץ נענע' && (
           <CollapsibleSection title="סיכום רשומים לפי אפשרות">
             <NanaSummerBreakdown students={registeredStudents} />
+          </CollapsibleSection>
+        )}
+
+        {course?.name !== 'סמסטר קיץ נענע' && registeredStudents.some(s => (s.courses || []).some(c => c.course_id === courseId && c.option)) && (
+          <CollapsibleSection title="סיכום רשומים לפי אפשרות">
+            <CourseOptionsBreakdown students={registeredStudents} courseId={courseId} />
           </CollapsibleSection>
         )}
 

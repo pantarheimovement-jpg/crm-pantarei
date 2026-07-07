@@ -26,24 +26,33 @@ async function sendWhatsapp(phone972, text, template = null) {
     const infoResp = await fetch(`https://www.uchat.com.au/api/subscriber/get-info-by-user-id?user_id=${encodeURIComponent(phone972)}`, { headers });
     let info = {};
     try { info = await infoResp.json(); } catch (_e) { info = {}; }
-    let userNs = info?.user_ns || info?.data?.user_ns;
+    const userNs = info?.user_ns || info?.data?.user_ns;
 
-    // Subscriber doesn't exist yet (never messaged us) — create it in uChat and get user_ns
+    // Subscriber doesn't exist yet (never messaged us) — broadcast the template directly by phone number.
+    // This is the official uChat way to reach brand-new WhatsApp contacts.
     if (!userNs && template?.name) {
-      console.log(`uchat: subscriber not found for ${phone972}, creating...`);
-      const createResp = await fetch('https://www.uchat.com.au/api/subscriber/create', {
+      console.log(`uchat: subscriber not found for ${phone972}, broadcasting template by user_id...`);
+      const params = {};
+      for (const [key, value] of Object.entries(template.params || {})) {
+        params[`BODY_{{${key}}}`] = value;
+      }
+      const bcResp = await fetch('https://www.uchat.com.au/api/subscriber/broadcast-whatsapp-template-by-user-id', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ phone: phone972, first_name: template.params?.['1'] || '' })
+        body: JSON.stringify({
+          user_id_list: phone972,
+          wa_template: { name: template.name, lang: template.lang || 'he', params }
+        })
       });
-      let created = {};
-      try { created = await createResp.json(); } catch (_e) { created = {}; }
-      userNs = created?.data?.user_ns || created?.user_ns;
-      if (!userNs) {
-        const createErr = JSON.stringify(created);
-        return { ok: false, error: `uchat: create subscriber failed for ${phone972}: ${createErr}` };
+      const bcBody = await bcResp.text();
+      console.log(`uchat broadcast response (${bcResp.status}): ${bcBody}`);
+      let bcJson = {};
+      try { bcJson = JSON.parse(bcBody); } catch (_e) { bcJson = {}; }
+      if (bcResp.ok && bcJson.status !== 'error' && !bcJson.error) {
+        console.log(`uchat: template "${template.name}" broadcast to ${phone972}`);
+        return { ok: true };
       }
-      console.log(`uchat: subscriber created for ${phone972} (${userNs})`);
+      return { ok: false, error: `uchat broadcast failed (${bcResp.status}): ${bcBody}` };
     }
 
     if (!userNs) {

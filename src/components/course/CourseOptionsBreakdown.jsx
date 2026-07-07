@@ -8,7 +8,7 @@ export default function CourseOptionsBreakdown({ students, courseId }) {
   students.forEach(s => {
     const entry = (s.courses || []).find(c => c.course_id === courseId);
     if (!entry) return;
-    const key = entry.option || 'לא צוין';
+    const key = entry.option || 'ללא אפשרות מוגדרת';
     if (!groups[key]) groups[key] = { count: 0, total: 0, names: [] };
     groups[key].count++;
     groups[key].total += entry.total_price || 0;

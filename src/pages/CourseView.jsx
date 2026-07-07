@@ -172,7 +172,7 @@ export default function CourseView() {
           </CollapsibleSection>
         )}
 
-        {course?.name !== 'סמסטר קיץ נענע' && registeredStudents.some(s => (s.courses || []).some(c => c.course_id === courseId && c.option)) && (
+        {course?.name !== 'סמסטר קיץ נענע' && registeredStudents.length > 0 && (
           <CollapsibleSection title="סיכום רשומים לפי אפשרות">
             <CourseOptionsBreakdown students={registeredStudents} courseId={courseId} />
           </CollapsibleSection>

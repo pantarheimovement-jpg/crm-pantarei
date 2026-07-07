@@ -155,6 +155,11 @@ function isPantareiPhone(phoneNumber) {
   return pantareiVariants.includes(normalized);
 }
 
+// Run heavy work AFTER the response is returned (does not block the reply to uChat)
+function runInBackground(label, fn) {
+  Promise.resolve().then(fn).catch(e => console.error(`❌ background ${label} error:`, e?.message || e));
+}
+
 // =============================================
 // MESSAGE INTENT ANALYSIS
 // =============================================
@@ -243,7 +248,7 @@ Deno.serve(async (req) => {
     if (uchatCapture.userNs && uchatCapture.phone972) {
       try {
         const base44 = createClientFromRequest(req);
-        await saveUchatUserNs(base44, uchatCapture.phone972, uchatCapture.userNs);
+        saveUchatUserNs(base44, uchatCapture.phone972, uchatCapture.userNs).catch(e => console.log('⚠️ user_ns save error:', e.message));
       } catch (e) {
         console.log('⚠️ user_ns save error:', e.message);
       }
@@ -294,21 +299,6 @@ async function handleRequest(req) {
       console.log(`📥 uChat inbound message from ${phone972}`);
     }
 
-    // Load business phone from GeneralSettings
-    try {
-      const generalSettingsArr = await base44.asServiceRole.entities.GeneralSettings.list();
-      const generalSettings = generalSettingsArr && generalSettingsArr.length > 0 ? generalSettingsArr[0] : null;
-      if (generalSettings?.business_phone) {
-        let phone = normalizePhone(generalSettings.business_phone);
-        if (phone.startsWith('0')) phone = '972' + phone.substring(1);
-        PANTAREI_PHONE = phone;
-        PANTAREI_CHAT_ID = phone + '@c.us';
-        console.log(`📱 Pantarei phone loaded from settings: ${PANTAREI_PHONE}`);
-      }
-    } catch (e) {
-      console.log('⚠️ Could not load GeneralSettings, using default phone');
-    }
-
     console.log('📦 Webhook body:', JSON.stringify(body, null, 2));
 
     const typeWebhook = body.typeWebhook;
@@ -341,6 +331,23 @@ async function handleRequest(req) {
 
     console.log(`📞 From: ${phoneNumber}, Name: ${senderName}, Message: "${messageText}"`);
 
+    // Load ALL needed data in one parallel round-trip (keeps response time low)
+    const [generalSettingsArr, knownContacts, courses, automationSettingsArr] = await Promise.all([
+      base44.asServiceRole.entities.GeneralSettings.list().catch(() => []),
+      base44.asServiceRole.entities.WhatsappKnownContacts.list().catch(() => []),
+      base44.asServiceRole.entities.Course.list().catch(() => []),
+      base44.asServiceRole.entities.AutomationSettings.list().catch(() => [])
+    ]);
+
+    const generalSettings = generalSettingsArr && generalSettingsArr.length > 0 ? generalSettingsArr[0] : null;
+    if (generalSettings?.business_phone) {
+      let bizPhone = normalizePhone(generalSettings.business_phone);
+      if (bizPhone.startsWith('0')) bizPhone = '972' + bizPhone.substring(1);
+      PANTAREI_PHONE = bizPhone;
+      PANTAREI_CHAT_ID = bizPhone + '@c.us';
+    }
+    const automationSettings = automationSettingsArr && automationSettingsArr.length > 0 ? automationSettingsArr[0] : null;
+
     // =============================================
     // CHECK IF THIS IS AN UNSUBSCRIBE REQUEST
     // =============================================
@@ -348,8 +355,9 @@ async function handleRequest(req) {
     const isUnsubscribeRequest = UNSUBSCRIBE_KEYWORDS.some(kw => lowerMsg === kw || lowerMsg === kw + ' אותי');
     if (isUnsubscribeRequest && !isPantareiPhone(phoneNumber)) {
       console.log(`📭 Unsubscribe request from ${phoneNumber}`);
-      const result = await handleUnsubscribe(base44, phoneNumber, chatId);
-      return Response.json(result);
+      await sendWhatsAppToChat(chatId, 'הוסרת מרשימת התפוצה בהצלחה 💜');
+      runInBackground('unsubscribe', () => handleUnsubscribe(base44, phoneNumber));
+      return Response.json({ status: 'unsubscribed', phone: phoneNumber });
     }
 
     // =============================================
@@ -364,7 +372,6 @@ async function handleRequest(req) {
     // =============================================
     // CHECK IF THIS IS A KNOWN CONTACT (SKIP)
     // =============================================
-    const knownContacts = await base44.asServiceRole.entities.WhatsappKnownContacts.list();
     const senderVariants = getPhoneVariants(phoneNumber);
     const isKnownContact = (knownContacts || []).some(contact => {
       const contactVariants = getPhoneVariants(contact.phone);
@@ -376,8 +383,7 @@ async function handleRequest(req) {
       return Response.json({ status: 'ignored', reason: 'Known contact - not a lead' });
     }
 
-    // --- STEP 1: Load course names for intent analysis ---
-    const courses = await base44.asServiceRole.entities.Course.list();
+    // --- STEP 1: Course names for intent analysis (preloaded in parallel above) ---
     const courseNames = (courses || []).map(c => c.name).filter(Boolean);
     console.log(`📚 Loaded ${courseNames.length} course names for keyword matching`);
 
@@ -401,11 +407,13 @@ async function handleRequest(req) {
     console.log(`🔍 Searching with phone variants: ${phoneVariants.join(', ')}`);
 
     let existingStudent = null;
-    for (const variant of phoneVariants) {
-      const results = await base44.asServiceRole.entities.Student.filter({ phone: variant });
-      if (results && results.length > 0) {
-        existingStudent = results[0];
-        console.log(`✅ Found existing student with variant "${variant}": ${existingStudent.full_name}`);
+    const variantResults = await Promise.all(
+      phoneVariants.map(v => base44.asServiceRole.entities.Student.filter({ phone: v }).catch(() => []))
+    );
+    for (let i = 0; i < variantResults.length; i++) {
+      if (variantResults[i] && variantResults[i].length > 0) {
+        existingStudent = variantResults[i][0];
+        console.log(`✅ Found existing student with variant "${phoneVariants[i]}": ${existingStudent.full_name}`);
         break;
       }
     }
@@ -430,13 +438,14 @@ async function handleRequest(req) {
     }
 
     // =============================================
-    // STRONG LEAD PATH
+    // FAST-REPLY PATHS: reply is computed now, heavy work runs in background
     // =============================================
+    const nowIso = new Date().toISOString();
+    const today = nowIso.split('T')[0];
+
     if (intent.intentType === 'strong_lead') {
 
       if (existingStudent) {
-        console.log(`🔄 Existing student "${existingStudent.full_name}" showing strong interest`);
-
         const existingCourses = existingStudent.courses || [];
         const identifiedCourse = intent.identifiedCourseName;
         let isNewCourseInterest = true;
@@ -451,63 +460,54 @@ async function handleRequest(req) {
         }
 
         if (isNewCourseInterest) {
-          console.log(`✨ New course interest for existing student!`);
+          console.log(`✨ New course interest for existing student "${existingStudent.full_name}"`);
+          const autoReplySent = await sendAutoReply(automationSettings, chatId, senderName, 'existing_new_course');
 
-          let matchedCourse = null;
-          if (identifiedCourse) {
-            matchedCourse = courses.find(c => c.name === identifiedCourse);
-          }
+          runInBackground('existing_student_new_interest', async () => {
+            const matchedCourse = identifiedCourse ? courses.find(c => c.name === identifiedCourse) : null;
+            const updatedCourses = [...existingCourses];
+            if (matchedCourse) {
+              updatedCourses.push({
+                course_id: matchedCourse.id,
+                course_name: matchedCourse.name,
+                status: 'ליד חדש',
+                registration_date: today
+              });
+            }
 
-          const updatedCourses = [...existingCourses];
-          if (matchedCourse) {
-            updatedCourses.push({
-              course_id: matchedCourse.id,
-              course_name: matchedCourse.name,
-              status: 'ליד חדש',
-              registration_date: new Date().toISOString().split('T')[0]
-            });
-          }
+            const updateData = {
+              last_contact_date: nowIso,
+              notes: (existingStudent.notes || '') + `\n📱 ${new Date().toLocaleDateString('he-IL')}: התעניינות חדשה בוואטסאפ${identifiedCourse ? ' - ' + identifiedCourse : ''}: "${messageText}"`
+            };
+            if (updatedCourses.length > existingCourses.length) {
+              updateData.courses = updatedCourses;
+            }
+            await base44.asServiceRole.entities.Student.update(existingStudent.id, updateData);
+            console.log('✅ Student updated with new interest');
 
-          const updateData = {
-            last_contact_date: new Date().toISOString(),
-            notes: (existingStudent.notes || '') + `\n📱 ${new Date().toLocaleDateString('he-IL')}: התעניינות חדשה בוואטסאפ${identifiedCourse ? ' - ' + identifiedCourse : ''}: "${messageText}"`
-          };
+            const scheduledDate = new Date();
+            scheduledDate.setDate(scheduledDate.getDate() + 2);
+            const isFasciaWA = (identifiedCourse || '').includes('פאשיה');
+            const introTaskName = isFasciaWA ? 'שיחת היכרות פאשיה בתנועה' : (identifiedCourse ? `שיחת היכרות - ${identifiedCourse}` : 'שיחת היכרות');
 
-          if (updatedCourses.length > existingCourses.length) {
-            updateData.courses = updatedCourses;
-          }
-
-          await base44.asServiceRole.entities.Student.update(existingStudent.id, updateData);
-          console.log(`✅ Student updated with new interest`);
-
-          // יצירת שיחת היכרות גם לאיש קשר קיים עם קורס חדש
-          const scheduledDate = new Date();
-          scheduledDate.setDate(scheduledDate.getDate() + 2);
-
-          // קביעת שם משימה לפי קורס
-          const isFasciaWA = (identifiedCourse || '').includes('פאשיה');
-          const introTaskName = isFasciaWA ? 'שיחת היכרות פאשיה בתנועה' : (identifiedCourse ? `שיחת היכרות - ${identifiedCourse}` : 'שיחת היכרות');
-
-          // בדיקה שאין כבר שיחת היכרות פתוחה מאותו סוג לאותו סטודנט
-          const existingIntroTasks = await base44.asServiceRole.entities.Task.filter({
-            student_id: existingStudent.id,
-            name: introTaskName
-          });
-          const hasOpenIntroTask = existingIntroTasks.some(t => t.status !== 'הושלם' && t.status !== 'אבוד');
-
-          if (!hasOpenIntroTask) {
-            await base44.asServiceRole.entities.Task.create({
-              name: introTaskName,
-              description: `התעניינות חדשה מוואטסאפ: ${existingStudent.full_name}\nקורס: ${identifiedCourse || 'לא צוין'}\nהודעה: ${messageText}`,
-              status: 'ממתין',
-              scheduled_date: scheduledDate.toISOString().split('T')[0],
+            const existingIntroTasks = await base44.asServiceRole.entities.Task.filter({
               student_id: existingStudent.id,
-              student_name: existingStudent.full_name
+              name: introTaskName
             });
-            console.log('✅ Introduction task created for existing student with new course');
-          }
+            const hasOpenIntroTask = (existingIntroTasks || []).some(t => t.status !== 'הושלם' && t.status !== 'אבוד');
 
-          const autoReplySent = await sendAutoReply(base44, chatId, senderName, 'existing_new_course');
+            if (!hasOpenIntroTask) {
+              await base44.asServiceRole.entities.Task.create({
+                name: introTaskName,
+                description: `התעניינות חדשה מוואטסאפ: ${existingStudent.full_name}\nקורס: ${identifiedCourse || 'לא צוין'}\nהודעה: ${messageText}`,
+                status: 'ממתין',
+                scheduled_date: scheduledDate.toISOString().split('T')[0],
+                student_id: existingStudent.id,
+                student_name: existingStudent.full_name
+              });
+              console.log('✅ Introduction task created for existing student with new course');
+            }
+          });
 
           return Response.json({
             status: 'existing_student_new_interest',
@@ -515,15 +515,14 @@ async function handleRequest(req) {
             student_name: existingStudent.full_name,
             identified_course: identifiedCourse,
             auto_reply: autoReplySent,
-            intro_task_created: !hasOpenIntroTask,
             intent: intent.debugInfo
           });
 
         } else {
           console.log(`⏭️ Existing student already linked to this course - updating last contact only`);
-          await base44.asServiceRole.entities.Student.update(existingStudent.id, {
-            last_contact_date: new Date().toISOString()
-          });
+          runInBackground('update_last_contact', () =>
+            base44.asServiceRole.entities.Student.update(existingStudent.id, { last_contact_date: nowIso })
+          );
 
           return Response.json({
             status: 'existing_student_known_course',
@@ -536,67 +535,58 @@ async function handleRequest(req) {
 
       } else {
         console.log('✨ New WhatsApp STRONG LEAD detected!');
+        const autoReplySent = await sendAutoReply(automationSettings, chatId, senderName, 'new_lead');
 
-        const student = await base44.asServiceRole.entities.Student.create({
-          full_name: senderName || storedPhone,
-          phone: storedPhone,
-          status: 'ליד חדש',
-          lead_source: 'וואטסאפ',
-          interest_area: intent.identifiedCourseName || '',
-          lead_entry_date: new Date().toISOString().split('T')[0],
-          last_contact_date: new Date().toISOString(),
-          notes: `הודעה ראשונה (ליד חזק): ${messageText}`
-        });
+        runInBackground('new_lead_created', async () => {
+          const matchedCourse = intent.identifiedCourseName ? courses.find(c => c.name === intent.identifiedCourseName) : null;
 
-        console.log(`✅ New lead created: ${student.id} - ${student.full_name}`);
-
-        if (intent.identifiedCourseName) {
-          const matchedCourse = courses.find(c => c.name === intent.identifiedCourseName);
-          if (matchedCourse) {
-            await base44.asServiceRole.entities.Student.update(student.id, {
+          const student = await base44.asServiceRole.entities.Student.create({
+            full_name: senderName || storedPhone,
+            phone: storedPhone,
+            status: 'ליד חדש',
+            lead_source: 'וואטסאפ',
+            interest_area: intent.identifiedCourseName || '',
+            lead_entry_date: today,
+            last_contact_date: nowIso,
+            notes: `הודעה ראשונה (ליד חזק): ${messageText}`,
+            ...(matchedCourse ? {
               course_id: matchedCourse.id,
               course_name: matchedCourse.name,
               courses: [{
                 course_id: matchedCourse.id,
                 course_name: matchedCourse.name,
                 status: 'ליד חדש',
-                registration_date: new Date().toISOString().split('T')[0]
+                registration_date: today
               }]
-            });
-          }
-        }
+            } : {})
+          });
+          console.log(`✅ New lead created: ${student.id} - ${student.full_name}`);
 
-        const scheduledDate = new Date();
-        scheduledDate.setDate(scheduledDate.getDate() + 2);
+          const scheduledDate = new Date();
+          scheduledDate.setDate(scheduledDate.getDate() + 2);
+          const isFasciaNewLead = (intent.identifiedCourseName || '').includes('פאשיה');
+          const newLeadTaskName = isFasciaNewLead ? 'שיחת היכרות פאשיה בתנועה' : (intent.identifiedCourseName ? `שיחת היכרות - ${intent.identifiedCourseName}` : 'שיחת היכרות');
 
-        // קביעת שם משימה לפי קורס (ליד חדש)
-        const isFasciaNewLead = (intent.identifiedCourseName || '').includes('פאשיה');
-        const newLeadTaskName = isFasciaNewLead ? 'שיחת היכרות פאשיה בתנועה' : (intent.identifiedCourseName ? `שיחת היכרות - ${intent.identifiedCourseName}` : 'שיחת היכרות');
+          await base44.asServiceRole.entities.Task.create({
+            name: newLeadTaskName,
+            description: `ליד חדש מוואטסאפ: ${senderName || storedPhone}\nהודעה: ${messageText}${intent.identifiedCourseName ? '\nקורס: ' + intent.identifiedCourseName : ''}`,
+            status: 'ממתין',
+            scheduled_date: scheduledDate.toISOString().split('T')[0],
+            student_id: student.id,
+            student_name: student.full_name
+          });
+          console.log('✅ Introduction task created');
 
-        await base44.asServiceRole.entities.Task.create({
-          name: newLeadTaskName,
-          description: `ליד חדש מוואטסאפ: ${senderName || storedPhone}\nהודעה: ${messageText}${intent.identifiedCourseName ? '\nקורס: ' + intent.identifiedCourseName : ''}`,
-          status: 'ממתין',
-          scheduled_date: scheduledDate.toISOString().split('T')[0],
-          student_id: student.id,
-          student_name: student.full_name
-        });
-
-        console.log('✅ Introduction task created');
-
-        const autoReplySent = await sendAutoReply(base44, chatId, senderName, 'new_lead');
-
-        // יצירת מנוי אם יש מייל (ליד חדש מוואטסאפ)
-        await createOrUpdateSubscriber(base44, {
-          name: senderName || storedPhone,
-          phone: storedPhone,
-          courseName: intent.identifiedCourseName
+          await createOrUpdateSubscriber(base44, {
+            name: senderName || storedPhone,
+            phone: storedPhone,
+            courseName: intent.identifiedCourseName
+          });
         });
 
         return Response.json({
           status: 'new_lead_created',
-          student_id: student.id,
-          student_name: student.full_name,
+          student_name: senderName || storedPhone,
           identified_course: intent.identifiedCourseName,
           auto_reply: autoReplySent,
           intent: intent.debugInfo
@@ -605,22 +595,22 @@ async function handleRequest(req) {
     }
 
     // =============================================
-    // FOR REVIEW PATH — now sends notification to Ofir
+    // FOR REVIEW PATH — notification to Ofir runs in background
     // =============================================
     if (intent.intentType === 'for_review') {
 
       if (existingStudent) {
         console.log(`📝 Existing student "${existingStudent.full_name}" - message for review`);
 
-        await base44.asServiceRole.entities.Student.update(existingStudent.id, {
-          last_contact_date: new Date().toISOString(),
-          status: 'הודעה מוואטסאפ לבדיקה',
-          lead_source: existingStudent.lead_source || 'וואטסאפ',
-          notes: (existingStudent.notes || '') + `\n📱 ${new Date().toLocaleDateString('he-IL')}: הודעה לבדיקה: "${messageText}"`
+        runInBackground('existing_student_for_review', async () => {
+          await base44.asServiceRole.entities.Student.update(existingStudent.id, {
+            last_contact_date: nowIso,
+            status: 'הודעה מוואטסאפ לבדיקה',
+            lead_source: existingStudent.lead_source || 'וואטסאפ',
+            notes: (existingStudent.notes || '') + `\n📱 ${new Date().toLocaleDateString('he-IL')}: הודעה לבדיקה: "${messageText}"`
+          });
+          await notifyOfir(base44, existingStudent.full_name, storedPhone, messageText, intent.identifiedCourseName);
         });
-
-        // Notify Ofir
-        await notifyOfir(base44, existingStudent.full_name, storedPhone, messageText, intent.identifiedCourseName);
 
         return Response.json({
           status: 'existing_student_for_review',
@@ -633,25 +623,23 @@ async function handleRequest(req) {
       } else {
         console.log('📋 New contact - creating for review + notifying Ofir');
 
-        const student = await base44.asServiceRole.entities.Student.create({
-          full_name: senderName || storedPhone,
-          phone: storedPhone,
-          status: 'הודעה מוואטסאפ לבדיקה',
-          lead_source: 'וואטסאפ',
-          lead_entry_date: new Date().toISOString().split('T')[0],
-          last_contact_date: new Date().toISOString(),
-          notes: `הודעה לבדיקה: ${messageText}`
+        runInBackground('pending_review', async () => {
+          const student = await base44.asServiceRole.entities.Student.create({
+            full_name: senderName || storedPhone,
+            phone: storedPhone,
+            status: 'הודעה מוואטסאפ לבדיקה',
+            lead_source: 'וואטסאפ',
+            lead_entry_date: today,
+            last_contact_date: nowIso,
+            notes: `הודעה לבדיקה: ${messageText}`
+          });
+          console.log(`✅ Student created for review: ${student.id} - ${student.full_name}`);
+          await notifyOfir(base44, student.full_name, storedPhone, messageText, intent.identifiedCourseName);
         });
-
-        console.log(`✅ Student created for review: ${student.id} - ${student.full_name}`);
-
-        // Notify Ofir
-        await notifyOfir(base44, student.full_name, storedPhone, messageText, intent.identifiedCourseName);
 
         return Response.json({
           status: 'pending_review',
-          student_id: student.id,
-          student_name: student.full_name,
+          student_name: senderName || storedPhone,
           ofir_notified: true,
           intent: intent.debugInfo
         });
@@ -976,7 +964,7 @@ async function createOrUpdateSubscriber(base44, { name, email, phone, courseName
 // =============================================
 // HANDLE UNSUBSCRIBE REQUEST
 // =============================================
-async function handleUnsubscribe(base44, phoneNumber, chatId) {
+async function handleUnsubscribe(base44, phoneNumber) {
   let whatsappNum = normalizePhone(phoneNumber);
   if (whatsappNum.startsWith('0')) whatsappNum = '972' + whatsappNum.substring(1);
 
@@ -996,17 +984,13 @@ async function handleUnsubscribe(base44, phoneNumber, chatId) {
     console.log(`⚠️ No subscriber found for ${phoneNumber}, but confirming removal anyway`);
   }
 
-  await sendWhatsAppToChat(chatId, 'הוסרת מרשימת התפוצה בהצלחה 💜');
   return { status: 'unsubscribed', phone: phoneNumber, found: !!subscriber };
 }
 
 // =============================================
 // AUTO-REPLY HELPER (for strong leads)
 // =============================================
-async function sendAutoReply(base44, chatId, senderName, replyType) {
-  const automationSettingsArr = await base44.asServiceRole.entities.AutomationSettings.list();
-  const automationSettings = automationSettingsArr && automationSettingsArr.length > 0 ? automationSettingsArr[0] : null;
-
+async function sendAutoReply(automationSettings, chatId, senderName, replyType) {
   const autoReplyEnabled = automationSettings?.whatsapp_auto_reply_enabled !== false;
 
   if (!autoReplyEnabled) {

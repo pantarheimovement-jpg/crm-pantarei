@@ -41,6 +41,46 @@ function normalizeWaNumber(raw) {
   return num;
 }
 
+// Provider switch: send via uChat (WhatsApp Cloud API) or Green API by WHATSAPP_PROVIDER secret
+async function sendWhatsapp(phone972, text) {
+  const provider = (Deno.env.get('WHATSAPP_PROVIDER') || 'green').toLowerCase();
+
+  if (provider === 'uchat') {
+    const token = Deno.env.get('UCHAT_API_TOKEN');
+    if (!token) return { ok: false, error: 'uchat: UCHAT_API_TOKEN not configured' };
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const infoResp = await fetch(`https://www.uchat.com.au/api/subscriber/get-info-by-user-id?user_id=${encodeURIComponent(phone972)}`, { headers });
+    let info = {};
+    try { info = await infoResp.json(); } catch (_e) { info = {}; }
+    const userNs = info?.user_ns || info?.data?.user_ns;
+    if (!userNs) {
+      console.log(`uchat: subscriber not found for ${phone972}`);
+      return { ok: false, error: `uchat: subscriber not found for ${phone972}` };
+    }
+    const sendResp = await fetch('https://www.uchat.com.au/api/subscriber/send-text', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ user_ns: userNs, text })
+    });
+    if (sendResp.ok) return { ok: true };
+    const errText = await sendResp.text();
+    return { ok: false, error: `uchat send failed: ${errText}` };
+  }
+
+  const GREEN_ID = Deno.env.get('GREEN_ID');
+  const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
+  if (!GREEN_ID || !GREEN_TOKEN) return { ok: false, error: 'Missing Green API credentials' };
+  const response = await fetch(`https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chatId: `${phone972}@c.us`, message: text })
+  });
+  let result = {};
+  try { result = await response.json(); } catch (_e) { result = {}; }
+  if (response.ok && result.idMessage) return { ok: true };
+  return { ok: false, error: result.message || JSON.stringify(result) || 'Unknown error' };
+}
+
 function isWithinSendingWindow(date = new Date()) {
   const hour = getIsraelHour(date);
   return hour >= SEND_WINDOW_START && hour < SEND_WINDOW_END;
@@ -115,28 +155,9 @@ Deno.serve(async (req) => {
     const message = pendingMessages[0];
     console.log(`Processing message ID: ${message.id} for subscriber: ${message.subscriber_name}`);
 
-    const GREEN_ID = Deno.env.get('GREEN_ID');
-    const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
+    const sendResult = await sendWhatsapp(normalizeWaNumber(message.whatsapp_number), message.message_content);
 
-    if (!GREEN_ID || !GREEN_TOKEN) {
-      return Response.json({ error: 'Configuration Error: Missing API Credentials' }, { status: 500 });
-    }
-
-    const response = await fetch(
-      `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chatId: `${normalizeWaNumber(message.whatsapp_number)}@c.us`,
-          message: message.message_content
-        })
-      }
-    );
-
-    const result = await response.json();
-
-    if (response.ok) {
+    if (sendResult.ok) {
       await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {
         status: 'sent',
         sent_at: new Date().toISOString()
@@ -146,9 +167,9 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {
       status: 'failed',
-      error_message: result.message || JSON.stringify(result) || 'Unknown error'
+      error_message: sendResult.error || 'Unknown error'
     });
-    return Response.json({ success: false, error: result.message });
+    return Response.json({ success: false, error: sendResult.error });
   } catch (error) {
     console.error('processWhatsappQueue error:', error.message);
     return Response.json({ success: false, error: error.message }, { status: 500 });

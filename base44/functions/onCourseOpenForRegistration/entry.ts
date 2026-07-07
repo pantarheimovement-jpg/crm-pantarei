@@ -35,6 +35,30 @@ function applyTemplate(template, student, courseName) {
 }
 
 async function sendWhatsappToNumber(whatsappNumber, messageContent) {
+  const provider = (Deno.env.get('WHATSAPP_PROVIDER') || 'green').toLowerCase();
+
+  if (provider === 'uchat') {
+    const token = Deno.env.get('UCHAT_API_TOKEN');
+    if (!token) return { sent: false, reason: 'uchat: UCHAT_API_TOKEN not configured' };
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const infoResp = await fetch(`https://www.uchat.com.au/api/subscriber/get-info-by-user-id?user_id=${encodeURIComponent(whatsappNumber)}`, { headers });
+    let info = {};
+    try { info = await infoResp.json(); } catch (_e) { info = {}; }
+    const userNs = info?.user_ns || info?.data?.user_ns;
+    if (!userNs) {
+      console.log(`uchat: subscriber not found for ${whatsappNumber}`);
+      return { sent: false, reason: `uchat: subscriber not found for ${whatsappNumber}` };
+    }
+    const sendResp = await fetch('https://www.uchat.com.au/api/subscriber/send-text', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ user_ns: userNs, text: messageContent })
+    });
+    if (sendResp.ok) return { sent: true, reason: null };
+    const errText = await sendResp.text();
+    return { sent: false, reason: `uchat send failed: ${errText}` };
+  }
+
   const GREEN_ID = Deno.env.get('GREEN_ID');
   const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
 

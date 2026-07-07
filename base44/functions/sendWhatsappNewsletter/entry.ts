@@ -1,5 +1,45 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
+// Provider switch: send via uChat (WhatsApp Cloud API) or Green API by WHATSAPP_PROVIDER secret
+async function sendWhatsapp(phone972, text) {
+  const provider = (Deno.env.get('WHATSAPP_PROVIDER') || 'green').toLowerCase();
+
+  if (provider === 'uchat') {
+    const token = Deno.env.get('UCHAT_API_TOKEN');
+    if (!token) return { ok: false, error: 'uchat: UCHAT_API_TOKEN not configured' };
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const infoResp = await fetch(`https://www.uchat.com.au/api/subscriber/get-info-by-user-id?user_id=${encodeURIComponent(phone972)}`, { headers });
+    let info = {};
+    try { info = await infoResp.json(); } catch (_e) { info = {}; }
+    const userNs = info?.user_ns || info?.data?.user_ns;
+    if (!userNs) {
+      console.log(`uchat: subscriber not found for ${phone972}`);
+      return { ok: false, error: `uchat: subscriber not found for ${phone972}` };
+    }
+    const sendResp = await fetch('https://www.uchat.com.au/api/subscriber/send-text', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ user_ns: userNs, text })
+    });
+    if (sendResp.ok) return { ok: true };
+    const errText = await sendResp.text();
+    return { ok: false, error: `uchat send failed: ${errText}` };
+  }
+
+  const GREEN_ID = Deno.env.get('GREEN_ID');
+  const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
+  if (!GREEN_ID || !GREEN_TOKEN) return { ok: false, error: 'Missing Green API credentials' };
+  const response = await fetch(`https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chatId: `${phone972}@c.us`, message: text })
+  });
+  let result = {};
+  try { result = await response.json(); } catch (_e) { result = {}; }
+  if (response.ok && result.idMessage) return { ok: true };
+  return { ok: false, error: result.message || JSON.stringify(result) || 'Unknown error' };
+}
+
 Deno.serve(async (req) => {
   console.log('=== 🚀 sendWhatsappNewsletter Function started ===');
   
@@ -27,23 +67,18 @@ Deno.serve(async (req) => {
     console.log('Has embedded messages:', hasEmbeddedMessages);
 
     console.log('Step 4: Reading environment variables...');
-    const GREEN_ID = Deno.env.get('GREEN_ID');
-    const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
-    
-    console.log('GREEN_ID:', GREEN_ID ? `Set (${GREEN_ID})` : '❌ NOT SET');
-    console.log('GREEN_TOKEN:', GREEN_TOKEN ? `Set (${GREEN_TOKEN.substring(0, 10)}...)` : '❌ NOT SET');
-    
-    if (!GREEN_ID) {
-      console.log('❌ GREEN_ID is missing');
-      return Response.json({ 
-        error: 'GREEN_ID must be configured in Dashboard → Secrets'
-      }, { status: 500 });
-    }
-    
-    if (!GREEN_TOKEN) {
-      console.log('❌ GREEN_TOKEN is missing');
-      return Response.json({ 
-        error: 'GREEN_TOKEN must be configured in Dashboard → Secrets'
+    const PROVIDER = (Deno.env.get('WHATSAPP_PROVIDER') || 'green').toLowerCase();
+    console.log('WhatsApp provider:', PROVIDER);
+
+    if (PROVIDER === 'green') {
+      if (!Deno.env.get('GREEN_ID') || !Deno.env.get('GREEN_TOKEN')) {
+        return Response.json({
+          error: 'GREEN_ID and GREEN_TOKEN must be configured in Dashboard → Secrets'
+        }, { status: 500 });
+      }
+    } else if (!Deno.env.get('UCHAT_API_TOKEN')) {
+      return Response.json({
+        error: 'UCHAT_API_TOKEN must be configured in Dashboard → Secrets'
       }, { status: 500 });
     }
 
@@ -67,10 +102,6 @@ Deno.serve(async (req) => {
     let successCount = 0;
     let failedCount = 0;
     const failedDetails = [];
-
-    // Build Green API URL
-    const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
-    console.log('🌐 Green API URL:', greenApiUrl.replace(GREEN_TOKEN, 'TOKEN_HIDDEN'));
 
     // Send messages to each recipient
     for (let i = 0; i < recipients.length; i++) {
@@ -148,53 +179,19 @@ Deno.serve(async (req) => {
         
         console.log('💬 Message preview:', messageToSend.substring(0, 100) + (messageToSend.length > 100 ? '...' : ''));
 
-        const requestBody = {
-          chatId: `${phoneNumber}@c.us`,
-          message: messageToSend
-        };
-        
-        console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
-        console.log('📤 Sending request to Green API...');
+        const sendResult = await sendWhatsapp(phoneNumber, messageToSend);
 
-        const response = await fetch(greenApiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(requestBody)
-        });
-
-        console.log('📥 Response status:', response.status);
-        console.log('📥 Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
-        
-        const responseText = await response.text();
-        console.log('📥 Response body (raw):', responseText);
-        
-        let responseData;
-        try {
-          responseData = JSON.parse(responseText);
-          console.log('📥 Response body (parsed):', JSON.stringify(responseData, null, 2));
-        } catch (e) {
-          console.log('⚠️ Failed to parse response as JSON');
-          responseData = { rawResponse: responseText };
-        }
-
-        if (response.ok && responseData.idMessage) {
+        if (sendResult.ok) {
           successCount++;
-          console.log(`✅ SUCCESS for ${phoneNumber} - Message ID: ${responseData.idMessage}`);
+          console.log(`✅ SUCCESS for ${phoneNumber}`);
         } else {
           failedCount++;
-          const errorMessage = responseData.message || responseData.error || responseData.rawResponse || `HTTP ${response.status}`;
           failedDetails.push({
             name: recipient.name || 'Unknown',
             whatsapp: phoneNumber,
-            error: errorMessage,
-            http_status: response.status,
-            response_data: responseData
+            error: sendResult.error
           });
-          console.log(`❌ FAILED for ${phoneNumber}`);
-          console.log(`   Error: ${errorMessage}`);
-          console.log(`   Full response:`, JSON.stringify(responseData, null, 2));
+          console.log(`❌ FAILED for ${phoneNumber}: ${sendResult.error}`);
         }
 
         // Delay between messages

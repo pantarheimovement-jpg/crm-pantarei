@@ -9,6 +9,72 @@ let PANTAREI_PHONE = '972503859256';
 let PANTAREI_CHAT_ID = '972503859256@c.us';
 const NOTIFICATION_EMAIL = 'pantarhei.movement@gmail.com';
 
+// uChat business phone (WhatsApp Cloud API via uChat)
+const UCHAT_BUSINESS_PHONE = '972515041100';
+
+// Per-request state for uChat inbound flow (reply is returned in the response, not sent via API)
+const uchatCapture = { active: false, chatId: null, reply: null, userNs: null, phone972: null };
+
+// =============================================
+// uChat SEND HELPERS
+// =============================================
+async function sendViaUchat(phone972, text) {
+  const token = Deno.env.get('UCHAT_API_TOKEN');
+  if (!token) {
+    console.log('⚠️ uchat: UCHAT_API_TOKEN not configured');
+    return false;
+  }
+  const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+  try {
+    const infoResp = await fetch(`https://www.uchat.com.au/api/subscriber/get-info-by-user-id?user_id=${encodeURIComponent(phone972)}`, { headers });
+    let info = {};
+    try { info = await infoResp.json(); } catch (_e) { info = {}; }
+    const userNs = info?.user_ns || info?.data?.user_ns;
+    if (!userNs) {
+      console.log(`uchat: subscriber not found for ${phone972}`);
+      return false;
+    }
+    const sendResp = await fetch('https://www.uchat.com.au/api/subscriber/send-text', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ user_ns: userNs, text })
+    });
+    if (sendResp.ok) {
+      console.log(`✅ uChat message sent to ${phone972}`);
+      return true;
+    }
+    const errText = await sendResp.text();
+    console.log(`❌ uChat send failed for ${phone972}: ${errText}`);
+    return false;
+  } catch (e) {
+    console.error('❌ uChat error:', e.message);
+    return false;
+  }
+}
+
+async function saveUchatUserNs(base44, phone972, userNs) {
+  try {
+    const local = '0' + phone972.substring(3);
+    for (const variant of [phone972, local]) {
+      const students = await base44.asServiceRole.entities.Student.filter({ phone: variant });
+      if (students && students.length > 0) {
+        if (students[0].uchat_user_ns !== userNs) {
+          await base44.asServiceRole.entities.Student.update(students[0].id, { uchat_user_ns: userNs });
+          console.log(`✅ uchat_user_ns saved on student ${students[0].full_name}`);
+        }
+        break;
+      }
+    }
+    const subs = await base44.asServiceRole.entities.Subscribers.filter({ whatsapp: phone972 });
+    if (subs && subs.length > 0 && subs[0].uchat_user_ns !== userNs) {
+      await base44.asServiceRole.entities.Subscribers.update(subs[0].id, { uchat_user_ns: userNs });
+      console.log('✅ uchat_user_ns saved on subscriber');
+    }
+  } catch (e) {
+    console.log('⚠️ saveUchatUserNs error:', e.message);
+  }
+}
+
 // Ofir's approval keywords
 const APPROVE_KEYWORDS = ['כן', 'שלח', 'מאושר', 'כ', 'אשר', 'אישור', 'yes', 'שלחי'];
 const REJECT_KEYWORDS = ['לא', 'לא רלוונטי', 'ל', 'דלג', 'no', 'ביטול'];
@@ -85,7 +151,7 @@ function getPhoneVariants(rawPhone) {
 
 function isPantareiPhone(phoneNumber) {
   const normalized = normalizePhone(phoneNumber);
-  const pantareiVariants = getPhoneVariants(PANTAREI_PHONE);
+  const pantareiVariants = [...getPhoneVariants(PANTAREI_PHONE), ...getPhoneVariants(UCHAT_BUSINESS_PHONE)];
   return pantareiVariants.includes(normalized);
 }
 
@@ -170,9 +236,63 @@ Deno.serve(async (req) => {
     return Response.json({ status: 'ok' });
   }
 
+  const response = await handleRequest(req);
+
+  if (uchatCapture.active) {
+    // Save user_ns for future sends (record may have been created during handling)
+    if (uchatCapture.userNs && uchatCapture.phone972) {
+      try {
+        const base44 = createClientFromRequest(req);
+        await saveUchatUserNs(base44, uchatCapture.phone972, uchatCapture.userNs);
+      } catch (e) {
+        console.log('⚠️ user_ns save error:', e.message);
+      }
+    }
+    // Inject captured auto-reply into the JSON response for the uChat flow
+    try {
+      const data = await response.json();
+      if (uchatCapture.reply) data.reply = uchatCapture.reply;
+      return Response.json(data, { status: response.status });
+    } catch (_e) {
+      return response;
+    }
+  }
+
+  return response;
+});
+
+async function handleRequest(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
+
+    // =============================================
+    // uChat INBOUND FORMAT DETECTION
+    // =============================================
+    uchatCapture.active = false;
+    uchatCapture.chatId = null;
+    uchatCapture.reply = null;
+    uchatCapture.userNs = null;
+    uchatCapture.phone972 = null;
+
+    if (body.phone && body.message && !body.messageData) {
+      const webhookSecret = Deno.env.get('UCHAT_WEBHOOK_SECRET');
+      if (webhookSecret && body.secret !== webhookSecret) {
+        console.log('❌ uChat webhook secret mismatch');
+        return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      let phone972 = normalizePhone(body.phone);
+      if (phone972.startsWith('0')) phone972 = '972' + phone972.substring(1);
+      uchatCapture.active = true;
+      uchatCapture.chatId = phone972 + '@c.us';
+      uchatCapture.userNs = body.user_ns || null;
+      uchatCapture.phone972 = phone972;
+      // Synthesize Green API format so all existing logic runs unchanged
+      body.typeWebhook = 'incomingMessageReceived';
+      body.senderData = { chatId: phone972 + '@c.us', senderName: body.first_name || '' };
+      body.messageData = { textMessageData: { textMessage: body.message } };
+      console.log(`📥 uChat inbound message from ${phone972}`);
+    }
 
     // Load business phone from GeneralSettings
     try {
@@ -547,37 +667,16 @@ Deno.serve(async (req) => {
     console.error('Stack:', error.stack);
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}
 
 // =============================================
 // NOTIFY OFIR — WhatsApp + Email
 // =============================================
 async function notifyOfir(base44, leadName, leadPhone, messageText, courseName) {
-  const GREEN_ID = Deno.env.get('GREEN_ID');
-  const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
-
-  // WhatsApp notification to Ofir
-  if (GREEN_ID && GREEN_TOKEN) {
-    const whatsappMsg = `💜 ליד חדש מוואטסאפ לבדיקה:\n\n👤 *${leadName}*\n📞 ${leadPhone}${courseName ? '\n📚 ' + courseName : ''}\n💬 "${messageText}"\n\nלשלוח תגובה אוטומטית?\nהשיבי *כן ${leadName}* או *לא ${leadName}*`;
-
-    const greenApiUrl = `https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`;
-
-    try {
-      const resp = await fetch(greenApiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId: PANTAREI_CHAT_ID, message: whatsappMsg })
-      });
-      const result = await resp.json();
-      if (resp.ok && result.idMessage) {
-        console.log(`✅ Ofir notified via WhatsApp: ${result.idMessage}`);
-      } else {
-        console.log(`❌ Failed to notify Ofir via WhatsApp:`, result);
-      }
-    } catch (e) {
-      console.error('❌ Error sending WhatsApp to Ofir:', e.message);
-    }
-  }
+  // WhatsApp notification to Ofir (via active provider)
+  const whatsappMsg = `💜 ליד חדש מוואטסאפ לבדיקה:\n\n👤 *${leadName}*\n📞 ${leadPhone}${courseName ? '\n📚 ' + courseName : ''}\n💬 "${messageText}"\n\nלשלוח תגובה אוטומטית?\nהשיבי *כן ${leadName}* או *לא ${leadName}*`;
+  const ofirSent = await sendWhatsAppToChat(PANTAREI_CHAT_ID, whatsappMsg);
+  console.log(ofirSent ? '✅ Ofir notified via WhatsApp' : '❌ Failed to notify Ofir via WhatsApp');
 
   // Email notification
   try {
@@ -762,6 +861,18 @@ async function sendWhatsApp(message) {
 }
 
 async function sendWhatsAppToChat(chatId, message) {
+  // uChat inbound request: reply to the sender is returned in the webhook response, not sent via API
+  if (uchatCapture.active && chatId === uchatCapture.chatId) {
+    uchatCapture.reply = uchatCapture.reply ? uchatCapture.reply + '\n' + message : message;
+    console.log('↩️ Reply captured for uChat flow response');
+    return true;
+  }
+
+  const provider = (Deno.env.get('WHATSAPP_PROVIDER') || 'green').toLowerCase();
+  if (provider === 'uchat') {
+    return await sendViaUchat(chatId.replace('@c.us', ''), message);
+  }
+
   const GREEN_ID = Deno.env.get('GREEN_ID');
   const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
 

@@ -30,6 +30,40 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'חסרה הודעת בדיקה' }, { status: 400 });
     }
 
+    const provider = (Deno.env.get('WHATSAPP_PROVIDER') || 'green').toLowerCase();
+
+    if (provider === 'uchat') {
+      const token = Deno.env.get('UCHAT_API_TOKEN');
+      if (!token) {
+        return Response.json({ error: 'חסר UCHAT_API_TOKEN בהגדרות' }, { status: 500 });
+      }
+      const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const infoResp = await fetch(`https://www.uchat.com.au/api/subscriber/get-info-by-user-id?user_id=${encodeURIComponent(whatsappNumber)}`, { headers });
+      let info = {};
+      try { info = await infoResp.json(); } catch (_e) { info = {}; }
+      const userNs = info?.user_ns || info?.data?.user_ns;
+      if (!userNs) {
+        console.log(`uchat: subscriber not found for ${whatsappNumber}`);
+        return Response.json({ error: `המספר ${whatsappNumber} לא נמצא כמנוי ב-uChat (הנמען צריך לשלוח קודם הודעה לבוט)` }, { status: 404 });
+      }
+      const sendResp = await fetch('https://www.uchat.com.au/api/subscriber/send-text', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ user_ns: userNs, text: messageContent })
+      });
+      if (!sendResp.ok) {
+        const errText = await sendResp.text();
+        return Response.json({ error: `שליחה דרך uChat נכשלה: ${errText}` }, { status: 500 });
+      }
+      return Response.json({
+        success: true,
+        sent_immediately: true,
+        provider: 'uchat',
+        whatsapp_number: whatsappNumber,
+        message: 'הודעת הבדיקה נשלחה מיד דרך uChat.'
+      });
+    }
+
     const GREEN_ID = Deno.env.get('GREEN_ID');
     const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
 

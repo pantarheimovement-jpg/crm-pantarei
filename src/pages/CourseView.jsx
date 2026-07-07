@@ -55,18 +55,8 @@ export default function CourseView() {
 
     setCourse(courseData);
 
-    // Load ALL students with pagination
-    let allStudents = [];
-    let page = 0;
-    const pageSize = 100;
-    while (true) {
-      const batch = await base44.entities.Student.list('-created_date', pageSize, page * pageSize);
-      if (!batch || batch.length === 0) break;
-      allStudents = allStudents.concat(batch);
-      if (batch.length < pageSize) break;
-      page++;
-      await new Promise(r => setTimeout(r, 300));
-    }
+    // Load ALL students (single large fetch)
+    const allStudents = await base44.entities.Student.list('-created_date', 2000);
     let registered = [];
     let leadStudentsList = [];
     let leads = 0;

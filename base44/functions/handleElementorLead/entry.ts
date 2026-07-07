@@ -375,6 +375,12 @@ Deno.serve(async (req) => {
           subscriber_name: student.full_name,
           whatsapp_number: phoneNumber,
           message_content: whatsappMessage,
+          template_name: 'pantarei_new_lead',
+          template_lang: 'he',
+          template_params: {
+            '1': first_name || full_name || 'שלום',
+            '2': resolvedCourseName || 'הקורסים שלנו'
+          },
           status: 'pending'
         });
         whatsappSent = true;

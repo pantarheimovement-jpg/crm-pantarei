@@ -42,7 +42,7 @@ function normalizeWaNumber(raw) {
 }
 
 // Provider switch: send via uChat (WhatsApp Cloud API) or Green API by WHATSAPP_PROVIDER secret
-async function sendWhatsapp(phone972, text) {
+async function sendWhatsapp(phone972, text, template = null) {
   const provider = (Deno.env.get('WHATSAPP_PROVIDER') || 'green').toLowerCase();
 
   if (provider === 'uchat') {
@@ -57,6 +57,26 @@ async function sendWhatsapp(phone972, text) {
       console.log(`uchat: subscriber not found for ${phone972}`);
       return { ok: false, error: `uchat: subscriber not found for ${phone972}` };
     }
+
+    // Proactive send via approved WhatsApp template (works outside the 24h window)
+    if (template?.name) {
+      const params = {};
+      for (const [key, value] of Object.entries(template.params || {})) {
+        params[`BODY_{{${key}}}`] = value;
+      }
+      const tplResp = await fetch('https://www.uchat.com.au/api/subscriber/send-whatsapp-template', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ user_ns: userNs, name: template.name, lang: template.lang || 'he', params })
+      });
+      if (tplResp.ok) {
+        console.log(`uchat: template "${template.name}" sent to ${phone972}`);
+        return { ok: true };
+      }
+      const tplErr = await tplResp.text();
+      return { ok: false, error: `uchat template send failed: ${tplErr}` };
+    }
+
     const sendResp = await fetch('https://www.uchat.com.au/api/subscriber/send-text', {
       method: 'POST',
       headers,
@@ -155,7 +175,10 @@ Deno.serve(async (req) => {
     const message = pendingMessages[0];
     console.log(`Processing message ID: ${message.id} for subscriber: ${message.subscriber_name}`);
 
-    const sendResult = await sendWhatsapp(normalizeWaNumber(message.whatsapp_number), message.message_content);
+    const template = message.template_name
+      ? { name: message.template_name, lang: message.template_lang || 'he', params: message.template_params || {} }
+      : null;
+    const sendResult = await sendWhatsapp(normalizeWaNumber(message.whatsapp_number), message.message_content, template);
 
     if (sendResult.ok) {
       await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {

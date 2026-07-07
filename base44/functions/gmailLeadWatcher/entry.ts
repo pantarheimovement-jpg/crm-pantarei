@@ -351,6 +351,12 @@ ${emailBody}
             subscriber_name: newStudent.full_name,
             whatsapp_number: whatsappNumber,
             message_content: message,
+            template_name: 'pantarei_new_lead',
+            template_lang: 'he',
+            template_params: {
+              '1': firstName,
+              '2': courseName
+            },
             status: 'pending'
           });
 

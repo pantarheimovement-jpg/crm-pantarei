@@ -155,10 +155,6 @@ function isPantareiPhone(phoneNumber) {
   return pantareiVariants.includes(normalized);
 }
 
-// Run heavy work AFTER the response is returned (does not block the reply to uChat)
-function runInBackground(label, fn) {
-  Promise.resolve().then(fn).catch(e => console.error(`❌ background ${label} error:`, e?.message || e));
-}
 
 // =============================================
 // MESSAGE INTENT ANALYSIS
@@ -248,7 +244,7 @@ Deno.serve(async (req) => {
     if (uchatCapture.userNs && uchatCapture.phone972) {
       try {
         const base44 = createClientFromRequest(req);
-        saveUchatUserNs(base44, uchatCapture.phone972, uchatCapture.userNs).catch(e => console.log('⚠️ user_ns save error:', e.message));
+        await saveUchatUserNs(base44, uchatCapture.phone972, uchatCapture.userNs);
       } catch (e) {
         console.log('⚠️ user_ns save error:', e.message);
       }
@@ -356,8 +352,8 @@ async function handleRequest(req) {
     if (isUnsubscribeRequest && !isPantareiPhone(phoneNumber)) {
       console.log(`📭 Unsubscribe request from ${phoneNumber}`);
       await sendWhatsAppToChat(chatId, 'הוסרת מרשימת התפוצה בהצלחה 💜');
-      runInBackground('unsubscribe', () => handleUnsubscribe(base44, phoneNumber));
-      return Response.json({ status: 'unsubscribed', phone: phoneNumber });
+      const result = await handleUnsubscribe(base44, phoneNumber);
+      return Response.json(result);
     }
 
     // =============================================
@@ -463,7 +459,7 @@ async function handleRequest(req) {
           console.log(`✨ New course interest for existing student "${existingStudent.full_name}"`);
           const autoReplySent = await sendAutoReply(automationSettings, chatId, senderName, 'existing_new_course');
 
-          runInBackground('existing_student_new_interest', async () => {
+          {
             const matchedCourse = identifiedCourse ? courses.find(c => c.name === identifiedCourse) : null;
             const updatedCourses = [...existingCourses];
             if (matchedCourse) {
@@ -482,18 +478,20 @@ async function handleRequest(req) {
             if (updatedCourses.length > existingCourses.length) {
               updateData.courses = updatedCourses;
             }
-            await base44.asServiceRole.entities.Student.update(existingStudent.id, updateData);
-            console.log('✅ Student updated with new interest');
-
             const scheduledDate = new Date();
             scheduledDate.setDate(scheduledDate.getDate() + 2);
             const isFasciaWA = (identifiedCourse || '').includes('פאשיה');
             const introTaskName = isFasciaWA ? 'שיחת היכרות פאשיה בתנועה' : (identifiedCourse ? `שיחת היכרות - ${identifiedCourse}` : 'שיחת היכרות');
 
-            const existingIntroTasks = await base44.asServiceRole.entities.Task.filter({
-              student_id: existingStudent.id,
-              name: introTaskName
-            });
+            // Update student + check for existing intro task IN PARALLEL
+            const [, existingIntroTasks] = await Promise.all([
+              base44.asServiceRole.entities.Student.update(existingStudent.id, updateData),
+              base44.asServiceRole.entities.Task.filter({
+                student_id: existingStudent.id,
+                name: introTaskName
+              })
+            ]);
+            console.log('✅ Student updated with new interest');
             const hasOpenIntroTask = (existingIntroTasks || []).some(t => t.status !== 'הושלם' && t.status !== 'אבוד');
 
             if (!hasOpenIntroTask) {
@@ -507,7 +505,7 @@ async function handleRequest(req) {
               });
               console.log('✅ Introduction task created for existing student with new course');
             }
-          });
+          }
 
           return Response.json({
             status: 'existing_student_new_interest',
@@ -520,9 +518,7 @@ async function handleRequest(req) {
 
         } else {
           console.log(`⏭️ Existing student already linked to this course - updating last contact only`);
-          runInBackground('update_last_contact', () =>
-            base44.asServiceRole.entities.Student.update(existingStudent.id, { last_contact_date: nowIso })
-          );
+          await base44.asServiceRole.entities.Student.update(existingStudent.id, { last_contact_date: nowIso });
 
           return Response.json({
             status: 'existing_student_known_course',
@@ -537,7 +533,7 @@ async function handleRequest(req) {
         console.log('✨ New WhatsApp STRONG LEAD detected!');
         const autoReplySent = await sendAutoReply(automationSettings, chatId, senderName, 'new_lead');
 
-        runInBackground('new_lead_created', async () => {
+        {
           const matchedCourse = intent.identifiedCourseName ? courses.find(c => c.name === intent.identifiedCourseName) : null;
 
           const student = await base44.asServiceRole.entities.Student.create({
@@ -567,22 +563,24 @@ async function handleRequest(req) {
           const isFasciaNewLead = (intent.identifiedCourseName || '').includes('פאשיה');
           const newLeadTaskName = isFasciaNewLead ? 'שיחת היכרות פאשיה בתנועה' : (intent.identifiedCourseName ? `שיחת היכרות - ${intent.identifiedCourseName}` : 'שיחת היכרות');
 
-          await base44.asServiceRole.entities.Task.create({
-            name: newLeadTaskName,
-            description: `ליד חדש מוואטסאפ: ${senderName || storedPhone}\nהודעה: ${messageText}${intent.identifiedCourseName ? '\nקורס: ' + intent.identifiedCourseName : ''}`,
-            status: 'ממתין',
-            scheduled_date: scheduledDate.toISOString().split('T')[0],
-            student_id: student.id,
-            student_name: student.full_name
-          });
+          // Task creation + subscriber upsert IN PARALLEL
+          await Promise.all([
+            base44.asServiceRole.entities.Task.create({
+              name: newLeadTaskName,
+              description: `ליד חדש מוואטסאפ: ${senderName || storedPhone}\nהודעה: ${messageText}${intent.identifiedCourseName ? '\nקורס: ' + intent.identifiedCourseName : ''}`,
+              status: 'ממתין',
+              scheduled_date: scheduledDate.toISOString().split('T')[0],
+              student_id: student.id,
+              student_name: student.full_name
+            }),
+            createOrUpdateSubscriber(base44, {
+              name: senderName || storedPhone,
+              phone: storedPhone,
+              courseName: intent.identifiedCourseName
+            })
+          ]);
           console.log('✅ Introduction task created');
-
-          await createOrUpdateSubscriber(base44, {
-            name: senderName || storedPhone,
-            phone: storedPhone,
-            courseName: intent.identifiedCourseName
-          });
-        });
+        }
 
         return Response.json({
           status: 'new_lead_created',
@@ -602,15 +600,16 @@ async function handleRequest(req) {
       if (existingStudent) {
         console.log(`📝 Existing student "${existingStudent.full_name}" - message for review`);
 
-        runInBackground('existing_student_for_review', async () => {
-          await base44.asServiceRole.entities.Student.update(existingStudent.id, {
+        // Student update + Ofir notification IN PARALLEL
+        await Promise.all([
+          base44.asServiceRole.entities.Student.update(existingStudent.id, {
             last_contact_date: nowIso,
             status: 'הודעה מוואטסאפ לבדיקה',
             lead_source: existingStudent.lead_source || 'וואטסאפ',
             notes: (existingStudent.notes || '') + `\n📱 ${new Date().toLocaleDateString('he-IL')}: הודעה לבדיקה: "${messageText}"`
-          });
-          await notifyOfir(base44, existingStudent.full_name, storedPhone, messageText, intent.identifiedCourseName);
-        });
+          }),
+          notifyOfir(base44, existingStudent.full_name, storedPhone, messageText, intent.identifiedCourseName)
+        ]);
 
         return Response.json({
           status: 'existing_student_for_review',
@@ -623,19 +622,17 @@ async function handleRequest(req) {
       } else {
         console.log('📋 New contact - creating for review + notifying Ofir');
 
-        runInBackground('pending_review', async () => {
-          const student = await base44.asServiceRole.entities.Student.create({
-            full_name: senderName || storedPhone,
-            phone: storedPhone,
-            status: 'הודעה מוואטסאפ לבדיקה',
-            lead_source: 'וואטסאפ',
-            lead_entry_date: today,
-            last_contact_date: nowIso,
-            notes: `הודעה לבדיקה: ${messageText}`
-          });
-          console.log(`✅ Student created for review: ${student.id} - ${student.full_name}`);
-          await notifyOfir(base44, student.full_name, storedPhone, messageText, intent.identifiedCourseName);
+        const student = await base44.asServiceRole.entities.Student.create({
+          full_name: senderName || storedPhone,
+          phone: storedPhone,
+          status: 'הודעה מוואטסאפ לבדיקה',
+          lead_source: 'וואטסאפ',
+          lead_entry_date: today,
+          last_contact_date: nowIso,
+          notes: `הודעה לבדיקה: ${messageText}`
         });
+        console.log(`✅ Student created for review: ${student.id} - ${student.full_name}`);
+        await notifyOfir(base44, student.full_name, storedPhone, messageText, intent.identifiedCourseName);
 
         return Response.json({
           status: 'pending_review',
@@ -663,12 +660,12 @@ async function handleRequest(req) {
 async function notifyOfir(base44, leadName, leadPhone, messageText, courseName) {
   // WhatsApp notification to Ofir (via active provider)
   const whatsappMsg = `💜 ליד חדש מוואטסאפ לבדיקה:\n\n👤 *${leadName}*\n📞 ${leadPhone}${courseName ? '\n📚 ' + courseName : ''}\n💬 "${messageText}"\n\nלשלוח תגובה אוטומטית?\nהשיבי *כן ${leadName}* או *לא ${leadName}*`;
-  const ofirSent = await sendWhatsAppToChat(PANTAREI_CHAT_ID, whatsappMsg);
-  console.log(ofirSent ? '✅ Ofir notified via WhatsApp' : '❌ Failed to notify Ofir via WhatsApp');
+  // WhatsApp + email notifications IN PARALLEL
+  const whatsappPromise = sendWhatsAppToChat(PANTAREI_CHAT_ID, whatsappMsg);
 
   // Email notification
   try {
-    await base44.asServiceRole.integrations.Core.SendEmail({
+    const emailPromise = base44.asServiceRole.integrations.Core.SendEmail({
       to: NOTIFICATION_EMAIL,
       subject: `💜 ליד חדש מוואטסאפ לבדיקה - ${leadName}`,
       body: `<div dir="rtl" style="font-family: Arial, sans-serif; padding: 20px;">
@@ -682,9 +679,12 @@ async function notifyOfir(base44, leadName, leadPhone, messageText, courseName) 
         <p style="margin-top: 20px; color: #666;">ניתן לאשר/לדחות ע"י תגובה בוואטסאפ לסוכן.</p>
       </div>`
     });
+    const [ofirSent] = await Promise.all([whatsappPromise, emailPromise]);
+    console.log(ofirSent ? '✅ Ofir notified via WhatsApp' : '❌ Failed to notify Ofir via WhatsApp');
     console.log('✅ Ofir notified via email');
   } catch (e) {
-    console.error('❌ Error sending email to Ofir:', e.message);
+    console.error('❌ Error notifying Ofir:', e.message);
+    await whatsappPromise.catch(() => {});
   }
 }
 

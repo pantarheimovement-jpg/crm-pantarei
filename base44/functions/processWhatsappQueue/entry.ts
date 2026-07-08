@@ -3,13 +3,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 // ============================================================
 // 🚦 מתג ההשהיה — זה הדבר היחיד שמשנים בקובץ הזה!
 //
-// true  = מושהה: שום הודעה לא נשלחת. לידים חדשים נשארים בתור
-//         בסטטוס "ממתין" (pending) — שום דבר לא הולך לאיבוד,
-//         ושום דבר לא מסומן "נשלח" בכזב.
-// false = פעיל: התור נשלח כרגיל.
-//
-// כש-uChat יתקנו את התקלה: לשנות ל-false, לשמור — וכל
-// הממתינים יישלחו בריצה הבאה.
+// false = פעיל: התור נשלח כרגיל. ← המצב עכשיו (8.7.2026)
+// true  = מושהה: שום הודעה לא נשלחת, לידים נשארים "ממתין".
+//         להדליק רק אם uChat שוב בולע הודעות.
 // ============================================================
 const SENDING_PAUSED = false;
 
@@ -49,23 +45,14 @@ async function sendWhatsapp(phone972, text, template = null) {
       const tpl = (listJson.data || []).find(t => t.name === template.name);
       if (!tpl) return { ok: false, error: `template ${template.name} not found in uChat - run sync` };
 
-      // 2. Create subscriber if it doesn't exist yet (sets the display name in live chat)
-      if (!userNs) {
-        console.log(`uchat: subscriber not found for ${phone972}, creating...`);
-        const createResp = await fetch('https://www.uchat.com.au/api/subscriber/create', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ phone: phone972, first_name: template.firstName || '' })
-        });
-        const createJson = await createResp.json();
-        userNs = createJson?.data?.user_ns;
-        if (!userNs) return { ok: false, error: `uchat create subscriber failed: ${JSON.stringify(createJson)}` };
-      }
+      // 2. אסור ליצור מנוי לפני broadcast! (הבאג שנתפס 8.7.2026)
+      // מנוי שנוצר דרך subscriber/create (opted_in_through: "api") נולד בלי קישור
+      // תקין לערוץ — ה-broadcast מחזיר "ok" אבל מדלג עליו בשקט. כששולחים broadcast
+      // ישירות לטלפון, uChat יוצר את המנוי בעצמו (opted_in_through: "broadcast")
+      // וההודעה נמסרת. הוכח בבדיקת מספר בתול: בלי create — הגיע; עם create — נבלע.
 
-      // 3. Send the template by phone number.
-      // NOT subscriber/send-whatsapp-template: uChat answers {status:"ok"} on it but silently
-      // drops the message when it feels like it (verified 2026-07-08, support ticket open).
-      // broadcast-by-user-id is uChat's endpoint for proactive template sends.
+      // 3. Send the template by phone number (broadcast-by-user-id — uChat's endpoint
+      // for proactive template sends; creates the subscriber itself when needed).
       const params = {};
       for (const [key, value] of Object.entries(template.params || {})) {
         params[`BODY_{{${key}}}`] = value;

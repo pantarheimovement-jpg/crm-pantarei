@@ -361,6 +361,17 @@ ${emailBody}
           });
 
           console.log('✅ WhatsApp queued for sending');
+
+          // שליחה מיידית: מפעיל את מעבד התור עכשיו במקום לחכות לתזמון (הקרון נשאר כרשת ביטחון).
+          try {
+            await Promise.race([
+              fetch('https://crm-pantarei-4738bca7.base44.app/functions/processWhatsappQueue', { method: 'POST' }),
+              new Promise((resolve) => setTimeout(resolve, 5000))
+            ]);
+            console.log('✅ processWhatsappQueue triggered immediately');
+          } catch (triggerError) {
+            console.error('processWhatsappQueue immediate trigger failed:', triggerError.message);
+          }
         }
 
         // Mark email as processed

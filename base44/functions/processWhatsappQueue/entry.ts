@@ -1,5 +1,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// ============================================================
+// 🚦 מתג ההשהיה — זה הדבר היחיד שמשנים בקובץ הזה!
+//
+// true  = מושהה: שום הודעה לא נשלחת. לידים חדשים נשארים בתור
+//         בסטטוס "ממתין" (pending) — שום דבר לא הולך לאיבוד,
+//         ושום דבר לא מסומן "נשלח" בכזב.
+// false = פעיל: התור נשלח כרגיל.
+//
+// כש-uChat יתקנו את התקלה: לשנות ל-false, לשמור — וכל
+// הממתינים יישלחו בריצה הבאה.
+// ============================================================
+const SENDING_PAUSED = true;
+
 // Official WhatsApp Cloud API (approved templates) — no ban risk.
 // Operational messages are sent immediately: no hours window, no daily limit, no random delays.
 // A short pause between sends protects Meta template quality rating (~30/min max).
@@ -51,9 +64,8 @@ async function sendWhatsapp(phone972, text, template = null) {
 
       // 3. Send the template by phone number.
       // NOT subscriber/send-whatsapp-template: uChat answers {status:"ok"} on it but silently
-      // drops the message when the subscriber was created via API and never messaged the bot
-      // (verified 2026-07-08: identical call delivered to a "direct" subscriber, vanished for
-      // an "api" one). broadcast-by-user-id is uChat's endpoint for proactive template sends.
+      // drops the message when it feels like it (verified 2026-07-08, support ticket open).
+      // broadcast-by-user-id is uChat's endpoint for proactive template sends.
       const params = {};
       for (const [key, value] of Object.entries(template.params || {})) {
         params[`BODY_{{${key}}}`] = value;
@@ -110,6 +122,12 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   try {
+    // 🚦 המתג: כשמושהה — לא נוגעים בתור בכלל. הכל נשאר "ממתין".
+    if (SENDING_PAUSED) {
+      console.log('SENDING_PAUSED=true — skipping queue processing, leads stay pending.');
+      return Response.json({ paused: true, message: 'השליחות מושהות (SENDING_PAUSED=true). הלידים ממתינים בתור.' });
+    }
+
     // Send ALL pending messages immediately — official Cloud API, no window/limit needed.
     const pendingMessages = await base44.asServiceRole.entities.WhatsappQueue.filter({
       status: 'pending'

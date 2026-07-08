@@ -3,12 +3,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 // ============================================================
 // 🚦 מתג ההשהיה — זה הדבר היחיד שמשנים בקובץ הזה!
 //
-// true  = מושהה: שום הודעה לא נשלחת, לידים נשארים "ממתין".
-//         מופעל 8.7.2026 בלילה — עד שתעלומת הסביבה החיה נפתרת,
-//         אף ליד לא יסומן "נשלח" בכזב. לשחרור: false + deploy.
 // false = פעיל: התור נשלח כרגיל.
+// true  = מושהה: שום הודעה לא נשלחת, לידים נשארים "ממתין".
 // ============================================================
-const SENDING_PAUSED = true;
+const SENDING_PAUSED = false;
 
 // Official WhatsApp Cloud API (approved templates) — no ban risk.
 // Operational messages are sent immediately: no hours window, no daily limit, no random delays.
@@ -46,32 +44,31 @@ async function sendWhatsapp(phone972, text, template = null) {
       const tpl = (listJson.data || []).find(t => t.name === template.name);
       if (!tpl) return { ok: false, error: `template ${template.name} not found in uChat - run sync` };
 
-      // 2. אסור ליצור מנוי לפני broadcast! (הבאג שנתפס 8.7.2026)
-      // מנוי שנוצר דרך subscriber/create (opted_in_through: "api") נולד בלי קישור
-      // תקין לערוץ — ה-broadcast מחזיר "ok" אבל מדלג עליו בשקט. כששולחים broadcast
-      // ישירות לטלפון, uChat יוצר את המנוי בעצמו (opted_in_through: "broadcast")
-      // וההודעה נמסרת. הוכח בבדיקת מספר בתול: בלי create — הגיע; עם create — נבלע.
-
-      // 3. Send the template by phone number (broadcast-by-user-id — uChat's endpoint
-      // for proactive template sends; creates the subscriber itself when needed).
+      // 2. שליחה ישירה לפי מספר טלפון — האנדפוינט הייעודי מהספסיפיקציה הרשמית.
+      // create_if_not_found יוצר את איש הקשר נכון בזמן השליחה (הדגל שחסר!),
+      // contact קובע את השם, והקריאה סינכרונית — כישלון חוזר כשגיאה אמיתית.
+      // אסור subscriber/create לפני שליחה (יוצר איש קשר רפאים — הבאג של 8.7.2026),
+      // ולא broadcast (תור אסינכרוני שאישר "ok" ובלע בשקט מהשרת החי).
       const params = {};
       for (const [key, value] of Object.entries(template.params || {})) {
         params[`BODY_{{${key}}}`] = value;
       }
-      const tplResp = await fetch('https://www.uchat.com.au/api/subscriber/broadcast-whatsapp-template-by-user-id', {
+      const tplResp = await fetch('https://www.uchat.com.au/api/subscriber/send-whatsapp-template-by-user-id', {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          user_id_list: phone972,
-          wa_template: { namespace: tpl.namespace, name: template.name, lang: template.lang || 'he', params }
+          user_id: phone972,
+          create_if_not_found: 'yes',
+          contact: { first_name: template.firstName || '' },
+          content: { namespace: tpl.namespace, name: template.name, lang: template.lang || 'he', params }
         })
       });
       const tplBody = await tplResp.text();
-      console.log(`uchat broadcast-template response (${tplResp.status}): ${tplBody}`);
+      console.log(`uchat send-template-by-user-id response (${tplResp.status}): ${tplBody}`);
       let tplJson = {};
       try { tplJson = JSON.parse(tplBody); } catch (_e) { tplJson = {}; }
-      if (tplJson.status === 'ok') return { ok: true, providerResponse: tplBody };
-      return { ok: false, error: `uchat template send failed: ${tplBody}` };
+      if (tplResp.ok && tplJson.status === 'ok') return { ok: true, providerResponse: tplBody };
+      return { ok: false, error: `uchat template send failed (${tplResp.status}): ${tplBody}` };
     }
 
     if (!userNs) {

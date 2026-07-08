@@ -11,7 +11,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 // כש-uChat יתקנו את התקלה: לשנות ל-false, לשמור — וכל
 // הממתינים יישלחו בריצה הבאה.
 // ============================================================
-const SENDING_PAUSED = true;
+const SENDING_PAUSED = false;
 
 // Official WhatsApp Cloud API (approved templates) — no ban risk.
 // Operational messages are sent immediately: no hours window, no daily limit, no random delays.

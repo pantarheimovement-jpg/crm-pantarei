@@ -3,11 +3,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 // ============================================================
 // 🚦 מתג ההשהיה — זה הדבר היחיד שמשנים בקובץ הזה!
 //
-// false = פעיל: התור נשלח כרגיל. ← המצב עכשיו (8.7.2026)
 // true  = מושהה: שום הודעה לא נשלחת, לידים נשארים "ממתין".
-//         להדליק רק אם uChat שוב בולע הודעות.
+//         מופעל 8.7.2026 בלילה — עד שתעלומת הסביבה החיה נפתרת,
+//         אף ליד לא יסומן "נשלח" בכזב. לשחרור: false + deploy.
+// false = פעיל: התור נשלח כרגיל.
 // ============================================================
-const SENDING_PAUSED = false;
+const SENDING_PAUSED = true;
 
 // Official WhatsApp Cloud API (approved templates) — no ban risk.
 // Operational messages are sent immediately: no hours window, no daily limit, no random delays.

@@ -30,13 +30,13 @@ async function sendWhatsapp(phone972, text, template = null) {
 
     // Proactive send via approved WhatsApp template (works outside the 24h window)
     if (template?.name) {
-      // 1. Fetch the template's namespace (required by send-whatsapp-template)
+      // 1. Fetch the template's namespace (required for template sends)
       const listResp = await fetch('https://www.uchat.com.au/api/whatsapp-template/list', { method: 'POST', headers, body: '{}' });
       const listJson = await listResp.json();
       const tpl = (listJson.data || []).find(t => t.name === template.name);
       if (!tpl) return { ok: false, error: `template ${template.name} not found in uChat - run sync` };
 
-      // 2. Create subscriber if it doesn't exist yet
+      // 2. Create subscriber if it doesn't exist yet (sets the display name in live chat)
       if (!userNs) {
         console.log(`uchat: subscriber not found for ${phone972}, creating...`);
         const createResp = await fetch('https://www.uchat.com.au/api/subscriber/create', {
@@ -49,20 +49,29 @@ async function sendWhatsapp(phone972, text, template = null) {
         if (!userNs) return { ok: false, error: `uchat create subscriber failed: ${JSON.stringify(createJson)}` };
       }
 
-      // 3. Send the template with the correct content structure
+      // 3. Send the template by phone number.
+      // NOT subscriber/send-whatsapp-template: uChat answers {status:"ok"} on it but silently
+      // drops the message when the subscriber was created via API and never messaged the bot
+      // (verified 2026-07-08: identical call delivered to a "direct" subscriber, vanished for
+      // an "api" one). broadcast-by-user-id is uChat's endpoint for proactive template sends.
       const params = {};
       for (const [key, value] of Object.entries(template.params || {})) {
         params[`BODY_{{${key}}}`] = value;
       }
-      const tplResp = await fetch('https://www.uchat.com.au/api/subscriber/send-whatsapp-template', {
+      const tplResp = await fetch('https://www.uchat.com.au/api/subscriber/broadcast-whatsapp-template-by-user-id', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ user_ns: userNs, content: { namespace: tpl.namespace, name: template.name, lang: template.lang || 'he', params } })
+        body: JSON.stringify({
+          user_id_list: phone972,
+          wa_template: { namespace: tpl.namespace, name: template.name, lang: template.lang || 'he', params }
+        })
       });
-      const tplJson = await tplResp.json();
-      console.log(`uchat template response (${tplResp.status}): ${JSON.stringify(tplJson)}`);
-      if (tplJson.status === 'ok') return { ok: true };
-      return { ok: false, error: `uchat template send failed: ${JSON.stringify(tplJson)}` };
+      const tplBody = await tplResp.text();
+      console.log(`uchat broadcast-template response (${tplResp.status}): ${tplBody}`);
+      let tplJson = {};
+      try { tplJson = JSON.parse(tplBody); } catch (_e) { tplJson = {}; }
+      if (tplJson.status === 'ok') return { ok: true, providerResponse: tplBody };
+      return { ok: false, error: `uchat template send failed: ${tplBody}` };
     }
 
     if (!userNs) {
@@ -123,7 +132,8 @@ Deno.serve(async (req) => {
       if (sendResult.ok) {
         await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {
           status: 'sent',
-          sent_at: new Date().toISOString()
+          sent_at: new Date().toISOString(),
+          provider_response: sendResult.providerResponse || ''
         });
         results.push({ name: message.subscriber_name, sent: true });
       } else {

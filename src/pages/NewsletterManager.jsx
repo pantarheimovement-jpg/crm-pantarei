@@ -350,9 +350,33 @@ ${ctaButtonsHtml}
 
     // Single recipient — send directly (no queue needed)
     if (sendMode === 'single') {
-      if (!confirm(t(`לשלוח ל-${singleRecipient.email}?`, `Send to ${singleRecipient.email}?`))) { setSending(false); return; }
+      const matchingSub = subscribers.find(s => s.email?.toLowerCase() === singleRecipient.email.toLowerCase());
+
+      if ((sendChannel === 'whatsapp' || sendChannel === 'both') && !matchingSub?.whatsapp) {
+        alert('לנמען/ת אין מספר וואטסאפ ברשומת המנוי — לא ניתן לשלוח בוואטסאפ.');
+        setSending(false); return;
+      }
+
+      // WhatsApp only — queue single message
+      if (sendChannel === 'whatsapp') {
+        if (!confirm(`לשלוח בוואטסאפ ל-${matchingSub.whatsapp}?`)) { setSending(false); return; }
+        try {
+          await base44.entities.WhatsappQueue.bulkCreate([buildWaRow(matchingSub)]);
+          setSendStatus('success');
+          alert(`✅ ההודעה נוספה לתור הוואטסאפ (${matchingSub.whatsapp})`);
+        } catch (error) {
+          setSendStatus('error');
+          alert('שגיאה בהוספה לתור הוואטסאפ: ' + (error.response?.data?.message || error.message));
+        } finally { setSending(false); }
+        return;
+      }
+
+      // Email (or both)
+      const confirmMsg = sendChannel === 'both'
+        ? `לשלוח מייל ל-${singleRecipient.email} וגם וואטסאפ ל-${matchingSub.whatsapp}?`
+        : t(`לשלוח ל-${singleRecipient.email}?`, `Send to ${singleRecipient.email}?`);
+      if (!confirm(confirmMsg)) { setSending(false); return; }
       try {
-        const matchingSub = subscribers.find(s => s.email?.toLowerCase() === singleRecipient.email.toLowerCase());
         const recipient = matchingSub || { email: singleRecipient.email, name: singleRecipient.name || '', unsubscribe_token: '' };
         const personalizedHtml = finalEmailContent
           .replace(/\{\{unsubscribe_link\}\}/g, getUnsubscribeUrl(recipient.unsubscribe_token))
@@ -362,11 +386,16 @@ ${ctaButtonsHtml}
           from_name: 'פנטהריי', unsubscribe_token: recipient.unsubscribe_token,
           app_base_url: 'https://crm-pantarei-4738bca7.base44.app',
         });
+        if (sendChannel === 'both') {
+          await base44.entities.WhatsappQueue.bulkCreate([buildWaRow(matchingSub)]);
+        }
         setSendStatus('success');
-        alert(`✅ נשלח בהצלחה ל-${recipient.email}`);
+        alert(sendChannel === 'both'
+          ? `✅ המייל נשלח ל-${recipient.email} והוואטסאפ נוסף לתור (${matchingSub.whatsapp})`
+          : `✅ נשלח בהצלחה ל-${recipient.email}`);
       } catch (error) {
         setSendStatus('error');
-        alert(t('שגיאה בשליחה: ' + error.message, 'Error: ' + error.message));
+        alert('שגיאה בשליחה: ' + (error.response?.data?.error || error.response?.data?.message || error.message));
       } finally { setSending(false); }
       return;
     }

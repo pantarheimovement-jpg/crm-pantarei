@@ -18,6 +18,17 @@ import WaRecipientsExcluder from '../components/newsletter/WaRecipientsExcluder'
 
 import { appParams } from '@/lib/app-params';
 
+// טריגר מיידי למעבד תור הוואטסאפ — בתבנית של handleElementorLead.
+// Promise.race מגביל ל-5 שניות; אם התור ארוך, השאר יטופל בשרת/בקרון.
+async function triggerWaQueue() {
+  try {
+    await Promise.race([
+      fetch('https://crm-pantarei-4738bca7.base44.app/functions/processWhatsappQueue', { method: 'POST' }),
+      new Promise((resolve) => setTimeout(resolve, 5000))
+    ]);
+  } catch (e) { console.error('processWhatsappQueue trigger failed:', e.message); }
+}
+
 function getUnsubscribeUrl(token) {
   return `https://crm-pantarei-4738bca7.base44.app/functions/unsubscribeHandler?token=${token}`;
 }
@@ -362,6 +373,7 @@ ${ctaButtonsHtml}
         if (!confirm(`לשלוח בוואטסאפ ל-${matchingSub.whatsapp}?`)) { setSending(false); return; }
         try {
           await base44.entities.WhatsappQueue.bulkCreate([buildWaRow(matchingSub)]);
+          await triggerWaQueue();
           setSendStatus('success');
           alert(`✅ ההודעה נוספה לתור הוואטסאפ (${matchingSub.whatsapp})`);
         } catch (error) {
@@ -388,6 +400,7 @@ ${ctaButtonsHtml}
         });
         if (sendChannel === 'both') {
           await base44.entities.WhatsappQueue.bulkCreate([buildWaRow(matchingSub)]);
+          await triggerWaQueue();
         }
         setSendStatus('success');
         alert(sendChannel === 'both'
@@ -411,6 +424,7 @@ ${ctaButtonsHtml}
       if (!confirm(`לשלוח ל-${waSubs.length} מנויים בוואטסאפ?`)) { setSending(false); return; }
       try {
         await base44.entities.WhatsappQueue.bulkCreate(waSubs);
+        await triggerWaQueue();
         const waLogSubject = waMode === 'template' ? `${WA_TEMPLATES.find(tp => tp.value === selectedWaTemplate)?.label || selectedWaTemplate} (תבנית)` : 'הודעת וואטסאפ';
         const waLogContent = waMode === 'template' ? `תבנית: ${selectedWaTemplate} | קורס: ${waTplCourse} | מועד: ${waTplDate} | קישור: ${waTplLink}` : whatsappMessage;
         await base44.entities.NewsletterLogs.create({ subject: waLogSubject, content: waLogContent, group: selectedGroup, recipients_count: waSubs.length, status: 'נשלח בהצלחה', sent_date: new Date().toISOString(), sent_by: 'WhatsApp' });
@@ -448,7 +462,10 @@ ${ctaButtonsHtml}
           allSubs = allSubs.filter(s => s.group === selectedGroup || (s.groups && s.groups.includes(selectedGroup)));
         }
         const waSubs = allSubs.filter(r => r.whatsapp && !excludedWaIds.has(r.id)).map(buildWaRow);
-        if (waSubs.length > 0) await base44.entities.WhatsappQueue.bulkCreate(waSubs);
+        if (waSubs.length > 0) {
+          await base44.entities.WhatsappQueue.bulkCreate(waSubs);
+          await triggerWaQueue();
+        }
       }
 
       setSendStatus('success');

@@ -153,6 +153,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Self-chain: אם נשארו עוד ממתינות (דיוור גדול מ-50) — מפעיל ריצה נוספת מיד,
+    // כך שדיוור גדול נשלח בזרם רציף ולא מטפטף 50 כל 5 דקות. שומר על מגבלת 50 לריצה.
+    const remaining = await base44.asServiceRole.entities.WhatsappQueue.filter({ status: 'pending' }, 'created_date', 1);
+    if (remaining && remaining.length > 0) {
+      try {
+        await Promise.race([
+          fetch('https://crm-pantarei-4738bca7.base44.app/functions/processWhatsappQueue', { method: 'POST' }),
+          new Promise((resolve) => setTimeout(resolve, 5000))
+        ]);
+        console.log('More pending messages remain — self-chained next run.');
+      } catch (chainError) {
+        console.error('self-chain trigger failed:', chainError.message);
+      }
+    }
+
     const sentCount = results.filter((r) => r.sent).length;
     return Response.json({ success: true, sent: sentCount, failed: results.length - sentCount, results });
   } catch (error) {

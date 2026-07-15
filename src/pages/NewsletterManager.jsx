@@ -317,7 +317,7 @@ ${ctaButtonsHtml}
       return {
         subscriber_id: r.id, subscriber_name: r.name || '',
         whatsapp_number: r.whatsapp,
-        message_content: `[תבנית מאושרת: ${selectedWaTemplate}]`,
+        message_content: `תזכורת יום היכרות — ${waTplCourse}`,
         template_name: selectedWaTemplate,
         template_lang: 'he',
         template_params: { "1": r.name || '', "2": waTplCourse, "3": waTplDate, "4": waTplLink },
@@ -380,14 +380,21 @@ ${ctaButtonsHtml}
       const waSubs = allSubs.filter(r => r.whatsapp && !excludedWaIds.has(r.id)).map(buildWaRow);
       if (!waSubs.length) { alert('לא נמצאו מנויים עם וואטסאפ'); setSending(false); return; }
       if (!confirm(`לשלוח ל-${waSubs.length} מנויים בוואטסאפ?`)) { setSending(false); return; }
-      await base44.entities.WhatsappQueue.bulkCreate(waSubs);
-      const waLogSubject = waMode === 'template' ? `${WA_TEMPLATES.find(tp => tp.value === selectedWaTemplate)?.label || selectedWaTemplate} (תבנית)` : 'הודעת וואטסאפ';
-      const waLogContent = waMode === 'template' ? `תבנית: ${selectedWaTemplate} | קורס: ${waTplCourse} | מועד: ${waTplDate} | קישור: ${waTplLink}` : whatsappMessage;
-      await base44.entities.NewsletterLogs.create({ subject: waLogSubject, content: waLogContent, group: selectedGroup, recipients_count: waSubs.length, status: 'נשלח בהצלחה', sent_date: new Date().toISOString(), sent_by: 'WhatsApp' });
-      setSendStatus('success');
-      setSending(false);
-      alert(`✅ ${waSubs.length} הודעות נוספו לתור הוואטסאפ!`);
-      loadLogs();
+      try {
+        await base44.entities.WhatsappQueue.bulkCreate(waSubs);
+        const waLogSubject = waMode === 'template' ? `${WA_TEMPLATES.find(tp => tp.value === selectedWaTemplate)?.label || selectedWaTemplate} (תבנית)` : 'הודעת וואטסאפ';
+        const waLogContent = waMode === 'template' ? `תבנית: ${selectedWaTemplate} | קורס: ${waTplCourse} | מועד: ${waTplDate} | קישור: ${waTplLink}` : whatsappMessage;
+        await base44.entities.NewsletterLogs.create({ subject: waLogSubject, content: waLogContent, group: selectedGroup, recipients_count: waSubs.length, status: 'נשלח בהצלחה', sent_date: new Date().toISOString(), sent_by: 'WhatsApp' });
+        setSendStatus('success');
+        alert(`✅ ${waSubs.length} הודעות נוספו לתור הוואטסאפ!`);
+        loadLogs();
+      } catch (error) {
+        console.error('WhatsApp queue error:', error);
+        setSendStatus('error');
+        alert('שגיאה בהוספה לתור הוואטסאפ: ' + (error.response?.data?.message || error.message));
+      } finally {
+        setSending(false);
+      }
       return;
     }
 

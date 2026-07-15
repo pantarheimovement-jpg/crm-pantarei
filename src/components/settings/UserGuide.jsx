@@ -695,6 +695,24 @@ export default function UserGuide() {
         <FAQItem
           icon={MessageSquare}
           color="#25D366"
+          question="איך שולחים דיוור וואטסאפ בתבנית מאושרת?"
+          answer={
+            <div>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>בחרי תבנית מהרשימה (למשל: תזכורת יום היכרות).</li>
+                <li>מלאי את השדות: שם הקורס, מועד, וקישור. שם הנמען מתווסף אוטומטית לכל אחד.</li>
+                <li>בחרי קבוצת תפוצה. אם יש מי שלא רוצה שיקבל — הורידי לו את הסימון ברשימה (הוא נשאר בקבוצה, רק לא מקבל את הדיוור הזה).</li>
+                <li>לחצי ״שלח ניוזלטר״.</li>
+              </ol>
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+                💡 תבנית מאושרת של מטא מגיעה לכל הנמענות גם מחוץ לחלון 24 השעות, בניגוד לטקסט חופשי שמגיע רק למי שכתב לנו לאחרונה. לכן לדיוור יזום — תמיד להשתמש בתבנית.
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={MessageSquare}
+          color="#25D366"
           question="מה עם קישור הסרה בוואטסאפ?"
           answer={
             <div>

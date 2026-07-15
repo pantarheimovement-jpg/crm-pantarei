@@ -13,6 +13,8 @@ import SubscribersList from '../components/newsletter/SubscribersList';
 import AiSubjectSuggestions from '../components/newsletter/AiSubjectSuggestions';
 import SingleRecipientPicker from '../components/newsletter/SingleRecipientPicker';
 import EmojiPicker from '../components/newsletter/EmojiPicker';
+import WaTemplateComposer from '../components/newsletter/WaTemplateComposer';
+import WaRecipientsExcluder from '../components/newsletter/WaRecipientsExcluder';
 
 import { appParams } from '@/lib/app-params';
 
@@ -21,6 +23,11 @@ function getUnsubscribeUrl(token) {
 }
 
 const SUBSCRIBERS_PER_GROUP = 280;
+
+// תבניות וואטסאפ מאושרות (Meta) — להוספת תבנית: מוסיפים שורה למערך
+const WA_TEMPLATES = [
+  { value: 'intro_day_reminder', label: 'תזכורת יום היכרות', lang: 'he' },
+];
 
 export default function NewsletterManager() {
   const { language, t } = useLanguage();
@@ -40,6 +47,12 @@ export default function NewsletterManager() {
   const [sendMode, setSendMode] = useState('group');
   const [singleRecipient, setSingleRecipient] = useState(null);
   const [whatsappMessage, setWhatsappMessage] = useState('\n\nלהסרה מרשימת התפוצה, יש להשיב ״הסר״');
+  const [waMode, setWaMode] = useState('free');
+  const [selectedWaTemplate, setSelectedWaTemplate] = useState('intro_day_reminder');
+  const [waTplCourse, setWaTplCourse] = useState('');
+  const [waTplDate, setWaTplDate] = useState('');
+  const [waTplLink, setWaTplLink] = useState('');
+  const [excludedWaIds, setExcludedWaIds] = useState(new Set());
 
   const [designMode, setDesignMode] = useState('free');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -280,10 +293,39 @@ ${ctaButtonsHtml}
     setQueueProgress(prev => ({ ...prev, done: true }));
   };
 
+  const toggleWaExclusion = (id) => {
+    setExcludedWaIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const buildWaRow = (r) => {
+    if (waMode === 'template') {
+      return {
+        subscriber_id: r.id, subscriber_name: r.name || '',
+        whatsapp_number: r.whatsapp,
+        message_content: `[תבנית מאושרת: ${selectedWaTemplate}]`,
+        template_name: selectedWaTemplate,
+        template_lang: 'he',
+        template_params: { "1": r.name || '', "2": waTplCourse, "3": waTplDate, "4": waTplLink },
+        status: 'pending'
+      };
+    }
+    return {
+      subscriber_id: r.id, subscriber_name: r.name || '',
+      whatsapp_number: r.whatsapp,
+      message_content: whatsappMessage.replace(/\{\{name\}\}/g, r.name || ''),
+      status: 'pending'
+    };
+  };
+
   const handleSendClick = () => {
     // Validation
     if ((sendChannel === 'email' || sendChannel === 'both') && !subject) { alert(t('אנא מלאי נושא לאימייל', 'Please fill in email subject')); return; }
-    if ((sendChannel === 'whatsapp' || sendChannel === 'both') && !whatsappMessage.trim()) { alert(t('אנא מלאי הודעת וואטסאפ', 'Please fill in WhatsApp message')); return; }
+    if ((sendChannel === 'whatsapp' || sendChannel === 'both') && waMode === 'free' && !whatsappMessage.trim()) { alert(t('אנא מלאי הודעת וואטסאפ', 'Please fill in WhatsApp message')); return; }
+    if ((sendChannel === 'whatsapp' || sendChannel === 'both') && waMode === 'template' && (!waTplCourse.trim() || !waTplDate.trim() || !waTplLink.trim())) { alert(t('אנא מלאי שם קורס, מועד וקישור לתבנית', 'Please fill in course, date and link for the template')); return; }
     if ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'html' && !htmlContent) { alert(t('אנא הדביקי את קוד ה-HTML', 'Please paste the HTML code')); return; }
     if ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) { alert(t('אנא מלאי תוכן לאימייל', 'Please fill in email content')); return; }
     if (sendMode === 'single' && !singleRecipient?.email) { alert(t('אנא בחרי נמען', 'Please select a recipient')); return; }
@@ -324,16 +366,13 @@ ${ctaButtonsHtml}
       if (selectedGroup && selectedGroup !== 'כל הרשימה') {
         allSubs = allSubs.filter(s => s.group === selectedGroup || (s.groups && s.groups.includes(selectedGroup)));
       }
-      const waSubs = allSubs.filter(r => r.whatsapp).map(r => ({
-        subscriber_id: r.id, subscriber_name: r.name || '',
-        whatsapp_number: r.whatsapp,
-        message_content: whatsappMessage.replace(/\{\{name\}\}/g, r.name || ''),
-        status: 'pending'
-      }));
+      const waSubs = allSubs.filter(r => r.whatsapp && !excludedWaIds.has(r.id)).map(buildWaRow);
       if (!waSubs.length) { alert('לא נמצאו מנויים עם וואטסאפ'); setSending(false); return; }
       if (!confirm(`לשלוח ל-${waSubs.length} מנויים בוואטסאפ?`)) { setSending(false); return; }
       await base44.entities.WhatsappQueue.bulkCreate(waSubs);
-      await base44.entities.NewsletterLogs.create({ subject: 'הודעת וואטסאפ', content: whatsappMessage, group: selectedGroup, recipients_count: waSubs.length, status: 'נשלח בהצלחה', sent_date: new Date().toISOString(), sent_by: 'WhatsApp' });
+      const waLogSubject = waMode === 'template' ? `${WA_TEMPLATES.find(tp => tp.value === selectedWaTemplate)?.label || selectedWaTemplate} (תבנית)` : 'הודעת וואטסאפ';
+      const waLogContent = waMode === 'template' ? `תבנית: ${selectedWaTemplate} | קורס: ${waTplCourse} | מועד: ${waTplDate} | קישור: ${waTplLink}` : whatsappMessage;
+      await base44.entities.NewsletterLogs.create({ subject: waLogSubject, content: waLogContent, group: selectedGroup, recipients_count: waSubs.length, status: 'נשלח בהצלחה', sent_date: new Date().toISOString(), sent_by: 'WhatsApp' });
       setSendStatus('success');
       setSending(false);
       alert(`✅ ${waSubs.length} הודעות נוספו לתור הוואטסאפ!`);
@@ -356,17 +395,12 @@ ${ctaButtonsHtml}
       startQueuePolling(batchId);
 
       // Handle WhatsApp part of "both" immediately
-      if (sendChannel === 'both' && whatsappMessage.trim()) {
+      if (sendChannel === 'both' && (waMode === 'template' || whatsappMessage.trim())) {
         let allSubs = await base44.entities.Subscribers.filter({ subscribed: true });
         if (selectedGroup && selectedGroup !== 'כל הרשימה') {
           allSubs = allSubs.filter(s => s.group === selectedGroup || (s.groups && s.groups.includes(selectedGroup)));
         }
-        const waSubs = allSubs.filter(r => r.whatsapp).map(r => ({
-          subscriber_id: r.id, subscriber_name: r.name || '',
-          whatsapp_number: r.whatsapp,
-          message_content: whatsappMessage.replace(/\{\{name\}\}/g, r.name || ''),
-          status: 'pending'
-        }));
+        const waSubs = allSubs.filter(r => r.whatsapp && !excludedWaIds.has(r.id)).map(buildWaRow);
         if (waSubs.length > 0) await base44.entities.WhatsappQueue.bulkCreate(waSubs);
       }
 
@@ -594,6 +628,13 @@ ${ctaButtonsHtml}
                       <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
                         {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
                       </select>
+                      {(sendChannel === 'whatsapp' || sendChannel === 'both') && (
+                        <WaRecipientsExcluder
+                          recipients={subscribers.filter(s => s.subscribed !== false && s.whatsapp && (!selectedGroup || selectedGroup === 'כל הרשימה' || s.group === selectedGroup || (s.groups && s.groups.includes(selectedGroup))))}
+                          excludedIds={excludedWaIds}
+                          onToggle={toggleWaExclusion}
+                        />
+                      )}
                     </div>
                   )}
 
@@ -630,6 +671,27 @@ ${ctaButtonsHtml}
                 {(sendChannel === 'whatsapp' || sendChannel === 'both') && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                     <h3 className="font-semibold text-lg text-gray-900 mb-4 flex items-center gap-2"><MessageCircle className="w-6 h-6 text-green-600" />{t('הודעת וואטסאפ', 'WhatsApp Message')}</h3>
+                    <div className="flex gap-2 mb-4 bg-white/60 p-1 rounded-full">
+                      {[
+                        { key: 'free', label: t('טקסט חופשי', 'Free Text') },
+                        { key: 'template', label: t('תבנית מאושרת', 'Approved Template') }
+                      ].map(({ key, label }) => (
+                        <button key={key} type="button" onClick={() => setWaMode(key)}
+                          className={`flex-1 px-4 py-2 font-medium rounded-full transition-all ${waMode === key ? 'bg-[var(--crm-action)] text-[var(--crm-text)]' : 'text-gray-500 hover:text-gray-700'}`}
+                          style={{ borderRadius: waMode === key ? 'var(--crm-button-radius)' : undefined }}
+                        >{label}</button>
+                      ))}
+                    </div>
+                    {waMode === 'template' ? (
+                      <WaTemplateComposer
+                        templates={WA_TEMPLATES}
+                        selected={selectedWaTemplate}
+                        onSelectTemplate={setSelectedWaTemplate}
+                        course={waTplCourse} date={waTplDate} link={waTplLink}
+                        onChangeCourse={setWaTplCourse} onChangeDate={setWaTplDate} onChangeLink={setWaTplLink}
+                      />
+                    ) : (
+                    <>
                     <div className="relative">
                       <textarea id="whatsapp-textarea" value={whatsappMessage} onChange={(e) => setWhatsappMessage(e.target.value)} placeholder={t('היי {{name}}, זה הניוזלטר שלנו...', 'Hi {{name}}, this is our newsletter...')} rows="5" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
                       <div className="absolute bottom-2 left-2">
@@ -642,6 +704,8 @@ ${ctaButtonsHtml}
                       </div>
                     </div>
                     <p className="text-xs text-gray-600 mt-2">💡 {t('השתמשי ב-{{name}} לשם המנוי. קישורים (עם https://) יהפכו ללחיצים אוטומטית', 'Use {{name}} for subscriber name. Links (with https://) become clickable automatically')}</p>
+                    </>
+                    )}
                   </div>
                 )}
 
@@ -711,7 +775,7 @@ ${ctaButtonsHtml}
                 )}
 
                 <button onClick={handleSendClick}
-                  disabled={sending || ((sendChannel === 'email' || sendChannel === 'both') && !subject) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'html' && !htmlContent) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) || ((sendChannel === 'whatsapp' || sendChannel === 'both') && !whatsappMessage.trim()) || (sendMode === 'single' && !singleRecipient?.email)}
+                  disabled={sending || ((sendChannel === 'email' || sendChannel === 'both') && !subject) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'html' && !htmlContent) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) || ((sendChannel === 'whatsapp' || sendChannel === 'both') && (waMode === 'free' ? !whatsappMessage.trim() : (!waTplCourse.trim() || !waTplDate.trim() || !waTplLink.trim()))) || (sendMode === 'single' && !singleRecipient?.email)}
                   className="w-full bg-[var(--crm-primary)] text-white py-3 font-semibold hover:bg-[var(--crm-primary)]/90 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   style={{ borderRadius: 'var(--crm-button-radius)' }}
                 >

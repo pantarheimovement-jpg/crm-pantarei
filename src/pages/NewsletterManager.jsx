@@ -53,6 +53,7 @@ export default function NewsletterManager() {
   const [waTplDate, setWaTplDate] = useState('');
   const [waTplLink, setWaTplLink] = useState('');
   const [excludedWaIds, setExcludedWaIds] = useState(new Set());
+  const [courses, setCourses] = useState([]);
 
   const [designMode, setDesignMode] = useState('free');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -76,7 +77,17 @@ export default function NewsletterManager() {
     loadLogs();
     loadEmailTemplates();
     loadStudents();
+    loadCourses();
   }, []);
+
+  const loadCourses = async () => {
+    try {
+      const data = await base44.entities.Course.list('-created_date');
+      setCourses(data || []);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+    }
+  };
 
   const loadStudents = async () => {
     try {
@@ -687,6 +698,7 @@ ${ctaButtonsHtml}
                         templates={WA_TEMPLATES}
                         selected={selectedWaTemplate}
                         onSelectTemplate={setSelectedWaTemplate}
+                        courses={courses}
                         course={waTplCourse} date={waTplDate} link={waTplLink}
                         onChangeCourse={setWaTplCourse} onChangeDate={setWaTplDate} onChangeLink={setWaTplLink}
                       />

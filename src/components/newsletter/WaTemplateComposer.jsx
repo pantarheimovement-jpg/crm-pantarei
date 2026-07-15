@@ -1,14 +1,23 @@
 import React from 'react';
 import { Info } from 'lucide-react';
 
-export default function WaTemplateComposer({ templates, selected, onSelectTemplate, course, date, link, onChangeCourse, onChangeDate, onChangeLink }) {
+export default function WaTemplateComposer({ templates, selected, onSelectTemplate, courses = [], course, date, link, onChangeCourse, onChangeDate, onChangeLink }) {
+  const handleCourseSelect = (name) => {
+    onChangeCourse(name);
+    const c = courses.find(cr => cr.name === name);
+    if (c) {
+      onChangeDate(c.dates_text || '');
+      onChangeLink(c.payment_link || c.registration_link || '');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
         <p className="font-semibold flex items-center gap-2 mb-2"><Info className="w-4 h-4" />שליחה במצב תבנית מאושרת 📋</p>
         <ol className="list-decimal list-inside space-y-1">
           <li>בחרי תבנית מהרשימה (למשל: תזכורת יום היכרות).</li>
-          <li>מלאי את השדות: שם הקורס, מועד, וקישור. שם הנמען מתווסף אוטומטית לכל אחד.</li>
+          <li>בחרי קורס מהרשימה — המועד והקישור יתמלאו אוטומטית מפרטי הקורס. אפשר לערוך ידנית אם צריך. שם הנמען מתווסף אוטומטית לכל אחד.</li>
           <li>בחרי קבוצת תפוצה. אם יש מי שלא רוצה שיקבל — הורידי לו את הסימון ברשימה (הוא נשאר בקבוצה, רק לא מקבל את הדיוור הזה).</li>
           <li>לחצי 'שלח ניוזלטר'.</li>
         </ol>
@@ -23,7 +32,10 @@ export default function WaTemplateComposer({ templates, selected, onSelectTempla
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">שם הקורס</label>
-          <input type="text" value={course} onChange={(e) => onChangeCourse(e.target.value)} placeholder="למשל: פאשיה בתנועה" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+          <select value={course} onChange={(e) => handleCourseSelect(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
+            <option value="">בחרי קורס...</option>
+            {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">מועד</label>
@@ -34,7 +46,7 @@ export default function WaTemplateComposer({ templates, selected, onSelectTempla
           <input type="text" value={link} onChange={(e) => onChangeLink(e.target.value)} placeholder="https://..." dir="ltr" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
         </div>
       </div>
-      <p className="text-xs text-gray-600">השם ({'{{1}}'}) מתמלא אוטומטית לכל נמען משם המנוי.</p>
+      <p className="text-xs text-gray-600">השם ({'{{1}}'}) מתמלא אוטומטית לכל נמען משם המנוי. המועד והקישור נשלפים מהקורס — וניתנים לעריכה לפני שליחה.</p>
     </div>
   );
 }

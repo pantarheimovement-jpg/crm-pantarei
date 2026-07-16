@@ -6,7 +6,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 // false = פעיל: התור נשלח כרגיל.
 // true  = מושהה: שום הודעה לא נשלחת, לידים נשארים "ממתין".
 // ============================================================
-const SENDING_PAUSED = false;
+const SENDING_PAUSED = true;
 
 // Official WhatsApp Cloud API (approved templates) — no ban risk.
 // Operational messages are sent immediately: no hours window, no daily limit, no random delays.

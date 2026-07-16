@@ -180,6 +180,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    // עדכון רשומת ההיסטוריה כשאצווה הסתיימה — הסטטוס משקף מסירה אמיתית ולא רק כניסה לתור
+    const batchIds = [...new Set(pendingMessages.map((m) => m.wa_batch_id).filter(Boolean))];
+    for (const batchId of batchIds) {
+      const stillPending = await base44.asServiceRole.entities.WhatsappQueue.filter({ wa_batch_id: batchId, status: 'pending' }, 'created_date', 1);
+      if (stillPending && stillPending.length > 0) continue;
+      const sentRows = await base44.asServiceRole.entities.WhatsappQueue.filter({ wa_batch_id: batchId, status: 'sent' }, 'created_date', 1000);
+      const failedRows = await base44.asServiceRole.entities.WhatsappQueue.filter({ wa_batch_id: batchId, status: 'failed' }, 'created_date', 1000);
+      const logRows = await base44.asServiceRole.entities.NewsletterLogs.filter({ wa_batch_id: batchId });
+      if (logRows && logRows.length > 0) {
+        await base44.asServiceRole.entities.NewsletterLogs.update(logRows[0].id, {
+          status: failedRows.length === 0 ? 'נשלח בהצלחה' : `נשלח חלקית (${failedRows.length} שגיאות)`,
+          recipients_count: sentRows.length
+        });
+        console.log(`Batch ${batchId} finished: ${sentRows.length} sent, ${failedRows.length} failed — history log updated.`);
+      }
+    }
+
     // Self-chain: אם נשארו עוד ממתינות (דיוור גדול מ-50) — מפעיל ריצה נוספת מיד,
     // כך שדיוור גדול נשלח בזרם רציף ולא מטפטף 50 כל 5 דקות. שומר על מגבלת 50 לריצה.
     const remaining = await base44.asServiceRole.entities.WhatsappQueue.filter({ status: 'pending' }, 'created_date', 1);

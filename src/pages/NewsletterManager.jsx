@@ -421,7 +421,8 @@ ${ctaButtonsHtml}
       if (selectedGroup && selectedGroup !== 'כל הרשימה') {
         allSubs = allSubs.filter(s => s.group === selectedGroup || (s.groups && s.groups.includes(selectedGroup)));
       }
-      const waSubs = allSubs.filter(r => r.whatsapp && !excludedWaIds.has(r.id)).map(buildWaRow);
+      const waBatchId = `wa_${Date.now()}`;
+      const waSubs = allSubs.filter(r => r.whatsapp && !excludedWaIds.has(r.id)).map(r => ({ ...buildWaRow(r), wa_batch_id: waBatchId }));
       if (!waSubs.length) { alert('לא נמצאו מנויים עם וואטסאפ'); setSending(false); return; }
       if (!confirm(`לשלוח ל-${waSubs.length} מנויים בוואטסאפ?`)) { setSending(false); return; }
       try {
@@ -429,7 +430,8 @@ ${ctaButtonsHtml}
         await triggerWaQueue();
         const waLogSubject = waMode === 'template' ? `${WA_TEMPLATES.find(tp => tp.value === selectedWaTemplate)?.label || selectedWaTemplate} (תבנית)` : 'הודעת וואטסאפ';
         const waLogContent = waMode === 'template' ? `תבנית: ${selectedWaTemplate} | קורס: ${waTplCourse} | מועד: ${waTplDate} | קישור: ${waTplLink}` : whatsappMessage;
-        await base44.entities.NewsletterLogs.create({ subject: waLogSubject, content: waLogContent, group: selectedGroup, recipients_count: waSubs.length, status: 'נשלח בהצלחה', sent_date: new Date().toISOString(), sent_by: 'WhatsApp' });
+        // הרשומה נוצרת כ"בתהליך" — מעבד התור יעדכן לסטטוס אמיתי (הצלחה/חלקי) כשהאצווה תסתיים
+        await base44.entities.NewsletterLogs.create({ subject: waLogSubject, content: waLogContent, group: selectedGroup, recipients_count: waSubs.length, status: 'בתהליך', wa_batch_id: waBatchId, sent_date: new Date().toISOString(), sent_by: 'WhatsApp' });
         setSendStatus('success');
         alert(`✅ ${waSubs.length} הודעות נוספו לתור הוואטסאפ!`);
         loadLogs();

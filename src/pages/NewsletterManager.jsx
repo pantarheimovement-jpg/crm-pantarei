@@ -37,7 +37,7 @@ const SUBSCRIBERS_PER_GROUP = 280;
 
 // תבניות וואטסאפ מאושרות (Meta) — להוספת תבנית: מוסיפים שורה למערך
 const WA_TEMPLATES = [
-  { value: 'intro_day_reminder', label: 'תזכורת יום היכרות', lang: 'he' },
+  { value: 'intro_day_reminder_he', label: 'תזכורת יום היכרות', lang: 'he' },
 ];
 
 export default function NewsletterManager() {
@@ -59,7 +59,7 @@ export default function NewsletterManager() {
   const [singleRecipient, setSingleRecipient] = useState(null);
   const [whatsappMessage, setWhatsappMessage] = useState('\n\nלהסרה מרשימת התפוצה, יש להשיב ״הסר״');
   const [waMode, setWaMode] = useState('free');
-  const [selectedWaTemplate, setSelectedWaTemplate] = useState('intro_day_reminder');
+  const [selectedWaTemplate, setSelectedWaTemplate] = useState('intro_day_reminder_he');
   const [waTplCourse, setWaTplCourse] = useState('');
   const [waTplDate, setWaTplDate] = useState('');
   const [waTplLink, setWaTplLink] = useState('');

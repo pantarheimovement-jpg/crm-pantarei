@@ -23,6 +23,24 @@ function normalizeWaNumber(raw) {
   return num;
 }
 
+// מטמון רשימת תבניות ברמת המודול — קריאה אחת לריצה במקום קריאה לכל הודעה (מונע rate limit של uChat)
+let _templateListCache = null;
+async function getTemplateByName(headers, name) {
+  if (!_templateListCache) {
+    const listResp = await fetch('https://www.uchat.com.au/api/whatsapp-template/list', { method: 'POST', headers, body: '{}' });
+    const listJson = await listResp.json();
+    const data = listJson.data || [];
+    if (data.length === 0) return null; // אל תשמור תשובה ריקה/כושלת במטמון
+    _templateListCache = data;
+  }
+  return _templateListCache.find((t) => t.name === name);
+}
+
+// זיהוי כשל זמני (rate limit / רשת) — ראוי לניסיון חוזר ולא ל-failed לצמיתות
+function isTransientError(err) {
+  return /not found|rate|timeout|network|429|too many/i.test(String(err || ''));
+}
+
 // Provider switch: send via uChat (WhatsApp Cloud API) or Green API by WHATSAPP_PROVIDER secret
 async function sendWhatsapp(phone972, text, template = null) {
   const provider = (Deno.env.get('WHATSAPP_PROVIDER') || 'green').toLowerCase();
@@ -31,17 +49,11 @@ async function sendWhatsapp(phone972, text, template = null) {
     const token = Deno.env.get('UCHAT_API_TOKEN');
     if (!token) return { ok: false, error: 'uchat: UCHAT_API_TOKEN not configured' };
     const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    const infoResp = await fetch(`https://www.uchat.com.au/api/subscriber/get-info-by-user-id?user_id=${encodeURIComponent(phone972)}`, { headers });
-    let info = {};
-    try { info = await infoResp.json(); } catch (_e) { info = {}; }
-    let userNs = info?.user_ns || info?.data?.user_ns;
 
     // Proactive send via approved WhatsApp template (works outside the 24h window)
     if (template?.name) {
-      // 1. Fetch the template's namespace (required for template sends)
-      const listResp = await fetch('https://www.uchat.com.au/api/whatsapp-template/list', { method: 'POST', headers, body: '{}' });
-      const listJson = await listResp.json();
-      const tpl = (listJson.data || []).find(t => t.name === template.name);
+      // 1. Fetch the template's namespace once per run (cached at module level)
+      const tpl = await getTemplateByName(headers, template.name);
       if (!tpl) return { ok: false, error: `template ${template.name} not found in uChat - run sync` };
 
       // 2. שליחה ישירה לפי מספר טלפון — האנדפוינט הייעודי מהספסיפיקציה הרשמית.
@@ -71,6 +83,11 @@ async function sendWhatsapp(phone972, text, template = null) {
       return { ok: false, error: `uchat template send failed (${tplResp.status}): ${tplBody}` };
     }
 
+    // Free-text send — requires an existing subscriber (user_ns lookup)
+    const infoResp = await fetch(`https://www.uchat.com.au/api/subscriber/get-info-by-user-id?user_id=${encodeURIComponent(phone972)}`, { headers });
+    let info = {};
+    try { info = await infoResp.json(); } catch (_e) { info = {}; }
+    const userNs = info?.user_ns || info?.data?.user_ns;
     if (!userNs) {
       console.log(`uchat: subscriber not found for ${phone972}`);
       return { ok: false, error: `uchat: subscriber not found for ${phone972}` };
@@ -140,11 +157,21 @@ Deno.serve(async (req) => {
         });
         results.push({ name: message.subscriber_name, sent: true });
       } else {
-        await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {
-          status: 'failed',
-          error_message: sendResult.error || 'Unknown error'
-        });
-        results.push({ name: message.subscriber_name, sent: false, error: sendResult.error });
+        // כשל זמני (rate limit / רשת) — נשאר pending עם ספירת ניסיונות, עד 3 ניסיונות
+        const retryCount = (message.retry_count || 0) + 1;
+        if (isTransientError(sendResult.error) && retryCount <= 3) {
+          await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {
+            retry_count: retryCount,
+            error_message: `retry ${retryCount}/3: ${sendResult.error || 'Unknown error'}`
+          });
+          results.push({ name: message.subscriber_name, sent: false, retry: retryCount, error: sendResult.error });
+        } else {
+          await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {
+            status: 'failed',
+            error_message: sendResult.error || 'Unknown error'
+          });
+          results.push({ name: message.subscriber_name, sent: false, error: sendResult.error });
+        }
       }
 
       // Short pause between sends to protect Meta template quality rating (~30/min)

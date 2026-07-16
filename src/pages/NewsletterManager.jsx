@@ -15,6 +15,7 @@ import SingleRecipientPicker from '../components/newsletter/SingleRecipientPicke
 import EmojiPicker from '../components/newsletter/EmojiPicker';
 import WaTemplateComposer from '../components/newsletter/WaTemplateComposer';
 import WaRecipientsExcluder from '../components/newsletter/WaRecipientsExcluder';
+import WaMessagePreview from '../components/newsletter/WaMessagePreview';
 
 import { appParams } from '@/lib/app-params';
 
@@ -64,6 +65,7 @@ export default function NewsletterManager() {
   const [waTplDate, setWaTplDate] = useState('');
   const [waTplLink, setWaTplLink] = useState('');
   const [excludedWaIds, setExcludedWaIds] = useState(new Set());
+  const [showWaPreview, setShowWaPreview] = useState(false);
   const [courses, setCourses] = useState([]);
 
   const [designMode, setDesignMode] = useState('free');
@@ -734,7 +736,13 @@ ${ctaButtonsHtml}
 
                 {(sendChannel === 'whatsapp' || sendChannel === 'both') && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                    <h3 className="font-semibold text-lg text-gray-900 mb-4 flex items-center gap-2"><MessageCircle className="w-6 h-6 text-green-600" />{t('הודעת וואטסאפ', 'WhatsApp Message')}</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-lg text-gray-900 flex items-center gap-2"><MessageCircle className="w-6 h-6 text-green-600" />{t('הודעת וואטסאפ', 'WhatsApp Message')}</h3>
+                      <button type="button" onClick={() => setShowWaPreview(true)}
+                        className="text-sm font-semibold text-green-700 border-2 border-green-600 px-4 py-1.5 rounded-full hover:bg-green-100 transition-colors">
+                        👁️ {t('תצוגה מקדימה', 'Preview')}
+                      </button>
+                    </div>
                     <div className="flex gap-2 mb-4 bg-white/60 p-1 rounded-full">
                       {[
                         { key: 'free', label: t('טקסט חופשי', 'Free Text') },
@@ -890,6 +898,19 @@ ${ctaButtonsHtml}
         )}
 
 
+
+        <WaMessagePreview
+          open={showWaPreview}
+          onClose={() => setShowWaPreview(false)}
+          mode={waMode}
+          freeText={whatsappMessage}
+          params={{
+            name: (sendMode === 'single'
+              ? (singleRecipient?.name || subscribers.find(s => s.email?.toLowerCase() === singleRecipient?.email?.toLowerCase())?.name)
+              : subscribers.find(s => s.subscribed !== false && s.whatsapp && !excludedWaIds.has(s.id) && (!selectedGroup || selectedGroup === 'כל הרשימה' || s.group === selectedGroup || (s.groups && s.groups.includes(selectedGroup))))?.name) || 'דנה',
+            course: waTplCourse, date: waTplDate, link: waTplLink
+          }}
+        />
 
         {showTestEmailModal && (
           <TestEmailModal

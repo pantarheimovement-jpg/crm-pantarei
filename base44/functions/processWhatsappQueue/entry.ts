@@ -1,10 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 // ============================================================
-// 🚦 מתג ההשהיה — זה הדבר היחיד שמשנים בקובץ הזה!
+// 🚦 מתג ההשהיה החכמה — זה הדבר היחיד שמשנים בקובץ הזה!
 //
-// false = פעיל: התור נשלח כרגיל.
-// true  = מושהה: שום הודעה לא נשלחת, לידים נשארים "ממתין".
+// false = פעיל: הכל נשלח כרגיל.
+// true  = מושהה: דיוורים המוניים (קמפיינים) מוקפאים בתור,
+//         אבל הודעות תפעוליות ללידים חדשים נשלחות תמיד.
 // ============================================================
 const SENDING_PAUSED = true;
 
@@ -124,16 +125,17 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   try {
-    // 🚦 המתג: כשמושהה — לא נוגעים בתור בכלל. הכל נשאר "ממתין".
-    if (SENDING_PAUSED) {
-      console.log('SENDING_PAUSED=true — skipping queue processing, leads stay pending.');
-      return Response.json({ paused: true, message: 'השליחות מושהות (SENDING_PAUSED=true). הלידים ממתינים בתור.' });
-    }
-
-    // Send ALL pending messages immediately — official Cloud API, no window/limit needed.
-    const pendingMessages = await base44.asServiceRole.entities.WhatsappQueue.filter({
+    // Send pending messages — official Cloud API, no window/limit needed.
+    // 🚦 השהיה חכמה: כשמושהה — הודעות קמפיין (עם wa_batch_id) מדולגות ונשארות "ממתין",
+    // והודעות תפעוליות (ללא wa_batch_id, כמו ליד חדש) נשלחות כרגיל.
+    let pendingMessages = await base44.asServiceRole.entities.WhatsappQueue.filter({
       status: 'pending'
-    }, 'created_date', 50);
+    }, 'created_date', SENDING_PAUSED ? 500 : 50);
+    if (SENDING_PAUSED) {
+      const skipped = pendingMessages.filter((m) => m.wa_batch_id).length;
+      pendingMessages = pendingMessages.filter((m) => !m.wa_batch_id).slice(0, 50);
+      if (skipped > 0) console.log(`SENDING_PAUSED=true — ${skipped} campaign messages stay pending, processing operational only.`);
+    }
 
     if (!pendingMessages || pendingMessages.length === 0) {
       return Response.json({ message: 'No pending messages found in queue.' });
@@ -199,7 +201,8 @@ Deno.serve(async (req) => {
 
     // Self-chain: אם נשארו עוד ממתינות (דיוור גדול מ-50) — מפעיל ריצה נוספת מיד,
     // כך שדיוור גדול נשלח בזרם רציף ולא מטפטף 50 כל 5 דקות. שומר על מגבלת 50 לריצה.
-    const remaining = await base44.asServiceRole.entities.WhatsappQueue.filter({ status: 'pending' }, 'created_date', 1);
+    let remaining = await base44.asServiceRole.entities.WhatsappQueue.filter({ status: 'pending' }, 'created_date', SENDING_PAUSED ? 500 : 1);
+    if (SENDING_PAUSED) remaining = remaining.filter((m) => !m.wa_batch_id);
     if (remaining && remaining.length > 0) {
       try {
         await Promise.race([

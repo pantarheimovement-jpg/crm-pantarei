@@ -276,7 +276,9 @@ async function handleRequest(req) {
     uchatCapture.userNs = null;
     uchatCapture.phone972 = null;
 
-    if (body.phone && body.message && !body.messageData) {
+    // טקסט נכנס מ-uChat — כולל לחיצות כפתור (quick reply) שעשויות להגיע בשדה אחר מטקסט רגיל
+    const uchatInboundText = body.message || body.text || body.button_text || body.last_input_text || '';
+    if (body.phone && !body.messageData) {
       const webhookSecret = Deno.env.get('UCHAT_WEBHOOK_SECRET');
       if (webhookSecret && body.secret !== webhookSecret) {
         console.log('❌ uChat webhook secret mismatch');
@@ -291,7 +293,7 @@ async function handleRequest(req) {
       // Synthesize Green API format so all existing logic runs unchanged
       body.typeWebhook = 'incomingMessageReceived';
       body.senderData = { chatId: phone972 + '@c.us', senderName: body.first_name || '' };
-      body.messageData = { textMessageData: { textMessage: body.message } };
+      body.messageData = { textMessageData: { textMessage: uchatInboundText } };
       console.log(`📥 uChat inbound message from ${phone972}`);
     }
 
@@ -351,9 +353,12 @@ async function handleRequest(req) {
     const isUnsubscribeRequest = UNSUBSCRIBE_KEYWORDS.some(kw => lowerMsg === kw || lowerMsg === kw + ' אותי');
     if (isUnsubscribeRequest && !isPantareiPhone(phoneNumber)) {
       console.log(`📭 Unsubscribe request from ${phoneNumber}`);
-      await sendWhatsAppToChat(chatId, 'הוסרת מרשימת התפוצה בהצלחה 💜');
       const result = await handleUnsubscribe(base44, phoneNumber);
-      return Response.json(result);
+      // אישור הסרה: שליחה אקטיבית דרך uChat API (בתוך חלון 24ש' — המשתמש הרגע כתב),
+      // בנוסף ל-reply בתשובת ה-flow כגיבוי
+      const confirmViaApi = await sendViaUchat(chatId.replace('@c.us', ''), 'הוסרת מרשימת התפוצה בהצלחה 💜');
+      await sendWhatsAppToChat(chatId, 'הוסרת מרשימת התפוצה בהצלחה 💜');
+      return Response.json({ ...result, confirm_sent_via_api: confirmViaApi });
     }
 
     // =============================================
@@ -968,8 +973,12 @@ async function handleUnsubscribe(base44, phoneNumber) {
   let whatsappNum = normalizePhone(phoneNumber);
   if (whatsappNum.startsWith('0')) whatsappNum = '972' + whatsappNum.substring(1);
 
+  // כל פורמטי האחסון הקיימים ברשומות Subscribers: 972549809037 / 0549809037 / 549809037
   const variants = [whatsappNum];
-  if (whatsappNum.startsWith('972')) variants.push('0' + whatsappNum.substring(3));
+  if (whatsappNum.startsWith('972')) {
+    variants.push('0' + whatsappNum.substring(3));
+    variants.push(whatsappNum.substring(3));
+  }
 
   let subscriber = null;
   for (const variant of variants) {
@@ -978,7 +987,7 @@ async function handleUnsubscribe(base44, phoneNumber) {
   }
 
   if (subscriber) {
-    await base44.asServiceRole.entities.Subscribers.update(subscriber.id, { subscribed: false });
+    await base44.asServiceRole.entities.Subscribers.update(subscriber.id, { subscribed: false, marketing_consent: false });
     console.log(`✅ Subscriber ${subscriber.name || subscriber.whatsapp} unsubscribed`);
   } else {
     console.log(`⚠️ No subscriber found for ${phoneNumber}, but confirming removal anyway`);

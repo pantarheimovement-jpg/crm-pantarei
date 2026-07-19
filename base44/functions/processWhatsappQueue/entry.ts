@@ -14,6 +14,11 @@ const SENDING_PAUSED = true;
 // A short pause between sends protects Meta template quality rating (~30/min max).
 const BETWEEN_SENDS_MS = 2000;
 
+// 🎚️ תקרת תבניות יומית — הגנה על מכסת מטא (WABA חדש מתחיל ב-tier של 250/24ש').
+// נספרות הודעות תבנית שנשלחו ב-24 השעות האחרונות; מעבר לתקרה — הודעות קמפיין
+// נשארות pending והקרון ממשיך מחר. הודעות תפעוליות (ליד חדש) לא נחסמות לעולם.
+const DAILY_TEMPLATE_CAP = 200;
+
 function normalizeWaNumber(raw) {
   let num = String(raw || '').replace(/\D/g, '');
   if (!num) return '';
@@ -125,17 +130,37 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   try {
-    // Send pending messages — official Cloud API, no window/limit needed.
-    // 🚦 השהיה חכמה: כשמושהה — הודעות קמפיין (עם wa_batch_id) מדולגות ונשארות "ממתין",
-    // והודעות תפעוליות (ללא wa_batch_id, כמו ליד חדש) נשלחות כרגיל.
+    // ♻️ שחזור תקיעות: שורות שנתקעו ב'processing' מריצה שקרסה (מעל 10 דקות) חוזרות ל'pending'
+    const stuckRows = await base44.asServiceRole.entities.WhatsappQueue.filter({ status: 'processing' }, 'created_date', 100);
+    const tenMinAgo = Date.now() - 10 * 60 * 1000;
+    for (const s of (stuckRows || [])) {
+      if (new Date(s.updated_date).getTime() < tenMinAgo) {
+        await base44.asServiceRole.entities.WhatsappQueue.update(s.id, { status: 'pending', claim_id: '' });
+      }
+    }
+
+    // 🎚️ מכסה יומית: כמה תבניות נשלחו ב-24 השעות האחרונות
+    const dayAgoIso = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const sentLast24 = await base44.asServiceRole.entities.WhatsappQueue.filter({ status: 'sent', sent_at: { $gte: dayAgoIso } }, '-sent_at', 1000);
+    const templatesSent24h = (sentLast24 || []).filter((r) => r.template_name).length;
+    const campaignAllowance = Math.max(0, DAILY_TEMPLATE_CAP - templatesSent24h);
+    let campaignSentThisRun = 0;
+    const RUN_ID = crypto.randomUUID();
+
+    // 🚦 השהיה חכמה: כשמושהה — הודעות קמפיין (עם wa_batch_id) נשארות "ממתין".
+    // 🎚️ ויסות מכסה: הודעות קמפיין מוגבלות ליתרת המכסה היומית; תפעוליות עוברות תמיד.
     let pendingMessages = await base44.asServiceRole.entities.WhatsappQueue.filter({
       status: 'pending'
-    }, 'created_date', SENDING_PAUSED ? 500 : 50);
-    if (SENDING_PAUSED) {
-      const skipped = pendingMessages.filter((m) => m.wa_batch_id).length;
-      pendingMessages = pendingMessages.filter((m) => !m.wa_batch_id).slice(0, 50);
-      if (skipped > 0) console.log(`SENDING_PAUSED=true — ${skipped} campaign messages stay pending, processing operational only.`);
+    }, 'created_date', 500);
+    const operationalRows = pendingMessages.filter((m) => !m.wa_batch_id);
+    const campaignRows = SENDING_PAUSED ? [] : pendingMessages.filter((m) => m.wa_batch_id).slice(0, campaignAllowance);
+    if (SENDING_PAUSED && pendingMessages.length > operationalRows.length) {
+      console.log('SENDING_PAUSED=true — campaign messages stay pending, processing operational only.');
     }
+    if (!SENDING_PAUSED && campaignAllowance === 0 && pendingMessages.some((m) => m.wa_batch_id)) {
+      console.log(`Daily template cap (${DAILY_TEMPLATE_CAP}) reached — campaign messages stay pending until tomorrow.`);
+    }
+    pendingMessages = [...operationalRows, ...campaignRows].slice(0, 50);
 
     if (!pendingMessages || pendingMessages.length === 0) {
       return Response.json({ message: 'No pending messages found in queue.' });
@@ -145,6 +170,16 @@ Deno.serve(async (req) => {
     for (let i = 0; i < pendingMessages.length; i++) {
       const message = pendingMessages[i];
       console.log(`Processing message ID: ${message.id} for subscriber: ${message.subscriber_name}`);
+
+      // 🔒 מנעול נגד כפילות: "תופסים" את ההודעה (processing + claim_id ייחודי לריצה),
+      // קוראים מחדש ומוודאים שהתפיסה שלנו — אם ריצה מקבילה תפסה אחרינו, מדלגים.
+      await base44.asServiceRole.entities.WhatsappQueue.update(message.id, { status: 'processing', claim_id: RUN_ID });
+      await new Promise((r) => setTimeout(r, 400));
+      const fresh = await base44.asServiceRole.entities.WhatsappQueue.get(message.id).catch(() => null);
+      if (!fresh || fresh.status !== 'processing' || fresh.claim_id !== RUN_ID) {
+        console.log(`⏭️ Message ${message.id} claimed by another run — skipping.`);
+        continue;
+      }
 
       const template = message.template_name
         ? { name: message.template_name, lang: message.template_lang || 'he', params: message.template_params || {}, firstName: message.subscriber_name || '' }
@@ -157,12 +192,14 @@ Deno.serve(async (req) => {
           sent_at: new Date().toISOString(),
           provider_response: sendResult.providerResponse || ''
         });
+        if (message.wa_batch_id && message.template_name) campaignSentThisRun++;
         results.push({ name: message.subscriber_name, sent: true });
       } else {
         // כשל זמני (rate limit / רשת) — נשאר pending עם ספירת ניסיונות, עד 3 ניסיונות
         const retryCount = (message.retry_count || 0) + 1;
         if (isTransientError(sendResult.error) && retryCount <= 3) {
           await base44.asServiceRole.entities.WhatsappQueue.update(message.id, {
+            status: 'pending',
             retry_count: retryCount,
             error_message: `retry ${retryCount}/3: ${sendResult.error || 'Unknown error'}`
           });
@@ -187,6 +224,8 @@ Deno.serve(async (req) => {
     for (const batchId of batchIds) {
       const stillPending = await base44.asServiceRole.entities.WhatsappQueue.filter({ wa_batch_id: batchId, status: 'pending' }, 'created_date', 1);
       if (stillPending && stillPending.length > 0) continue;
+      const stillProcessing = await base44.asServiceRole.entities.WhatsappQueue.filter({ wa_batch_id: batchId, status: 'processing' }, 'created_date', 1);
+      if (stillProcessing && stillProcessing.length > 0) continue;
       const sentRows = await base44.asServiceRole.entities.WhatsappQueue.filter({ wa_batch_id: batchId, status: 'sent' }, 'created_date', 1000);
       const failedRows = await base44.asServiceRole.entities.WhatsappQueue.filter({ wa_batch_id: batchId, status: 'failed' }, 'created_date', 1000);
       const logRows = await base44.asServiceRole.entities.NewsletterLogs.filter({ wa_batch_id: batchId });
@@ -201,8 +240,10 @@ Deno.serve(async (req) => {
 
     // Self-chain: אם נשארו עוד ממתינות (דיוור גדול מ-50) — מפעיל ריצה נוספת מיד,
     // כך שדיוור גדול נשלח בזרם רציף ולא מטפטף 50 כל 5 דקות. שומר על מגבלת 50 לריצה.
-    let remaining = await base44.asServiceRole.entities.WhatsappQueue.filter({ status: 'pending' }, 'created_date', SENDING_PAUSED ? 500 : 1);
-    if (SENDING_PAUSED) remaining = remaining.filter((m) => !m.wa_batch_id);
+    // רק אם נשארו הודעות שמותר לשלוח עכשיו (בהתחשב בהשהיה ובמכסה היומית)
+    const allowanceLeft = campaignAllowance - campaignSentThisRun;
+    let remaining = await base44.asServiceRole.entities.WhatsappQueue.filter({ status: 'pending' }, 'created_date', 500);
+    if (SENDING_PAUSED || allowanceLeft <= 0) remaining = remaining.filter((m) => !m.wa_batch_id);
     if (remaining && remaining.length > 0) {
       try {
         await Promise.race([

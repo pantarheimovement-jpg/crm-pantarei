@@ -16,6 +16,7 @@ import EmojiPicker from '../components/newsletter/EmojiPicker';
 import WaTemplateComposer from '../components/newsletter/WaTemplateComposer';
 import WaRecipientsExcluder from '../components/newsletter/WaRecipientsExcluder';
 import WaMessagePreview from '../components/newsletter/WaMessagePreview';
+import WaQuotaIndicator from '../components/newsletter/WaQuotaIndicator';
 
 import { appParams } from '@/lib/app-params';
 
@@ -745,6 +746,7 @@ ${ctaButtonsHtml}
                         👁️ {t('תצוגה מקדימה', 'Preview')}
                       </button>
                     </div>
+                    <WaQuotaIndicator plannedCount={sendMode === 'single' ? 1 : subscribers.filter(s => s.subscribed !== false && s.whatsapp && !excludedWaIds.has(s.id) && (!selectedGroup || selectedGroup === 'כל הרשימה' || s.group === selectedGroup || (s.groups && s.groups.includes(selectedGroup)))).length} />
                     <div className="flex gap-2 mb-4 bg-white/60 p-1 rounded-full">
                       {[
                         { key: 'free', label: t('טקסט חופשי', 'Free Text') },

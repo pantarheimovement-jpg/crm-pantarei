@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown, ShieldCheck, Upload, Copy, Send } from 'lucide-react';
+import InlineLinkButton from './InlineLinkButton';
 
 const DEFAULT_BLOCK = () => ({ id: Date.now() + Math.random(), type: 'text', title: '', content: '', button_text: '', button_url: '', image_url: '', alt_text: '', video_url: '', video_thumbnail_url: '' });
 
@@ -20,6 +21,10 @@ const ACCENT = '#D29486';
 const ACTION = '#FAD980';
 const TEXT = '#5E4B35';
 const BG = '#FDF8F0';
+
+function renderInlineLinks(text) {
+  return (text || '').replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, `<a href="$2" target="_blank" style="color:${PRIMARY};font-weight:bold;text-decoration:underline;">$1</a>`);
+}
 
 function buildAntiSpamHtml(s, generalSettings) {
   const phone = s.contact_phone || generalSettings?.business_phone || '';
@@ -59,7 +64,7 @@ function buildAntiSpamHtml(s, generalSettings) {
       html += `<h2 style="font-family:'Rubik',Arial,sans-serif;font-size:26px;font-weight:700;color:${PRIMARY};margin:20px 0 10px;text-align:center;">${block.title}</h2>`;
     }
     if (block.content) {
-      html += `<p style="margin:0 0 15px;font-size:15px;line-height:1.7;">${block.content.replace(/\n/g, '<br>')}</p>`;
+      html += `<p style="margin:0 0 15px;font-size:15px;line-height:1.7;">${renderInlineLinks(block.content.replace(/\n/g, '<br>'))}</p>`;
     }
     if (block.button_text && block.button_url) {
       html += `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:15px auto;"><tr><td style="background-color:${ACTION};border-radius:50px;text-align:center;">
@@ -113,7 +118,7 @@ ${preheaderHtml}
     <!-- Greeting -->
     <tr><td style="padding:25px 30px 10px;font-family:'Rubik',Arial,sans-serif;font-size:15px;line-height:1.7;color:${TEXT};">
       <p style="margin:0 0 10px;font-size:16px;">${s.greeting || ''}</p>
-      <p style="margin:0;font-size:15px;line-height:1.7;">${(s.intro_text || '').replace(/\n/g, '<br>')}</p>
+      <p style="margin:0;font-size:15px;line-height:1.7;">${renderInlineLinks((s.intro_text || '').replace(/\n/g, '<br>'))}</p>
     </td></tr>
 
     <!-- Content blocks -->
@@ -404,7 +409,11 @@ export default function AntiSpamTemplateEditor() {
         <h4 className="font-bold text-gray-800 mb-4">👋 ברכה ופתיחה</h4>
         <div className="space-y-3">
           <input type="text" value={sections.greeting} onChange={e => setSections({...sections, greeting: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="שלום {{name}}," />
-          <textarea value={sections.intro_text} onChange={e => setSections({...sections, intro_text: e.target.value})} rows="3" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+          <textarea id="antispam-intro-text" value={sections.intro_text} onChange={e => setSections({...sections, intro_text: e.target.value})} rows="3" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+          <div className="flex items-center gap-2">
+            <InlineLinkButton textareaId="antispam-intro-text" value={sections.intro_text} onChange={v => setSections({...sections, intro_text: v})} />
+            <span className="text-xs text-gray-400">סמני טקסט ולחצי כדי להפוך אותו לקישור</span>
+          </div>
         </div>
       </div>
 
@@ -441,7 +450,11 @@ export default function AntiSpamTemplateEditor() {
               {block.type === 'text' && (
                 <div className="space-y-2">
                   <input type="text" value={block.title} onChange={e => updateBlock(idx, 'title', e.target.value)} placeholder="כותרת (אופציונלי)" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                  <textarea value={block.content} onChange={e => updateBlock(idx, 'content', e.target.value)} placeholder="תוכן הבלוק..." rows="4" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  <textarea id={`antispam-block-content-${idx}`} value={block.content} onChange={e => updateBlock(idx, 'content', e.target.value)} placeholder="תוכן הבלוק..." rows="4" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  <div className="flex items-center gap-2">
+                    <InlineLinkButton textareaId={`antispam-block-content-${idx}`} value={block.content} onChange={v => updateBlock(idx, 'content', v)} />
+                    <span className="text-xs text-gray-400">סמני טקסט ולחצי כדי להפוך אותו לקישור</span>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <input type="text" value={block.button_text} onChange={e => updateBlock(idx, 'button_text', e.target.value)} placeholder="טקסט כפתור (אופציונלי)" className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                     <input type="text" value={block.button_url} onChange={e => updateBlock(idx, 'button_url', e.target.value)} placeholder="קישור כפתור" className="px-3 py-2 border border-gray-300 rounded-lg text-sm" dir="ltr" />

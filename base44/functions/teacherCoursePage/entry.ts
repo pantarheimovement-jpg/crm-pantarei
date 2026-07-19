@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
         return new Response('Unknown action', { status: 400 });
       }
 
-      const back = `${url.origin}${url.pathname}?token=${encodeURIComponent(String(token))}&date=${date}&saved=1`;
+      const back = `https://crm-pantarei-4738bca7.base44.app/functions/teacherCoursePage?token=${encodeURIComponent(String(token))}&date=${date}&saved=1`;
       return new Response(null, { status: 303, headers: { 'Location': back } });
     }
 

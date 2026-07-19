@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
 import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar, MapPin, DollarSign, Grid, List, ExternalLink } from 'lucide-react';
 import ExportButtons from '../components/shared/ExportButtons';
+import TeacherLinkManager from '../components/course/TeacherLinkManager';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -747,16 +748,11 @@ export default function Courses() {
                   placeholder="teacher@email.com"
                 />
                 {editingCourse?.id && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="text-xs text-gray-500">לינק לדף הקורס:</span>
-                    <code className="text-xs bg-gray-100 px-2 py-1 rounded select-all break-all">
-                      {APP_BASE_URL}/CourseView/{editingCourse.id}
-                    </code>
-                  </div>
+                  <TeacherLinkManager course={editingCourse} />
                 )}
                 {!editingCourse && (
                   <p className="text-xs text-gray-500 mt-1">
-                    הלינק הייעודי ייווצר לאחר שמירת הקורס
+                    הקישור הייעודי ייווצר לאחר שמירת הקורס
                   </p>
                 )}
               </div>

@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
 // =============================================
-// CONFIGURATION
+// CONFIGURATION (v2 — button-event unsubscribe)
 // =============================================
 // PANTAREI_PHONE is loaded dynamically from GeneralSettings.business_phone
 // Fallback to old number only if not configured
@@ -149,6 +149,15 @@ function getPhoneVariants(rawPhone) {
   return [...variants];
 }
 
+// וריאנטי האחסון של מספר ברשומות Subscribers: 972549809037 / 0549809037 / 549809037
+function subscriberPhoneVariants(phoneNumber) {
+  let n = normalizePhone(phoneNumber);
+  if (n.startsWith('0')) n = '972' + n.substring(1);
+  const v = [n];
+  if (n.startsWith('972')) v.push('0' + n.substring(3), n.substring(3));
+  return v;
+}
+
 function isPantareiPhone(phoneNumber) {
   const normalized = normalizePhone(phoneNumber);
   const pantareiVariants = [...getPhoneVariants(PANTAREI_PHONE), ...getPhoneVariants(UCHAT_BUSINESS_PHONE)];
@@ -276,8 +285,10 @@ async function handleRequest(req) {
     uchatCapture.userNs = null;
     uchatCapture.phone972 = null;
 
-    // טקסט נכנס מ-uChat — כולל לחיצות כפתור (quick reply) שעשויות להגיע בשדה אחר מטקסט רגיל
-    const uchatInboundText = body.message || body.text || body.button_text || body.last_input_text || '';
+    // טקסט נכנס מ-uChat. שים לב: button_text (Last Button Title) הוא שדה "דביק" ב-uChat —
+    // לא ממזגים אותו לטקסט הרגיל; הוא מטופל בנפרד עם זיהוי "אירוע כפתור" אמיתי.
+    const uchatInboundText = body.message || body.text || body.last_input_text || '';
+    const uchatButtonText = String(body.button_text || '').trim();
     if (body.phone && !body.messageData) {
       const webhookSecret = Deno.env.get('UCHAT_WEBHOOK_SECRET');
       if (webhookSecret && body.secret !== webhookSecret) {
@@ -347,19 +358,52 @@ async function handleRequest(req) {
     const automationSettings = automationSettingsArr && automationSettingsArr.length > 0 ? automationSettingsArr[0] : null;
 
     // =============================================
-    // CHECK IF THIS IS AN UNSUBSCRIBE REQUEST
+    // CHECK IF THIS IS AN UNSUBSCRIBE REQUEST (message keyword OR button press)
     // =============================================
-    const lowerMsg = messageText.trim().toLowerCase();
+    const trimmedMsg = messageText.trim();
+    const lowerMsg = trimmedMsg.toLowerCase();
     const isUnsubscribeRequest = UNSUBSCRIBE_KEYWORDS.some(kw => lowerMsg === kw || lowerMsg === kw + ' אותי');
-    if (isUnsubscribeRequest && !isPantareiPhone(phoneNumber)) {
-      console.log(`📭 Unsubscribe request from ${phoneNumber}`);
+
+    // --- זיהוי לחיצת כפתור "הסר" (uChat quick reply) ---
+    // button_text (Last Button Title) הוא שדה דביק — נשמר לנצח אחרי לחיצה אחת.
+    // לכן מטפלים בו רק ב"אירוע כפתור" אמיתי: ה-message ריק או זהה לטקסט הנכנס
+    // האחרון ששמור על רשומת המנוי (= המשתמש לא הקליד כלום חדש).
+    // הוקלד טקסט חדש → מתעלמים מהכפתור לגמרי וממשיכים בעיבוד רגיל.
+    const matchedSubscribers = [];
+    if (uchatCapture.active && !isPantareiPhone(phoneNumber)) {
+      const subResults = await Promise.all(
+        subscriberPhoneVariants(phoneNumber).map(v => base44.asServiceRole.entities.Subscribers.filter({ whatsapp: v }).catch(() => []))
+      );
+      const seen = new Set();
+      for (const arr of subResults) {
+        for (const s of (arr || [])) {
+          if (!seen.has(s.id)) { seen.add(s.id); matchedSubscribers.push(s); }
+        }
+      }
+    }
+    const isUnsubButton = UNSUBSCRIBE_KEYWORDS.includes(uchatButtonText.toLowerCase());
+    const isButtonEvent = isUnsubButton && (
+      trimmedMsg === '' ||
+      matchedSubscribers.some(s => s.last_incoming_text && s.last_incoming_text === trimmedMsg)
+    );
+
+    // שמירת הטקסט הנכנס על רשומות המנוי — לזיהוי אירועי כפתור עתידיים
+    const persistLastIncomingText = () => Promise.all(
+      matchedSubscribers.map(s => base44.asServiceRole.entities.Subscribers.update(s.id, { last_incoming_text: trimmedMsg }).catch(() => {}))
+    );
+
+    if ((isUnsubscribeRequest || isButtonEvent) && !isPantareiPhone(phoneNumber)) {
+      console.log(`📭 Unsubscribe request from ${phoneNumber} (trigger: ${isUnsubscribeRequest ? 'message' : 'button'})`);
       const result = await handleUnsubscribe(base44, phoneNumber);
       // אישור הסרה: שליחה אקטיבית דרך uChat API (בתוך חלון 24ש' — המשתמש הרגע כתב),
-      // בנוסף ל-reply בתשובת ה-flow כגיבוי
+      // בנוסף ל-reply בתשובת ה-flow כגיבוי. נשלח גם אם כבר מוסר (idempotent).
       const confirmViaApi = await sendViaUchat(chatId.replace('@c.us', ''), 'הוסרת מרשימת התפוצה בהצלחה 💜');
       await sendWhatsAppToChat(chatId, 'הוסרת מרשימת התפוצה בהצלחה 💜');
-      return Response.json({ ...result, confirm_sent_via_api: confirmViaApi });
+      await persistLastIncomingText();
+      return Response.json({ ...result, trigger: isUnsubscribeRequest ? 'message' : 'button', confirm_sent_via_api: confirmViaApi });
     }
+
+    await persistLastIncomingText();
 
     // =============================================
     // CHECK IF THIS IS OFIR'S APPROVAL/REJECTION
@@ -915,12 +959,12 @@ async function createOrUpdateSubscriber(base44, { name, email, phone, courseName
       if (byEmail && byEmail.length > 0) existingSub = byEmail[0];
     }
 
-    // Check by phone (whatsapp format)
+    // Check by phone — בכל וריאנטי האחסון (972.../05.../5...) כדי לא ליצור כפילות
     if (!existingSub && phone) {
-      let whatsappNum = normalizePhone(phone);
-      if (whatsappNum.startsWith('0')) whatsappNum = '972' + whatsappNum.substring(1);
-      const byPhone = await base44.asServiceRole.entities.Subscribers.filter({ whatsapp: whatsappNum });
-      if (byPhone && byPhone.length > 0) existingSub = byPhone[0];
+      for (const v of subscriberPhoneVariants(phone)) {
+        const byPhone = await base44.asServiceRole.entities.Subscribers.filter({ whatsapp: v });
+        if (byPhone && byPhone.length > 0) { existingSub = byPhone[0]; break; }
+      }
     }
 
     let whatsappNum = '';
@@ -970,30 +1014,27 @@ async function createOrUpdateSubscriber(base44, { name, email, phone, courseName
 // HANDLE UNSUBSCRIBE REQUEST
 // =============================================
 async function handleUnsubscribe(base44, phoneNumber) {
-  let whatsappNum = normalizePhone(phoneNumber);
-  if (whatsappNum.startsWith('0')) whatsappNum = '972' + whatsappNum.substring(1);
-
-  // כל פורמטי האחסון הקיימים ברשומות Subscribers: 972549809037 / 0549809037 / 549809037
-  const variants = [whatsappNum];
-  if (whatsappNum.startsWith('972')) {
-    variants.push('0' + whatsappNum.substring(3));
-    variants.push(whatsappNum.substring(3));
+  // מעדכן את *כל* הרשומות התואמות בכל וריאנטי הטלפון — בלי break אחרי הראשונה,
+  // כדי שכפילויות (אותו מספר בפורמטים שונים) יוסרו כולן.
+  const results = await Promise.all(
+    subscriberPhoneVariants(phoneNumber).map(v => base44.asServiceRole.entities.Subscribers.filter({ whatsapp: v }).catch(() => []))
+  );
+  const seen = new Set();
+  let updated = 0;
+  for (const arr of results) {
+    for (const sub of (arr || [])) {
+      if (seen.has(sub.id)) continue;
+      seen.add(sub.id);
+      await base44.asServiceRole.entities.Subscribers.update(sub.id, { subscribed: false, marketing_consent: false });
+      console.log(`✅ Subscriber ${sub.name || sub.whatsapp} (${sub.id}) unsubscribed`);
+      updated++;
+    }
   }
-
-  let subscriber = null;
-  for (const variant of variants) {
-    const results = await base44.asServiceRole.entities.Subscribers.filter({ whatsapp: variant });
-    if (results && results.length > 0) { subscriber = results[0]; break; }
-  }
-
-  if (subscriber) {
-    await base44.asServiceRole.entities.Subscribers.update(subscriber.id, { subscribed: false, marketing_consent: false });
-    console.log(`✅ Subscriber ${subscriber.name || subscriber.whatsapp} unsubscribed`);
-  } else {
+  if (updated === 0) {
     console.log(`⚠️ No subscriber found for ${phoneNumber}, but confirming removal anyway`);
   }
 
-  return { status: 'unsubscribed', phone: phoneNumber, found: !!subscriber };
+  return { status: 'unsubscribed', phone: phoneNumber, found: updated > 0, records_updated: updated };
 }
 
 // =============================================

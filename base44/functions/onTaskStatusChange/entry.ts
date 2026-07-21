@@ -1,41 +1,8 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
-
-function normalizeWhatsappNumber(phone) {
-  const digits = String(phone || '').replace(/[\s\-\.\(\)\+]/g, '');
-  if (!digits) return '';
-  if (digits.startsWith('972')) return digits;
-  if (digits.startsWith('0')) return '972' + digits.substring(1);
-  if (digits.length === 9 && digits.startsWith('5')) return '972' + digits;
-  return digits;
-}
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { normalizePhone972, queueFollowup1, missingCourseLinks, notifyMissingCourseLinks } from '../../shared/waFollowups.ts';
 
 const OPEN_FOR_REGISTRATION = 'פתוח להרשמה';
 const TARGET_REGISTRATION_STATUSES = ['בבדיקה', 'לחזור לקראת הרשמה'];
-
-function isTargetCourse(courseName) {
-  const name = String(courseName || '');
-  if (name.includes('נענע')) {
-    return name === 'נענע – בית ספר למחול ותנועה סומטית';
-  }
-  return name.toLowerCase().includes('lbms');
-}
-
-function getTemplateKey(courseName) {
-  const name = String(courseName || '').toLowerCase();
-  return name.includes('lbms') ? 'whatsapp_lbms_status_messages' : 'whatsapp_nana_status_messages';
-}
-
-function isUsableTemplate(template) {
-  if (!template || !String(template).trim()) return false;
-  return !String(template).includes('כתבי כאן את נוסחי ההודעות');
-}
-
-function applyTemplate(template, student, course, status) {
-  return String(template)
-    .replace(/\{\{name\}\}/g, student?.full_name || 'שלום')
-    .replace(/\{\{course\}\}/g, course?.name || '')
-    .replace(/\{\{status\}\}/g, status || '');
-}
 
 function getEntryDate(entry) {
   const value = entry?.registration_date || entry?.lead_entry_date || '';
@@ -46,6 +13,7 @@ function descriptionMentionsCourse(task, courseName) {
   return Boolean(task?.description && courseName && task.description.includes(courseName));
 }
 
+// שליחת טקסט חופשי (רק להודעת "ניסיון לשיחה" — בתוך חלון 24 שעות)
 async function sendWhatsappToNumber(whatsappNumber, messageContent) {
   const provider = (Deno.env.get('WHATSAPP_PROVIDER') || 'green').toLowerCase();
 
@@ -90,8 +58,7 @@ async function sendWhatsappToNumber(whatsappNumber, messageContent) {
   const result = await response.json();
   return {
     sent: response.ok && Boolean(result.idMessage),
-    reason: response.ok ? null : (result.message || JSON.stringify(result)),
-    result
+    reason: response.ok ? null : (result.message || JSON.stringify(result))
   };
 }
 
@@ -102,12 +69,10 @@ function studentHasNanaCourse(student, courseById) {
     if (course && course.name && course.name.includes('נענע') && course.name !== 'נענע – בית ספר למחול ותנועה סומטית') {
       return true;
     }
-    // גם קורס קיץ נענע
     if (course && course.name && (course.name.includes('סמסטר קיץ') || course.name.includes('יום היכרות נענע'))) {
       return true;
     }
   }
-  // בדיקה גם ב-course_id הראשי
   if (student?.course_name && (student.course_name.includes('סמסטר קיץ') || student.course_name.includes('יום היכרות נענע'))) {
     return true;
   }
@@ -120,8 +85,9 @@ function isLbmsTask(task) {
   return name.includes('lbms') || desc.includes('lbms');
 }
 
-async function findOpenTargetCourseForTask(base44, student, task) {
-  const courses = await base44.asServiceRole.entities.Course.list();
+// מציאת קורס פתוח להרשמה המקושר לסטודנטית — כל קורס (הוסרה מגבלת נענע/LBMS, החלטת עינת 21.7)
+async function findOpenCourseForTask(base44, student, task) {
+  const courses = await base44.asServiceRole.entities.Course.list('-created_date', 200);
   const studentEntries = [...(student?.courses || [])]
     .sort((a, b) => getEntryDate(b) - getEntryDate(a));
 
@@ -140,42 +106,37 @@ async function findOpenTargetCourseForTask(base44, student, task) {
     }
   }
 
-  // אם המשימה היא LBMS אבל לסטודנטית יש קורס נענע — לא לשלוח
+  // אם המשימה היא LBMS אבל לסטודנטית יש קורס נענע — לא לשלוח (מניעת בלבול קטגוריות)
   if (isLbmsTask(task) && studentHasNanaCourse(student, courseById)) {
     console.log('⚠️ LBMS task but student has Nana course — skipping WhatsApp send');
     return null;
   }
 
-  const openTargetCourses = candidates.filter((course) =>
-    course?.status === OPEN_FOR_REGISTRATION && isTargetCourse(course.name)
-  );
+  const openCourses = candidates.filter((course) => course?.status === OPEN_FOR_REGISTRATION);
 
-  return openTargetCourses.find((course) => descriptionMentionsCourse(task, course.name)) || openTargetCourses[0] || null;
+  return openCourses.find((course) => descriptionMentionsCourse(task, course.name)) || openCourses[0] || null;
 }
 
-async function sendRegistrationStatusWhatsapp(base44, { student, task, newStatus }) {
-  const course = await findOpenTargetCourseForTask(base44, student, task);
-  if (!course) return { sent: false, reason: 'no_open_target_course' };
+// 21.7.2026: הוסב משליחת טקסט חופשי לתבנית מאושרת followup_1 דרך WhatsappQueue
+async function queueRegistrationTemplate(base44, { student, task }) {
+  const course = await findOpenCourseForTask(base44, student, task);
+  if (!course) return { queued: false, reason: 'no_open_course' };
 
-  const whatsappNumber = normalizeWhatsappNumber(student?.phone);
-  if (!whatsappNumber) return { sent: false, reason: 'missing_student_phone', course_name: course.name };
-
-  const settings = await base44.asServiceRole.entities.AutomationSettings.list();
-  const automationSettings = settings?.[0] || {};
-  const template = automationSettings[getTemplateKey(course.name)] || '';
-
-  if (!isUsableTemplate(template)) {
-    return { sent: false, reason: 'missing_message_template', course_name: course.name };
+  const missing = missingCourseLinks(course);
+  if (missing.length > 0) {
+    console.log(`⚠️ Course "${course.name}" missing followup_1 fields: ${missing.map((m) => m.key).join(', ')}`);
+    await notifyMissingCourseLinks(base44, course, missing);
+    return { queued: false, reason: 'missing_course_links', course_name: course.name };
   }
 
-  const messageContent = applyTemplate(template, student, course, newStatus);
-  const result = await sendWhatsappToNumber(whatsappNumber, messageContent);
+  const result = await queueFollowup1(base44, student, course);
   return { ...result, course_name: course.name };
 }
 
 // =============================================
 // Automation: When task status changes,
-// update the linked student's status accordingly
+// update the linked student's status accordingly,
+// stamp status_changed_date, and queue WhatsApp follow-ups.
 // =============================================
 
 Deno.serve(async (req) => {
@@ -198,20 +159,32 @@ Deno.serve(async (req) => {
     const newStatus = data?.status;
     const oldStatus = old_data?.status;
     const studentId = data?.student_id;
+    const taskId = event.entity_id;
 
-    // Skip if status didn't change or no student linked
-    if (!studentId || newStatus === oldStatus) {
-      console.log('No status change or no student linked, skipping');
-      return Response.json({ status: 'skipped', reason: 'no status change or no student' });
+    // Skip if status didn't change
+    if (newStatus === oldStatus) {
+      console.log('No status change, skipping');
+      return Response.json({ status: 'skipped', reason: 'no status change' });
     }
 
-    console.log(`Task status changed: "${oldStatus}" → "${newStatus}" for student ${studentId}`);
+    console.log(`Task status changed: "${oldStatus}" → "${newStatus}" for student ${studentId || '(none)'}`);
+
+    // 🕒 חותמת זמן לשינוי הסטטוס — ממנה נספרים ימי הפולואפ האוטומטי.
+    // העדכון הזה מפעיל את האוטומציה שוב, אבל הריצה השנייה נעצרת מיד (הסטטוס לא השתנה).
+    await base44.asServiceRole.entities.Task.update(taskId, {
+      status_changed_date: new Date().toISOString()
+    });
+
+    if (!studentId) {
+      console.log('No student linked, done after stamping status_changed_date');
+      return Response.json({ status: 'success', stamped: true, reason: 'no student linked' });
+    }
 
     let whatsappSentImmediately = false;
 
     if (newStatus === 'ניסיון לשיחה') {
       const student = await base44.asServiceRole.entities.Student.get(studentId);
-      const whatsappNumber = normalizeWhatsappNumber(student?.phone);
+      const whatsappNumber = normalizePhone972(student?.phone);
       const settings = await base44.asServiceRole.entities.AutomationSettings.list();
       const automationSettings = settings?.[0] || {};
       const messageTemplate = automationSettings.whatsapp_task_try_call_message || 'היי {{name}}, ניסיתי ליצור איתך קשר, מתי יהיה לך נוח לדבר?';
@@ -236,13 +209,11 @@ Deno.serve(async (req) => {
 
     if (TARGET_REGISTRATION_STATUSES.includes(newStatus)) {
       const student = await base44.asServiceRole.entities.Student.get(studentId);
-      registrationStatusWhatsapp = await sendRegistrationStatusWhatsapp(base44, {
+      registrationStatusWhatsapp = await queueRegistrationTemplate(base44, {
         student,
-        task: data,
-        newStatus
+        task: data
       });
-      whatsappSentImmediately = whatsappSentImmediately || registrationStatusWhatsapp.sent;
-      console.log('Registration status WhatsApp result:', JSON.stringify(registrationStatusWhatsapp));
+      console.log('Registration template queue result:', JSON.stringify(registrationStatusWhatsapp));
     }
 
     let newStudentStatus = null;
@@ -269,26 +240,24 @@ Deno.serve(async (req) => {
 
     if (newStudentStatus) {
       console.log(`Updating student ${studentId} status to "${newStudentStatus}"`);
-      
+
       const student = await base44.asServiceRole.entities.Student.get(studentId);
       const studentCourses = student?.courses || [];
       const taskName = data?.name || '';
       const taskDescription = data?.description || '';
-      
+
       // זיהוי הקורס הספציפי מתוך שם/תיאור המשימה
       let targetCourseId = null;
-      
-      // חיפוש לפי שם המשימה: "שיחת היכרות - קורס X" או "שיחת היכרות פאשיה בתנועה"
+
       if (taskName.startsWith('שיחת היכרות - ')) {
         const courseNameFromTask = taskName.replace('שיחת היכרות - ', '');
-        const match = studentCourses.find(c => c.course_name === courseNameFromTask);
+        const match = studentCourses.find((c) => c.course_name === courseNameFromTask);
         if (match) targetCourseId = match.course_id;
       } else if (taskName === 'שיחת היכרות פאשיה בתנועה') {
-        const match = studentCourses.find(c => c.course_name && c.course_name.includes('פאשיה'));
+        const match = studentCourses.find((c) => c.course_name && c.course_name.includes('פאשיה'));
         if (match) targetCourseId = match.course_id;
       }
-      
-      // fallback: חיפוש לפי תיאור המשימה
+
       if (!targetCourseId) {
         for (const c of studentCourses) {
           if (c.course_name && taskDescription.includes(c.course_name)) {
@@ -297,12 +266,11 @@ Deno.serve(async (req) => {
           }
         }
       }
-      
+
       const updateData = {};
-      
-      // עדכון סטטוס קורס ספציפי במערך courses
+
       if (targetCourseId && studentCourses.length > 0) {
-        const updatedCourses = studentCourses.map(c => {
+        const updatedCourses = studentCourses.map((c) => {
           if (c.course_id === targetCourseId) {
             return { ...c, status: newStudentStatus };
           }
@@ -317,9 +285,9 @@ Deno.serve(async (req) => {
 
         let bestStatus = null;
         for (const status of OPEN_LEAD_STATUSES) {
-          if (updatedCourses.some(c => c.status === status)) { bestStatus = status; break; }
+          if (updatedCourses.some((c) => c.status === status)) { bestStatus = status; break; }
         }
-        const hasRegistered = updatedCourses.some(c => REGISTERED_SET.includes(c.status) || c.status === 'הסתיים');
+        const hasRegistered = updatedCourses.some((c) => REGISTERED_SET.includes(c.status) || c.status === 'הסתיים');
         if (!bestStatus) {
           bestStatus = hasRegistered ? 'רשום' : newStudentStatus;
         }
@@ -328,19 +296,18 @@ Deno.serve(async (req) => {
         if (hasRegistered) updateData.is_customer = true;
         console.log(`📊 Per-course update: course ${targetCourseId} → "${newStudentStatus}", general status → "${bestStatus}"`);
       } else {
-        // אין מערך courses או לא מצאנו קורס — עדכון סטטוס כללי בלבד (כמו קודם)
         updateData.status = newStudentStatus;
       }
-      
+
       await base44.asServiceRole.entities.Student.update(studentId, updateData);
       console.log('✅ Student status updated successfully');
     } else {
       console.log('No student status mapping for this task status');
     }
 
-    return Response.json({ 
-      status: 'success', 
-      task_status: newStatus, 
+    return Response.json({
+      status: 'success',
+      task_status: newStatus,
       student_status: newStudentStatus,
       whatsapp_sent_immediately: whatsappSentImmediately,
       registration_status_whatsapp: registrationStatusWhatsapp

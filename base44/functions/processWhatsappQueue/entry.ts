@@ -51,6 +51,12 @@ function isTransientError(err) {
 async function sendWhatsapp(phone972, text, template = null) {
   const provider = (Deno.env.get('WHATSAPP_PROVIDER') || 'green').toLowerCase();
 
+  // 🛡️ הודעת תבנית חייבת לצאת דרך ה-API הרשמי (uChat) — לעולם לא כטקסט חופשי דרך Green.
+  // בלי ההגנה הזו, ספק לא-נכון היה שולח את טקסט ה-fallback ומסמן "נשלח" — כשל שקט.
+  if (template && template.name && provider !== 'uchat') {
+    return { ok: false, error: 'template send requires WHATSAPP_PROVIDER=uchat' };
+  }
+
   if (provider === 'uchat') {
     const token = Deno.env.get('UCHAT_API_TOKEN');
     if (!token) return { ok: false, error: 'uchat: UCHAT_API_TOKEN not configured' };

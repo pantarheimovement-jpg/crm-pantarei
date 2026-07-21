@@ -38,7 +38,10 @@ export default function Courses() {
     end_date: '',
     status: 'פתוח להרשמה',
     image_url: '',
-    teacher_email: ''
+    teacher_email: '',
+    dates_text: '',
+    payment_link: '',
+    registration_link: ''
   });
 
   useEffect(() => {
@@ -208,7 +211,10 @@ export default function Courses() {
         end_date: '',
         status: 'פתוח להרשמה',
         image_url: '',
-        teacher_email: ''
+        teacher_email: '',
+        dates_text: '',
+        payment_link: '',
+        registration_link: ''
       });
     }
     setShowModal(true);
@@ -755,6 +761,35 @@ export default function Courses() {
                     הקישור הייעודי ייווצר לאחר שמירת הקורס
                   </p>
                 )}
+              </div>
+
+              <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-4 space-y-3">
+                <p className="text-sm font-bold text-amber-800">💬 פרטים להודעות וואטסאפ אוטומטיות (תבנית ההרשמה)</p>
+                <p className="text-xs text-amber-700">שלושת השדות חייבים להיות מלאים כדי שהודעת ההרשמה האוטומטית תישלח כשהקורס נפתח להרשמה.</p>
+                <div>
+                  <label className="block text-sm font-medium mb-2">מועדי הקורס (טקסט חופשי)</label>
+                  <Input
+                    value={formData.dates_text || ''}
+                    onChange={(e) => setFormData({...formData, dates_text: e.target.value})}
+                    placeholder="למשל: 5-16.7"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">קישור לדף התשלום (סאמיט)</label>
+                  <Input
+                    value={formData.payment_link || ''}
+                    onChange={(e) => setFormData({...formData, payment_link: e.target.value})}
+                    placeholder="https://..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">קישור לדף הקורס באתר</label>
+                  <Input
+                    value={formData.registration_link || ''}
+                    onChange={(e) => setFormData({...formData, registration_link: e.target.value})}
+                    placeholder="https://..."
+                  />
+                </div>
               </div>
 
               <div>

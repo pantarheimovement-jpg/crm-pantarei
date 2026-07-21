@@ -32,7 +32,8 @@ export default function Tasks() {
     student_id: '',
     student_name: '',
     status: 'ממתין',
-    scheduled_date: ''
+    scheduled_date: '',
+    status_changed_date: ''
   });
   const [saving, setSaving] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -162,6 +163,11 @@ export default function Tasks() {
         student_id: studentId,
         student_name: studentName
       };
+      if (dataToSave.status_changed_date) {
+        dataToSave.status_changed_date = new Date(dataToSave.status_changed_date).toISOString();
+      } else {
+        delete dataToSave.status_changed_date;
+      }
 
       if (selectedTask) {
         await base44.entities.Task.update(selectedTask.id, dataToSave);
@@ -238,7 +244,8 @@ export default function Tasks() {
       student_id: '',
       student_name: '',
       status: 'ממתין',
-      scheduled_date: ''
+      scheduled_date: '',
+      status_changed_date: ''
     });
   };
 
@@ -295,7 +302,8 @@ export default function Tasks() {
       student_id: task.student_id || '',
       student_name: task.student_name || '',
       status: task.status || 'בבדיקה',
-      scheduled_date: task.scheduled_date || ''
+      scheduled_date: task.scheduled_date || '',
+      status_changed_date: task.status_changed_date ? new Date(task.status_changed_date).toISOString().slice(0, 16) : ''
     });
     setShowEditModal(true);
   };
@@ -886,6 +894,17 @@ export default function Tasks() {
                       onChange={(e) => setFormData({...formData, scheduled_date: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
                     />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">תאריך שינוי סטטוס (לפולואפ אוטומטי)</label>
+                    <input
+                      type="datetime-local"
+                      value={formData.status_changed_date}
+                      onChange={(e) => setFormData({...formData, status_changed_date: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#005e6c] focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">ממנו נספרים ימי הפולואפ האוטומטי בוואטסאפ. מתעדכן אוטומטית בכל שינוי סטטוס — אפשר לערוך ידנית כדי להקדים/לדחות פולואפ.</p>
                   </div>
                 </div>
               </div>

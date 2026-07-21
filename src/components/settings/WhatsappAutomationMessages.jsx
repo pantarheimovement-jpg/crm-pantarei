@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2, Send, Lock } from 'lucide-react';
 
 const TRY_CALL_DEFAULT = 'היי {{name}}, ניסיתי ליצור איתך קשר, מתי יהיה לך נוח לדבר?';
 const LBMS_DEFAULT = 'הודעות לפי סטטוס לקורסי LBMS — כתבי כאן את נוסחי ההודעות לפי סטטוס.';
 const NANA_DEFAULT = 'הודעות לפי סטטוס לקורסי נענע — כתבי כאן את נוסחי ההודעות לפי סטטוס.';
+
+const LOCKED_NOTE = 'הנוסח של הודעה זו מנוהל בתבנית מאושרת במטא (followup_1) ולא ניתן לעריכה כאן. לשינוי הנוסח יש להגיש תבנית חדשה במטא. הערך שמוצג משמש רק כגיבוי לטקסט חופשי בתוך חלון 24 שעות.';
 
 export default function WhatsappAutomationMessages({ automationSettings, setAutomationSettings }) {
   const [testNumber, setTestNumber] = useState('');
@@ -15,23 +17,26 @@ export default function WhatsappAutomationMessages({ automationSettings, setAuto
     {
       key: 'whatsapp_task_try_call_message',
       title: 'סטטוס שיחה: ניסיון לשיחה',
-      description: 'נשלחת כשהסטטוס של שיחה/משימה משתנה ל־“ניסיון לשיחה”.',
+      description: 'נשלחת כשהסטטוס של שיחה/משימה משתנה ל־“ניסיון לשיחה”. נשלחת כטקסט חופשי — מגיעה רק למי שכתבה לנו ב־24 השעות האחרונות (חלון וואטסאפ).',
       fallback: TRY_CALL_DEFAULT,
       rows: 3,
+      locked: false,
     },
     {
       key: 'whatsapp_lbms_status_messages',
       title: 'קורסי LBMS — הודעות לפי סטטוס',
-      description: 'כל נוסחי הודעות הוואטסאפ האוטומטיות לקורסי LBMS, לפי סטטוס.',
+      description: 'הודעת ההרשמה האוטומטית לקורסי LBMS.',
       fallback: LBMS_DEFAULT,
       rows: 5,
+      locked: true,
     },
     {
       key: 'whatsapp_nana_status_messages',
       title: 'קורסי נענע — הודעות לפי סטטוס',
-      description: 'כל נוסחי הודעות הוואטסאפ האוטומטיות לקורסי נענע, לפי סטטוס.',
+      description: 'הודעת ההרשמה האוטומטית לקורסי נענע.',
       fallback: NANA_DEFAULT,
       rows: 5,
+      locked: true,
     },
   ], []);
 
@@ -72,17 +77,25 @@ export default function WhatsappAutomationMessages({ automationSettings, setAuto
 
         {messages.map((item) => (
           <div key={item.key} className="bg-white border border-gray-200 rounded-lg p-4 space-y-2">
-            <div>
-              <h4 className="font-semibold text-gray-900">{item.title}</h4>
-              <p className="text-xs text-gray-500">{item.description}</p>
+            <div className="flex items-center gap-2">
+              {item.locked && <Lock className="w-4 h-4 text-amber-600" />}
+              <div>
+                <h4 className="font-semibold text-gray-900">{item.title}</h4>
+                <p className="text-xs text-gray-500">{item.description}</p>
+              </div>
             </div>
             <textarea
               value={getMessageValue(item)}
-              onChange={(e) => updateMessage(item.key, e.target.value)}
+              onChange={item.locked ? undefined : (e) => updateMessage(item.key, e.target.value)}
+              readOnly={item.locked}
               rows={item.rows}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
+              className={`w-full px-4 py-2 border border-gray-300 rounded-lg text-sm ${item.locked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
             />
-            <p className="text-xs text-gray-500">💡 אפשר להשתמש ב־{'{{name}}'} לשם הנמען/ת.</p>
+            {item.locked ? (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">🔒 {LOCKED_NOTE}</p>
+            ) : (
+              <p className="text-xs text-gray-500">💡 אפשר להשתמש ב־{'{{name}}'} לשם הנמען/ת.</p>
+            )}
           </div>
         ))}
 
@@ -101,7 +114,7 @@ export default function WhatsappAutomationMessages({ automationSettings, setAuto
               onChange={(e) => setSelectedMessageKey(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg"
             >
-              {messages.map((item) => (
+              {messages.filter((item) => !item.locked).map((item) => (
                 <option key={item.key} value={item.key}>{item.title}</option>
               ))}
             </select>
@@ -116,7 +129,7 @@ export default function WhatsappAutomationMessages({ automationSettings, setAuto
             </button>
           </div>
           <p className="text-xs text-gray-600">
-            הודעת הבדיקה נשלחת מיד, כמו הודעות סטטוס. ההגנות נשארות רק לתור האוטומטי ולדיוור.
+            הודעת הבדיקה נשלחת מיד כטקסט חופשי (בחלון 24 שעות בלבד). הודעות התבנית המאושרות נבדקות דרך התור.
           </p>
         </div>
       </div>

@@ -1,91 +1,14 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
-
-function normalizeWhatsappNumber(phone) {
-  const digits = String(phone || '').replace(/[\s\-\.\(\)\+]/g, '');
-  if (!digits) return '';
-  if (digits.startsWith('972')) return digits;
-  if (digits.startsWith('0')) return '972' + digits.substring(1);
-  if (digits.length === 9 && digits.startsWith('5')) return '972' + digits;
-  return digits;
-}
-
-function isTargetCourse(courseName) {
-  const name = String(courseName || '');
-  if (name.includes('נענע')) {
-    return name === 'נענע – בית ספר למחול ותנועה סומטית';
-  }
-  return name.toLowerCase().includes('lbms');
-}
-
-function getTemplateKey(courseName) {
-  const name = String(courseName || '').toLowerCase();
-  return name.includes('lbms') ? 'whatsapp_lbms_status_messages' : 'whatsapp_nana_status_messages';
-}
-
-function isUsableTemplate(template) {
-  if (!template || !String(template).trim()) return false;
-  return !String(template).includes('כתבי כאן את נוסחי ההודעות');
-}
-
-function applyTemplate(template, student, courseName) {
-  return String(template)
-    .replace(/\{\{name\}\}/g, student?.full_name || 'שלום')
-    .replace(/\{\{course\}\}/g, courseName || '')
-    .replace(/\{\{status\}\}/g, 'לחזור לקראת הרשמה');
-}
-
-async function sendWhatsappToNumber(whatsappNumber, messageContent) {
-  const provider = (Deno.env.get('WHATSAPP_PROVIDER') || 'green').toLowerCase();
-
-  if (provider === 'uchat') {
-    const token = Deno.env.get('UCHAT_API_TOKEN');
-    if (!token) return { sent: false, reason: 'uchat: UCHAT_API_TOKEN not configured' };
-    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    const infoResp = await fetch(`https://www.uchat.com.au/api/subscriber/get-info-by-user-id?user_id=${encodeURIComponent(whatsappNumber)}`, { headers });
-    let info = {};
-    try { info = await infoResp.json(); } catch (_e) { info = {}; }
-    const userNs = info?.user_ns || info?.data?.user_ns;
-    if (!userNs) {
-      console.log(`uchat: subscriber not found for ${whatsappNumber}`);
-      return { sent: false, reason: `uchat: subscriber not found for ${whatsappNumber}` };
-    }
-    const sendResp = await fetch('https://www.uchat.com.au/api/subscriber/send-text', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ user_ns: userNs, text: messageContent })
-    });
-    if (sendResp.ok) return { sent: true, reason: null };
-    const errText = await sendResp.text();
-    return { sent: false, reason: `uchat send failed: ${errText}` };
-  }
-
-  const GREEN_ID = Deno.env.get('GREEN_ID');
-  const GREEN_TOKEN = Deno.env.get('GREEN_TOKEN');
-
-  if (!GREEN_ID || !GREEN_TOKEN) {
-    return { sent: false, reason: 'missing_green_api_credentials' };
-  }
-
-  const response = await fetch(`https://api.green-api.com/waInstance${GREEN_ID}/sendMessage/${GREEN_TOKEN}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chatId: `${whatsappNumber}@c.us`,
-      message: messageContent
-    })
-  });
-
-  const result = await response.json();
-  return {
-    sent: response.ok && Boolean(result.idMessage),
-    reason: response.ok ? null : (result.message || JSON.stringify(result))
-  };
-}
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { queueFollowup1, missingCourseLinks, notifyMissingCourseLinks } from '../../shared/waFollowups.ts';
 
 // =============================================
 // Automation: When a course status changes to "פתוח להרשמה",
 // find all students with tasks in "לחזור לקראת הרשמה" status
-// linked to that course, create new tasks and notify admin
+// linked to that course, create new tasks, queue the approved
+// WhatsApp template (followup_1) via WhatsappQueue, and notify admin.
+//
+// 21.7.2026: הוסב משליחת טקסט חופשי (Green API) לתבנית מאושרת דרך התור.
+// חל על כל הקורסים — הוסרה מגבלת נענע/LBMS (החלטת עינת).
 // =============================================
 
 Deno.serve(async (req) => {
@@ -108,6 +31,7 @@ Deno.serve(async (req) => {
     const oldStatus = old_data?.status;
     const courseId = event.entity_id;
     const courseName = data?.name;
+    const course = data;
 
     // Only trigger when status changes TO "פתוח להרשמה"
     if (newStatus !== 'פתוח להרשמה' || newStatus === oldStatus) {
@@ -117,15 +41,10 @@ Deno.serve(async (req) => {
 
     console.log(`🎓 Course "${courseName}" (${courseId}) opened for registration!`);
 
-    if (!isTargetCourse(courseName)) {
-      console.log(`Course "${courseName}" is not a Nana/LBMS course, skipping`);
-      return Response.json({ status: 'skipped', reason: 'not target course', course: courseName });
-    }
-
     // Find all tasks with status "לחזור לקראת הרשמה"
     const pendingTasks = await base44.asServiceRole.entities.Task.filter({
       status: 'לחזור לקראת הרשמה'
-    });
+    }, 'created_date', 500);
 
     console.log(`Found ${pendingTasks.length} tasks with "לחזור לקראת הרשמה" status`);
 
@@ -133,10 +52,18 @@ Deno.serve(async (req) => {
       return Response.json({ status: 'success', message: 'No pending tasks found', course: courseName });
     }
 
-    // Load ALL students once (instead of per-task filter which doesn't work with id)
-    const allStudents = await base44.asServiceRole.entities.Student.list();
+    // Load ALL students with pagination
+    let allStudents = [];
+    let skip = 0;
+    while (true) {
+      const batch = await base44.asServiceRole.entities.Student.list('created_date', 500, skip);
+      if (!batch || batch.length === 0) break;
+      allStudents = allStudents.concat(batch);
+      skip += batch.length;
+      if (batch.length < 500) break;
+    }
     const studentMap = {};
-    (allStudents || []).forEach(s => { studentMap[s.id] = s; });
+    allStudents.forEach((s) => { studentMap[s.id] = s; });
 
     console.log(`Loaded ${allStudents.length} students into map`);
 
@@ -148,23 +75,13 @@ Deno.serve(async (req) => {
       if (!task.student_id) continue;
 
       const student = studentMap[task.student_id];
-      if (!student) {
-        console.log(`Student ${task.student_id} not found in map`);
-        continue;
-      }
+      if (!student) continue;
 
-      // Check if student has this course in their courses array
       const studentCourses = student.courses || [];
-      const hasCourse = studentCourses.some(c => c.course_id === courseId);
-
-      // Also check the main course_id field
+      const hasCourse = studentCourses.some((c) => c.course_id === courseId);
       const hasMainCourse = student.course_id === courseId;
-
-      // Also check interest_area for course name match
-      const hasInterest = student.interest_area && courseName && 
+      const hasInterest = student.interest_area && courseName &&
         student.interest_area.toLowerCase().includes(courseName.toLowerCase());
-
-      console.log(`Checking student ${student.full_name}: hasCourse=${hasCourse}, hasMainCourse=${hasMainCourse}, hasInterest=${hasInterest}`);
 
       if (hasCourse || hasMainCourse || hasInterest) {
         if (!relevantStudentIds.includes(student.id)) {
@@ -180,12 +97,16 @@ Deno.serve(async (req) => {
       return Response.json({ status: 'success', message: 'No relevant students found', course: courseName });
     }
 
-    // Create new tasks for each relevant student
+    // בדיקת שלמות פרטי הקורס לתבנית followup_1 — פעם אחת, לפני הלולאה
+    const missing = missingCourseLinks(course);
+    if (missing.length > 0) {
+      console.log(`⚠️ Course is missing followup_1 fields: ${missing.map((m) => m.key).join(', ')} — templates will NOT be queued`);
+      await notifyMissingCourseLinks(base44, course, missing);
+    }
+
     const createdTasks = [];
     const whatsappResults = [];
-    const settings = await base44.asServiceRole.entities.AutomationSettings.list();
-    const automationSettings = settings?.[0] || {};
-    const messageTemplate = automationSettings[getTemplateKey(courseName)] || '';
+    const nowIso = new Date().toISOString();
 
     for (const { student } of relevantStudents) {
       const scheduledDate = new Date();
@@ -195,6 +116,7 @@ Deno.serve(async (req) => {
         name: 'שיחת בדיקה להרשמה',
         description: `הקורס "${courseName}" נפתח להרשמה! ${student.full_name} הביע/ה עניין בעבר.`,
         status: 'לחזור לקראת הרשמה',
+        status_changed_date: nowIso,
         scheduled_date: scheduledDate.toISOString().split('T')[0],
         student_id: student.id,
         student_name: student.full_name
@@ -203,23 +125,17 @@ Deno.serve(async (req) => {
       createdTasks.push(newTask.id);
       console.log(`✅ Created task for ${student.full_name}`);
 
-      if (isUsableTemplate(messageTemplate)) {
-        const whatsappNumber = normalizeWhatsappNumber(student.phone);
-        if (whatsappNumber) {
-          const messageContent = applyTemplate(messageTemplate, student, courseName);
-          const sendResult = await sendWhatsappToNumber(whatsappNumber, messageContent);
-          whatsappResults.push({ student_id: student.id, student_name: student.full_name, ...sendResult });
-          console.log(`WhatsApp result for ${student.full_name}:`, JSON.stringify(sendResult));
-        } else {
-          whatsappResults.push({ student_id: student.id, student_name: student.full_name, sent: false, reason: 'missing_student_phone' });
-        }
+      if (missing.length === 0) {
+        const result = await queueFollowup1(base44, student, course);
+        whatsappResults.push({ student_id: student.id, student_name: student.full_name, ...result });
+        console.log(`WhatsApp queue result for ${student.full_name}:`, JSON.stringify(result));
       } else {
-        whatsappResults.push({ student_id: student.id, student_name: student.full_name, sent: false, reason: 'missing_message_template' });
+        whatsappResults.push({ student_id: student.id, student_name: student.full_name, queued: false, reason: 'missing_course_links' });
       }
     }
 
     // Send email notification to admin
-    const studentList = relevantStudents.map(({ student }) => 
+    const studentList = relevantStudents.map(({ student }) =>
       `• ${student.full_name} (${student.phone || 'ללא טלפון'})`
     ).join('<br>');
 
@@ -233,6 +149,7 @@ Deno.serve(async (req) => {
           ${studentList}
         </div>
         <p>נוצרו שיחות בדיקה להרשמה עבור כל אחד מהם.</p>
+        <p>${missing.length === 0 ? 'הודעות וואטסאפ (תבנית מאושרת) נכנסו לתור השליחה.' : '⚠️ הודעות וואטסאפ לא נשלחו — חסרים פרטים בקורס (נשלח מייל נפרד).'}</p>
         <p style="color: #666; font-size: 12px; margin-top: 20px;">סטודיו פנטהריי CRM</p>
       </div>`
     });
@@ -244,7 +161,7 @@ Deno.serve(async (req) => {
       course: courseName,
       students_notified: relevantStudents.length,
       tasks_created: createdTasks.length,
-      whatsapp_sent: whatsappResults.filter((item) => item.sent).length,
+      whatsapp_queued: whatsappResults.filter((item) => item.queued).length,
       whatsapp_results: whatsappResults
     });
 

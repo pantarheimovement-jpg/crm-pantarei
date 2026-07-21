@@ -28,7 +28,7 @@ const MAX_AGE_DAYS = 30;
 const DAY_MS = 24 * 3600 * 1000;
 
 Deno.serve(async (req) => {
-  console.log('=== runDailyFollowups started === [git-sync-test]');
+  console.log('=== runDailyFollowups started ===');
   const base44 = createClientFromRequest(req);
 
   try {

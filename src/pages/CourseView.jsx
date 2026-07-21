@@ -17,6 +17,7 @@ export default function CourseView() {
   const [leadsCount, setLeadsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -26,6 +27,9 @@ export default function CourseView() {
   const checkAccessAndLoad = async () => {
     setLoading(true);
     setAccessDenied(false);
+    setLoadError(false);
+
+    try {
 
     // Get current user and course data
     const [user, allCourses] = await Promise.all([
@@ -37,7 +41,6 @@ export default function CourseView() {
 
     if (!courseData) {
       setAccessDenied(true);
-      setLoading(false);
       return;
     }
 
@@ -48,7 +51,6 @@ export default function CourseView() {
     if (!userIsAdmin) {
       if (!courseData.teacher_email || user?.email !== courseData.teacher_email) {
         setAccessDenied(true);
-        setLoading(false);
         return;
       }
     }
@@ -89,7 +91,13 @@ export default function CourseView() {
     setRegisteredStudents(registered);
     setLeadStudents(leadStudentsList);
     setLeadsCount(leads);
-    setLoading(false);
+
+    } catch (error) {
+      console.error('Error loading course view:', error);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const STATUS_PRIORITY = ['רשום', 'נרשם', 'ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'לא רלוונטי'];
@@ -140,6 +148,18 @@ export default function CourseView() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-12 h-12 animate-spin text-[var(--crm-primary)]" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-center p-8">
+        <ShieldX className="w-16 h-16 text-red-400 mb-4" />
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">שגיאה בטעינת הקורס</h1>
+        <p className="text-gray-500 max-w-md">
+          לא הצלחנו לטעון את נתוני הקורס. ייתכן שאינך מחוברת למערכת — נסי להתחבר מחדש ולרענן את הדף.
+        </p>
       </div>
     );
   }

@@ -110,7 +110,10 @@ export default function Students() {
   const handleSave = async () => {
     try {
       // === DEDUP: בדיקת כפילות לפני יצירה חדשה ===
-      if (!editingStudent) {
+      // חשוב: משתמשים במשתנה מקומי (targetStudent) ולא ב-state, כי setEditingStudent
+      // לא מתעדכן באותו tick — הסתמכות על ה-state כאן יצרה בעבר את הכפילות עצמה.
+      let targetStudent = editingStudent;
+      if (!targetStudent) {
         let existingMatch = null;
         if (formData.email) {
           existingMatch = students.find(s => s.email && s.email.toLowerCase() === formData.email.toLowerCase());
@@ -121,6 +124,7 @@ export default function Students() {
         if (existingMatch) {
           const confirmUpdate = confirm(`כבר קיים/ת משתתף/ת עם הפרטים האלה: "${existingMatch.full_name}".\nלעדכן את הרשומה הקיימת במקום ליצור חדשה?`);
           if (confirmUpdate) {
+            targetStudent = existingMatch;
             setEditingStudent(existingMatch);
           } else {
             return; // ביטול
@@ -128,7 +132,7 @@ export default function Students() {
         }
       }
 
-      const originalStudent = editingStudent ? students.find(s => s.id === editingStudent.id) : null;
+      const originalStudent = targetStudent ? students.find(s => s.id === targetStudent.id) : null;
       const wasRegistered = originalStudent?.status === 'נרשם' || originalStudent?.status === 'רשום';
       const isNowRegistered = formData.status === 'נרשם' || formData.status === 'רשום';
 
@@ -177,8 +181,8 @@ export default function Students() {
       const hasRegistered = (cleanedData.courses || []).some(c => c.status === 'רשום' || c.status === 'נרשם');
       if (hasRegistered) cleanedData.is_customer = true;
 
-      if (editingStudent) {
-        await base44.entities.Student.update(editingStudent.id, cleanedData);
+      if (targetStudent) {
+        await base44.entities.Student.update(targetStudent.id, cleanedData);
       } else {
         await base44.entities.Student.create(cleanedData);
       }

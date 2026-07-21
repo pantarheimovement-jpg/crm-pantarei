@@ -132,6 +132,9 @@ export default function PipelineDashboard() {
           }
           return s.status === 'חדש' || s.status === 'ליד חדש';
         });
+      } else if (statusName === 'רשום') {
+        // שני האיותים חיים בנתונים במקביל — סופרים את שניהם, בדיוק כמו coursesWithStats
+        all = filteredStudents.filter(s => s.status === 'רשום' || s.status === 'נרשם');
       } else {
         all = filteredStudents.filter(s => s.status === statusName);
       }

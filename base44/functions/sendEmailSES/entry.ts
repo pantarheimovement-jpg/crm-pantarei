@@ -32,9 +32,14 @@ function htmlToPlainText(html) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    
-    // Note: Auth is handled by the app's login system.
-    // The CRM pages are only accessible to logged-in users.
+
+    // אבטחה: רק משתמש מחובר עם הרשאת אדמין רשאי לשלוח מייל דרך הפונקציה הזו.
+    // (פונקציות רקע כמו processNewsletterQueue שולחות SES ישירות ולא דרך כאן.)
+    let user = null;
+    try { user = await base44.auth.me(); } catch (_e) { /* not logged in */ }
+    if (!user || user.role !== 'admin') {
+      return new Response('Forbidden', { status: 403 });
+    }
 
     const { to, subject, html_content, from_name, unsubscribe_token, app_base_url, text_only } = await req.json();
 

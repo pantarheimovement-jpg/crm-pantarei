@@ -256,6 +256,9 @@ export default function AntiSpamTemplateEditor() {
       setCreatingNew(false);
       setSavedIndicator(true);
       setTimeout(() => setSavedIndicator(false), 3000);
+    } catch (err) {
+      console.error('Template save failed:', err);
+      alert('השמירה נכשלה — ' + (err?.response?.status === 403 || err?.status === 403 ? 'אין הרשאה. יש להתחבר כמנהלת.' : (err?.message || 'שגיאה לא ידועה')));
     } finally {
       setSaving(false);
     }
@@ -263,12 +266,17 @@ export default function AntiSpamTemplateEditor() {
 
   const handleDelete = async (id) => {
     if (!confirm('האם למחוק תבנית זו?')) return;
-    await base44.entities.EmailTemplate.delete(id);
-    setSelectedId(null);
-    setSections({ ...ANTI_SPAM_DEFAULT_SECTIONS });
-    setTemplateName('תבנית פנטהריי (Anti-Spam)');
-    setTemplateSubject('ניוזלטר פנטהריי');
-    await loadTemplates();
+    try {
+      await base44.entities.EmailTemplate.delete(id);
+      setSelectedId(null);
+      setSections({ ...ANTI_SPAM_DEFAULT_SECTIONS });
+      setTemplateName('תבנית פנטהריי (Anti-Spam)');
+      setTemplateSubject('ניוזלטר פנטהריי');
+      await loadTemplates();
+    } catch (err) {
+      console.error('Template delete failed:', err);
+      alert('המחיקה נכשלה — ' + (err?.response?.status === 403 || err?.status === 403 ? 'אין הרשאה. יש להתחבר כמנהלת.' : (err?.message || 'שגיאה לא ידועה')));
+    }
   };
 
   const addBlock = (type = 'text', afterIdx = null) => {

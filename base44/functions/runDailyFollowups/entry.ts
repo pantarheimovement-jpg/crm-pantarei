@@ -4,18 +4,22 @@ import { queueTemplate, pickCourseNameForTask } from '../../shared/waFollowups.t
 // =============================================
 // קרון יומי (10:00 בבוקר) — שתי בדיקות בהרצה אחת:
 //
-// 1. followup_3days: משימות בסטטוס "לחזור לקראת הרשמה" שעברו
+// 1. week_before (עדיפות ראשונה — מדברת על אירוע שקורה עכשיו):
+//    קורסים שמתחילים בעוד 7 ימים בדיוק — תזכורת לכל משימה פתוחה
+//    מקושרת. חלה גם על רשומות קיימות: כשירות לפי status_changed_date,
+//    ואם ריק — created_date, ובלבד שאינו ישן מ-30 יום.
+//
+// 2. followup_3days: משימות בסטטוס "לחזור לקראת הרשמה" שעברו
 //    auto_followup_days (ברירת מחדל 3) ימים מאז שינוי הסטטוס.
 //    ⚠️ ללא backfill: משימות בלי status_changed_date מדולגות
 //    (מונע הצפה של 127 הודעות ביום הראשון — החלטת עינת 21.7).
 //    חלון תוקף: עד 30 יום מאז שינוי הסטטוס.
 //
-// 2. week_before: קורסים שמתחילים בעוד 7 ימים בדיוק — תזכורת
-//    לכל משימה פתוחה מקושרת. חלה גם על רשומות קיימות:
-//    כשירות לפי status_changed_date, ואם ריק — created_date,
-//    ובלבד שאינו ישן מ-30 יום.
+// 🛡️ הגנת "הודעה אחת לבוקר": לידה שקיבלה week_before בהרצה הזו
+//    לא תקבל גם followup_3days באותה הרצה (הדילוג לפי מזהה משתתפת,
+//    כדי לכסות גם שתי משימות שונות של אותה לידה) — הפולואפ יֵצא מחר.
 //
-// כפילויות נמנעות ע"י followup_3days_sent_at / week_before_sent_at.
+// כפילויות בין ימים נמנעות ע"י followup_3days_sent_at / week_before_sent_at.
 // הגנת הסרה (subscribed=false) נבדקת בתוך queueTemplate.
 // =============================================
 
@@ -52,40 +56,10 @@ Deno.serve(async (req) => {
 
     const now = Date.now();
     const results = { followup_3days: [], week_before: [] };
+    const queuedStudentIds = new Set(); // משתתפות שכבר קיבלו הודעה בהרצה הזו
 
     // -----------------------------------------
-    // 1. followup_3days
-    // -----------------------------------------
-    for (const task of tasks) {
-      if (!task.status_changed_date) continue; // אין backfill — מדלגים על רשומות היסטוריות
-      if (task.followup_3days_sent_at) continue; // כבר נשלח
-      const ageDays = (now - new Date(task.status_changed_date).getTime()) / DAY_MS;
-      if (ageDays < followupDays || ageDays > MAX_AGE_DAYS) continue;
-
-      const student = studentById.get(task.student_id);
-      if (!student) continue;
-
-      const courseName = pickCourseNameForTask(task, student, courses);
-      if (!courseName) {
-        results.followup_3days.push({ task_id: task.id, student: student.full_name, queued: false, reason: 'no_course_name' });
-        continue;
-      }
-
-      const result = await queueTemplate(base44, {
-        student,
-        templateName: 'followup_3days',
-        params: { '1': student.full_name || '', '2': courseName },
-        fallbackText: `היי ${student.full_name || ''}, רצינו לשמוע איפה את עומדת לגבי ${courseName}`
-      });
-
-      if (result.queued) {
-        await base44.asServiceRole.entities.Task.update(task.id, { followup_3days_sent_at: new Date().toISOString() });
-      }
-      results.followup_3days.push({ task_id: task.id, student: student.full_name, course: courseName, ...result });
-    }
-
-    // -----------------------------------------
-    // 2. week_before — קורסים שמתחילים בעוד 7 ימים בדיוק (לפי תאריך ישראל)
+    // 1. week_before — קורסים שמתחילים בעוד 7 ימים בדיוק (לפי תאריך ישראל)
     // -----------------------------------------
     const todayIL = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
     const target = new Date(todayIL + 'T00:00:00Z');
@@ -99,6 +73,7 @@ Deno.serve(async (req) => {
         if (task.week_before_sent_at) continue;
         const student = studentById.get(task.student_id);
         if (!student) continue;
+        if (queuedStudentIds.has(student.id)) continue; // כבר קיבלה הודעה בהרצה הזו
 
         const linked = (student.courses || []).some((e) => e.course_id === course.id) ||
           student.course_id === course.id ||
@@ -117,10 +92,48 @@ Deno.serve(async (req) => {
         });
 
         if (result.queued) {
+          queuedStudentIds.add(student.id);
           await base44.asServiceRole.entities.Task.update(task.id, { week_before_sent_at: new Date().toISOString() });
         }
         results.week_before.push({ task_id: task.id, student: student.full_name, course: course.name, ...result });
       }
+    }
+
+    // -----------------------------------------
+    // 2. followup_3days
+    // -----------------------------------------
+    for (const task of tasks) {
+      if (!task.status_changed_date) continue; // אין backfill — מדלגים על רשומות היסטוריות
+      if (task.followup_3days_sent_at) continue; // כבר נשלח
+      const ageDays = (now - new Date(task.status_changed_date).getTime()) / DAY_MS;
+      if (ageDays < followupDays || ageDays > MAX_AGE_DAYS) continue;
+
+      const student = studentById.get(task.student_id);
+      if (!student) continue;
+      if (queuedStudentIds.has(student.id)) {
+        // קיבלה week_before הבוקר — הפולואפ יישלח בהרצה של מחר (לא מסמנים sent)
+        results.followup_3days.push({ task_id: task.id, student: student.full_name, queued: false, reason: 'deferred_got_week_before_today' });
+        continue;
+      }
+
+      const courseName = pickCourseNameForTask(task, student, courses);
+      if (!courseName) {
+        results.followup_3days.push({ task_id: task.id, student: student.full_name, queued: false, reason: 'no_course_name' });
+        continue;
+      }
+
+      const result = await queueTemplate(base44, {
+        student,
+        templateName: 'followup_3days',
+        params: { '1': student.full_name || '', '2': courseName },
+        fallbackText: `היי ${student.full_name || ''}, רצינו לשמוע איפה את עומדת לגבי ${courseName}`
+      });
+
+      if (result.queued) {
+        queuedStudentIds.add(student.id);
+        await base44.asServiceRole.entities.Task.update(task.id, { followup_3days_sent_at: new Date().toISOString() });
+      }
+      results.followup_3days.push({ task_id: task.id, student: student.full_name, course: courseName, ...result });
     }
 
     const summary = {

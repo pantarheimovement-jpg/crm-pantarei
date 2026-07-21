@@ -31,15 +31,38 @@ function normalizeWaNumber(raw) {
 
 // מטמון רשימת תבניות ברמת המודול — קריאה אחת לריצה במקום קריאה לכל הודעה (מונע rate limit של uChat)
 let _templateListCache = null;
+let _syncAttemptedThisRun = false;
+
+async function loadTemplateList(headers) {
+  const listResp = await fetch('https://www.uchat.com.au/api/whatsapp-template/list', { method: 'POST', headers, body: '{}' });
+  const listJson = await listResp.json();
+  return listJson.data || [];
+}
+
 async function getTemplateByName(headers, name) {
   if (!_templateListCache) {
-    const listResp = await fetch('https://www.uchat.com.au/api/whatsapp-template/list', { method: 'POST', headers, body: '{}' });
-    const listJson = await listResp.json();
-    const data = listJson.data || [];
-    if (data.length === 0) return null; // אל תשמור תשובה ריקה/כושלת במטמון
-    _templateListCache = data;
+    const data = await loadTemplateList(headers);
+    if (data.length > 0) _templateListCache = data; // אל תשמור תשובה ריקה/כושלת במטמון
   }
-  return _templateListCache.find((t) => t.name === name);
+  let tpl = (_templateListCache || []).find((t) => t.name === name);
+
+  // תבנית לא נמצאה — סנכרון אוטומטי מול מטא דרך /whatsapp-template/sync,
+  // פעם אחת לכל היותר בכל ריצה (הגנת rate limit — הלקח מ-16.7), ואז חיפוש חוזר.
+  if (!tpl && !_syncAttemptedThisRun) {
+    _syncAttemptedThisRun = true;
+    console.log(`Template "${name}" not in uChat list — triggering /whatsapp-template/sync`);
+    try {
+      const syncResp = await fetch('https://www.uchat.com.au/api/whatsapp-template/sync', { method: 'POST', headers, body: '{}' });
+      console.log(`uchat template sync response: ${syncResp.status}`);
+    } catch (e) {
+      console.log('uchat template sync call failed:', e.message);
+    }
+    _templateListCache = null;
+    const data = await loadTemplateList(headers);
+    if (data.length > 0) _templateListCache = data;
+    tpl = (_templateListCache || []).find((t) => t.name === name);
+  }
+  return tpl || null;
 }
 
 // זיהוי כשל זמני (rate limit / רשת) — ראוי לניסיון חוזר ולא ל-failed לצמיתות
@@ -136,6 +159,7 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   try {
+    _syncAttemptedThisRun = false; // איפוס לכל ריצה — סנכרון תבניות אחד לכל היותר בריצה
     // ♻️ שחזור תקיעות: שורות שנתקעו ב'processing' מריצה שקרסה (מעל 10 דקות) חוזרות ל'pending'
     const stuckRows = await base44.asServiceRole.entities.WhatsappQueue.filter({ status: 'processing' }, 'created_date', 100);
     const tenMinAgo = Date.now() - 10 * 60 * 1000;

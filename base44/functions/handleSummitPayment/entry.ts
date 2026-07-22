@@ -12,6 +12,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 const OPEN_LEAD_STATUSES = ['ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'בבדיקה'];
 const REGISTERED_STATUSES = ['רשום', 'נרשם'];
+const OPEN_FOR_REGISTRATION = 'פתוח להרשמה';
+const CANCELLED_STATUS = 'ביטול הרשמה';
 
 function normalizeName(value) {
   return String(value || '')
@@ -252,9 +254,15 @@ Deno.serve(async (req) => {
       if (!course) {
         console.log(`✨ Creating new course: ${courseName}`);
         try {
+          // קורס חדש נפתח אוטומטית להרשמה (בקשת אופיר, סעיף 6).
+          // בטוח לעשות זאת: onCourseOpenForRegistration ו-onTaskStatusChange שניהם
+          // חוסמים שליחת הודעות כשחסרים payment_link/registration_link
+          // (`missingCourseLinks`), וקורס טרי נוצר בלי קישורים — כך שאף הודעה
+          // לא תצא עד שמישהו ימלא אותם ידנית ובכוונה.
           course = await base44.asServiceRole.entities.Course.create({
             name: courseName,
             type: 'קורס קבוע',
+            status: OPEN_FOR_REGISTRATION,
             current_students: 0
           });
         } catch (e) {
@@ -294,8 +302,17 @@ Deno.serve(async (req) => {
     const existingCourses = existingStudent?.courses || [];
     const existingEntry = course ? existingCourses.find((c) => c.course_id === course.id) : null;
 
+    // זיכוי/ביטול (סעיף 7 ברשימת אופיר). בסאמיט זה מסמך "חשבון/קבלה זיכוי"
+    // עם סכום שלילי. עד היום הוא נקלט כתשלום רגיל: המונה התקדם, נוצרה משימה,
+    // ומונה הנרשמים בקורס עלה — במקום לרדת.
+    const isRefund = (Number(installmentAmount) || 0) < 0 || /זיכוי/.test(String(documentName || ''));
+    const refundAmount = Math.abs(Number(installmentAmount) || 0);
+
     let paymentNumber;
-    if (currentPaymentRaw) {
+    if (isRefund) {
+      // זיכוי אינו תשלום — המונה נשאר כפי שהיה
+      paymentNumber = existingEntry?.payment_number || 1;
+    } else if (currentPaymentRaw) {
       paymentNumber = currentPaymentRaw;
     } else if (existingEntry && REGISTERED_STATUSES.includes(existingEntry.status)) {
       // חיוב חוזר של הוראת קבע — מקדמים את המונה
@@ -304,23 +321,30 @@ Deno.serve(async (req) => {
       paymentNumber = 1;
     }
 
-    const isRecurringCharge = Boolean(existingEntry && REGISTERED_STATUSES.includes(existingEntry.status));
-    const isNewRegistration = !isRecurringCharge && Boolean(course);
+    const isRecurringCharge = !isRefund && Boolean(existingEntry && REGISTERED_STATUSES.includes(existingEntry.status));
+    const isNewRegistration = !isRefund && !isRecurringCharge && Boolean(course);
 
-    const noteText = `תשלום ${paymentNumber}${paymentsTotal ? `/${paymentsTotal}` : ''} דרך Summit בתאריך ${billingDate}${installmentAmount ? ` (₪${installmentAmount})` : ''}${mapping && productName !== courseName ? ` — מסלול: ${productName}` : ''}${documentName ? ` — ${documentName}` : ''}`;
+    // האם הזיכוי מכסה את כל מה ששולם — ואז זה ביטול מלא ולא החזר חלקי
+    const paidBeforeRefund = Number(existingEntry?.paid_so_far) || 0;
+    const isFullCancellation = isRefund && paidBeforeRefund > 0 && refundAmount >= paidBeforeRefund;
+
+    const noteText = isRefund
+      ? `${isFullCancellation ? 'ביטול הרשמה' : 'זיכוי חלקי'} דרך Summit בתאריך ${billingDate} (₪${refundAmount})${mapping && productName !== courseName ? ` — מסלול: ${productName}` : ''}${documentName ? ` — ${documentName}` : ''}`
+      : `תשלום ${paymentNumber}${paymentsTotal ? `/${paymentsTotal}` : ''} דרך Summit בתאריך ${billingDate}${installmentAmount ? ` (₪${installmentAmount})` : ''}${mapping && productName !== courseName ? ` — מסלול: ${productName}` : ''}${documentName ? ` — ${documentName}` : ''}`;
 
     // --- 4. בניית רשומת הקורס המעודכנת ---
     const courseEntryData = course ? {
       course_id: course.id,
       course_name: course.name,
-      status: registeredStatus,
+      // ביטול מלא מוריד מהרשומים; זיכוי חלקי משאיר אותה רשומה
+      status: isFullCancellation ? CANCELLED_STATUS : (isRefund ? (existingEntry?.status || registeredStatus) : registeredStatus),
       ...(mapping && !mapping.optionField && courseOption ? { option: courseOption } : {}),
       registration_date: existingEntry?.registration_date || billingDate,
       payment_number: paymentNumber,
       // סכום מצטבר אמיתי לקורס הזה. עד היום מסך ההכנסות חישב
       // installment_amount × payment_number, וזה נכון רק כשכל התשלומים שווים —
       // מי ששילמה ₪1,400 ואז ₪800 הוצגה כמי ששילמה ₪1,600 במקום ₪2,200 (אובחן 22.7).
-      paid_so_far: (Number(existingEntry?.paid_so_far) || 0) + (Number(installmentAmount) || 0),
+      paid_so_far: Math.max(0, (Number(existingEntry?.paid_so_far) || 0) + (Number(installmentAmount) || 0)),
       ...(paymentsTotal && { payments_total: paymentsTotal }),
       ...(installmentAmount && { installment_amount: installmentAmount }),
       ...(totalAmount ? { total_price: totalAmount }
@@ -341,7 +365,8 @@ Deno.serve(async (req) => {
     const mainStatus = computeMainStatus(updatedCourses, registeredStatus);
 
     // סכום ששולם בפועל — מצטבר על פני כל החיובים
-    const amountPaid = (existingStudent?.amount_paid || 0) + (installmentAmount || 0);
+    // בזיכוי installmentAmount שלילי, ולכן הסכום יורד מעצמו. חוסמים ירידה מתחת לאפס.
+    const amountPaid = Math.max(0, (existingStudent?.amount_paid || 0) + (installmentAmount || 0));
 
     const studentData = {
       full_name: customerName,
@@ -382,6 +407,11 @@ Deno.serve(async (req) => {
     if (course && isNewRegistration) {
       await base44.asServiceRole.entities.Course.update(course.id, {
         current_students: (course.current_students || 0) + 1
+      });
+    } else if (course && isFullCancellation) {
+      // ביטול מלא — המשתתפת יורדת מהרשומים. עד היום זיכוי דווקא *העלה* את המונה.
+      await base44.asServiceRole.entities.Course.update(course.id, {
+        current_students: Math.max(0, (course.current_students || 0) - 1)
       });
     }
 

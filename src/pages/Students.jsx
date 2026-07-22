@@ -107,6 +107,13 @@ export default function Students() {
     }
   };
 
+  // כמה שולם על הקורס הזה. מגיע מסאמיט עם שיוך לקורס, אבל עד היום הוצג רק
+  // כסכום מצטבר אחד ברמת המשתתפת — כך שלא היה אפשר לדעת על מה שולם ועל מה לא.
+  const coursePaid = (course) => {
+    const v = course?.installment_amount ?? course?.total_price;
+    return v === null || v === undefined || v === '' ? null : Number(v);
+  };
+
   // מחזירה טלפון לצורה הקנונית 0XXXXXXXXX. אם הערך אינו מספר טלפון תקין
   // (ריק, "לא ידוע", "לא זמין") — מחזירה אותו כמות שהוא, כדי לא לאבד מידע שהוקלד בכוונה.
   const normalizePhoneForSave = (raw) => {
@@ -830,6 +837,11 @@ export default function Students() {
                           >
                             {course.status}
                           </span>
+                          {coursePaid(course) !== null && (
+                            <span className="text-xs font-semibold text-green-700 whitespace-nowrap">
+                              ₪{coursePaid(course).toLocaleString()}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -845,12 +857,22 @@ export default function Students() {
                       כניסה: {new Date(student.lead_entry_date).toLocaleDateString('he-IL')}
                     </div>
                   )}
-                  {(student.amount_paid || student.total_payments) && (
+                  {/* סה"כ שולם — רק amount_paid, שהוא הכסף שבאמת נגבה דרך סאמיט.
+                      בעבר הוצג כאן total_payments כשאין amount_paid, אבל total_payments
+                      הוא מספר התשלומים או מחיר הקורס — לא סכום ששולם. זה הציג
+                      "₪3" למי ששילמה בשלושה תשלומים, והוביל להחלטות שגויות (22.7). */}
+                  {student.amount_paid ? (
                     <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-80">
-                      <span className="font-medium">שולם:</span>
-                      ₪{student.amount_paid || student.total_payments}
+                      <span className="font-medium">סה"כ שולם:</span>
+                      <span className="font-semibold text-green-700">₪{Number(student.amount_paid).toLocaleString()}</span>
                     </div>
-                  )}
+                  ) : student.total_payments ? (
+                    <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-60 text-sm">
+                      <span className="font-medium">מחיר שנרשם ידנית:</span>
+                      <span>₪{Number(student.total_payments).toLocaleString()}</span>
+                      <span className="text-xs text-gray-400">(לא תשלום שנגבה)</span>
+                    </div>
+                  ) : null}
                   </div>
 
                   {/* כפתור היסטוריית משימות */}
@@ -988,8 +1010,9 @@ export default function Students() {
                             )}
                           </div>
                         </td>
+                        {/* רק כסף שנגבה בפועל. total_payments אינו סכום ולכן אינו מוצג כאן. */}
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {(student.amount_paid || student.total_payments) ? `₪${student.amount_paid || student.total_payments}` : '-'}
+                          {student.amount_paid ? `₪${Number(student.amount_paid).toLocaleString()}` : '-'}
                         </td>
                         <td className="px-4 py-3">
                           <button

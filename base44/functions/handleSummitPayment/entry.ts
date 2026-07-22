@@ -317,6 +317,10 @@ Deno.serve(async (req) => {
       ...(mapping && !mapping.optionField && courseOption ? { option: courseOption } : {}),
       registration_date: existingEntry?.registration_date || billingDate,
       payment_number: paymentNumber,
+      // סכום מצטבר אמיתי לקורס הזה. עד היום מסך ההכנסות חישב
+      // installment_amount × payment_number, וזה נכון רק כשכל התשלומים שווים —
+      // מי ששילמה ₪1,400 ואז ₪800 הוצגה כמי ששילמה ₪1,600 במקום ₪2,200 (אובחן 22.7).
+      paid_so_far: (Number(existingEntry?.paid_so_far) || 0) + (Number(installmentAmount) || 0),
       ...(paymentsTotal && { payments_total: paymentsTotal }),
       ...(installmentAmount && { installment_amount: installmentAmount }),
       ...(totalAmount ? { total_price: totalAmount }

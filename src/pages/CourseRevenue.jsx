@@ -78,10 +78,23 @@ export default function CourseRevenue() {
         }
       });
 
-      // Paid so far: sum of installment_amount × payment_number
+      // כמה שולם בפועל, לפי סדר אמינות יורד:
+      //   1. paid_so_far — סכום מצטבר אמיתי שנצבר מכל חיוב בסאמיט
+      //   2. amount_paid — כשלמשתתפת יש קורס אחד בלבד, הסכום שלה שייך כולו לקורס הזה
+      //   3. installment_amount × payment_number — אומדן בלבד. נכון רק כשכל התשלומים
+      //      שווים; מי ששילמה ₪1,400 ואז ₪800 מוצגת כאן כ-₪1,600 במקום ₪2,200.
+      let estimatedCount = 0;
       const paidSoFar = registeredEntries.reduce((sum, e) => {
+        if (e.paid_so_far !== null && e.paid_so_far !== undefined && e.paid_so_far !== '') {
+          return sum + (parseFloat(e.paid_so_far) || 0);
+        }
+        const hasSingleCourse = (e.student?.courses || []).length === 1;
+        if (hasSingleCourse && e.student?.amount_paid) {
+          return sum + (parseFloat(e.student.amount_paid) || 0);
+        }
         const inst = parseFloat(e.installment_amount) || 0;
         const num = parseFloat(e.payment_number) || 0;
+        if (inst && num) estimatedCount++;
         return sum + inst * num;
       }, 0);
 
@@ -98,6 +111,7 @@ export default function CourseRevenue() {
         registeredCount: registeredStudents.length,
         paidSoFar,
         expected,
+        estimatedCount,
         entries: registeredEntries
       };
     });
@@ -213,7 +227,7 @@ export default function CourseRevenue() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredStats.map(({ course, registeredCount, paidSoFar, expected, entries }) => (
+              {filteredStats.map(({ course, registeredCount, paidSoFar, expected, estimatedCount, entries }) => (
                 <React.Fragment key={course.id}>
                   <tr className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-[var(--crm-text)]">{course.name}</td>
@@ -223,7 +237,17 @@ export default function CourseRevenue() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center font-bold text-[var(--crm-primary)]">{registeredCount}</td>
-                    <td className="px-4 py-3 text-center text-green-700 font-semibold">{fmt(paidSoFar)}</td>
+                    <td className="px-4 py-3 text-center text-green-700 font-semibold">
+                      {fmt(paidSoFar)}
+                      {estimatedCount > 0 && (
+                        <span
+                          className="mr-1 text-amber-600 cursor-help"
+                          title={`${estimatedCount} מתוך ${registeredCount} הסכומים בקורס הזה הם אומדן ולא נתון מדויק — הם מחושבים כתשלום אחרון × מספר תשלומים. זה מדויק רק כשכל התשלומים שווים.`}
+                        >
+                          ⚠️
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-center text-[var(--crm-text)]">{fmt(expected)}</td>
                     <td className="px-4 py-3 text-center">
                       {registeredCount > 0 && (

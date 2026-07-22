@@ -10,7 +10,11 @@ const OPTIONS = [
   { key: 'יום בודד', label: 'יום בודד',      dates: '—' },
 ];
 
-const paidOf = (s) => s.total_payments || 0;
+// הכסף שנגבה בפועל דרך סאמיט. עד 22.7 סוכם כאן total_payments, שהוא מספר
+// התשלומים או מחיר הקורס — ולכן העמודה הציגה סכום חסר משמעות (₪32,660 מול ₪10,060 בפועל).
+const paidOf = (s) => Number(s.amount_paid) || 0;
+// מי שנרשמה לפני החיבור לסאמיט (24.6.2026) — אין לה סכום, וזה היסטוריה ולא תקלה.
+const missingPaid = (s) => !s.amount_paid;
 
 export default function NanaSummerBreakdown({ students }) {
   const [popup, setPopup] = useState(null); // { label, names }
@@ -81,6 +85,14 @@ export default function NanaSummerBreakdown({ students }) {
           </tr>
         </tbody>
       </table>
+
+      {students.filter(missingPaid).length > 0 && (
+        <p className="mt-3 text-xs text-gray-500 leading-relaxed">
+          ℹ️ ל־<strong>{students.filter(missingPaid).length}</strong> מתוך {students.length} הרשומים אין סכום ששולם במערכת,
+          ולכן הם לא נכללים בסכומים למעלה. ברוב המקרים מדובר בהרשמות שקדמו לחיבור לסאמיט (24.6.2026),
+          והסכום צריך להיות מושלם ידנית.
+        </p>
+      )}
 
       {popup && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setPopup(null)}>

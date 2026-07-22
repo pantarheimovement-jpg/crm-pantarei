@@ -71,7 +71,7 @@ async function upsertAttendance(base44, courseId, studentId, studentName, date, 
   }
 }
 
-function buildHtml(course, students, records, selectedDate, saved) {
+function buildHtml(course, students, records, selectedDate, saved, failed) {
   const token = course.teacher_token;
   const statusByStudent = {};
   const byDate = {};
@@ -144,6 +144,7 @@ function buildHtml(course, students, records, selectedDate, saved) {
   .primary { background:#6D436D; color:#fff; border:none; border-radius:50px; padding:9px 18px; font-size:14px; cursor:pointer; font-family:inherit; }
   .ghost { background:#fff; color:#297058; border:1px solid #297058; border-radius:50px; padding:9px 18px; font-size:14px; cursor:pointer; font-family:inherit; }
   .saved { background:#E8F5EE; color:#297058; border-radius:10px; padding:8px 14px; font-size:14px; margin-bottom:12px; }
+  .failed { background:#FDECEC; color:#B42318; border:1px solid #F3B9B9; border-radius:10px; padding:10px 14px; font-size:14px; margin-bottom:12px; font-weight:bold; }
   .datebar { font-size:14px; margin-bottom:12px; opacity:.85; }
   .histrow { display:flex; justify-content:space-between; padding:10px 12px; border-bottom:1px solid #f0ece4; text-decoration:none; color:#5E4B35; font-size:13px; }
   .histrow:hover { background:#F8F5EF; }
@@ -160,7 +161,9 @@ function buildHtml(course, students, records, selectedDate, saved) {
 
   <div class="card">
     <h2>✅ מילוי נוכחות</h2>
-    ${saved ? '<div class="saved">✓ הנוכחות נשמרה</div>' : ''}
+    ${failed > 0
+      ? `<div class="failed">⚠️ ${failed} סימונים לא נשמרו. רענני את הדף ובדקי מי חסרה — ואם זה חוזר, פני לסטודיו.</div>`
+      : (saved ? '<div class="saved">✓ הנוכחות נשמרה</div>' : '')}
     <form method="GET" class="toolbar">
       <input type="hidden" name="token" value="${esc(token)}">
       <input type="date" name="date" value="${esc(selectedDate)}">
@@ -202,21 +205,37 @@ Deno.serve(async (req) => {
       const action = form.get('action');
       const students = await loadRegisteredStudents(base44, course.id);
 
+      // מספר הסימונים שלא נשמרו. עד 23.7 לא הייתה כאן תפיסת שגיאות:
+      // כישלון בודד בלולאה הפיל את כל הבקשה, המורה קיבלה "Server error" גולמי,
+      // וחלק מהתלמידות נשמרו וחלק לא — בלי שאיש ידע מי.
+      let failed = 0;
+
       if (action === 'set_status') {
         const status = String(form.get('status') || '');
         if (!ATT_STATUSES.includes(status)) return new Response('Invalid status', { status: 400 });
         const student = students.find((s) => s.id === form.get('student_id'));
         if (!student) return new Response('Student not in course', { status: 400 });
-        await upsertAttendance(base44, course.id, student.id, student.name, date, status);
+        try {
+          await upsertAttendance(base44, course.id, student.id, student.name, date, status);
+        } catch (e) {
+          console.error('שמירת נוכחות נכשלה:', student.name, e.message);
+          failed = 1;
+        }
       } else if (action === 'mark_all') {
         for (const s of students) {
-          await upsertAttendance(base44, course.id, s.id, s.name, date, 'נוכח/ת');
+          try {
+            await upsertAttendance(base44, course.id, s.id, s.name, date, 'נוכח/ת');
+          } catch (e) {
+            // ממשיכים לשאר במקום לקטוע את כולם
+            console.error('שמירת נוכחות נכשלה:', s.name, e.message);
+            failed++;
+          }
         }
       } else {
         return new Response('Unknown action', { status: 400 });
       }
 
-      const back = `https://crm-pantarei-4738bca7.base44.app/functions/teacherCoursePage?token=${encodeURIComponent(String(token))}&date=${date}&saved=1`;
+      const back = `https://crm-pantarei-4738bca7.base44.app/functions/teacherCoursePage?token=${encodeURIComponent(String(token))}&date=${date}&saved=1${failed > 0 ? `&failed=${failed}` : ''}`;
       return new Response(null, { status: 303, headers: { 'Location': back } });
     }
 
@@ -232,10 +251,11 @@ Deno.serve(async (req) => {
     let selectedDate = url.searchParams.get('date') || '';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) selectedDate = todayIsrael();
     const saved = url.searchParams.get('saved') === '1';
+    const failed = parseInt(url.searchParams.get('failed') || '0', 10) || 0;
 
     const students = await loadRegisteredStudents(base44, course.id);
     const records = await base44.asServiceRole.entities.Attendance.filter({ course_id: course.id }, '-date', 2000);
-    const html = buildHtml(course, students, records, selectedDate, saved);
+    const html = buildHtml(course, students, records, selectedDate, saved, failed);
     return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   } catch (error) {
     console.error('teacherCoursePage error:', error.message);

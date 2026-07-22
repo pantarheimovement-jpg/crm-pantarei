@@ -1228,6 +1228,7 @@ export default function Students() {
                       <option value="12-16.7">שבוע שני (12-16.7)</option>
                       <option value="5-7.7">שלושה ימים 5-7.7</option>
                       <option value="12-14.7">שלושה ימים 12-14.7</option>
+                      <option value="יום בודד">יום בודד</option>
                     </select>
                   </div>
                 </div>

@@ -6,19 +6,35 @@ const OPTIONS = [
   { key: '12-16.7',label: 'שבוע שני',       dates: '12-16.7' },
   { key: '5-7.7',  label: 'שלושה ימים',     dates: '5-7.7' },
   { key: '12-14.7',label: 'שלושה ימים',     dates: '12-14.7' },
+  // נמכר בסאמיט כמוצר "סמסטר קיץ- יום בודד" — היה חסר כאן, ולכן הנרשמים אליו לא נספרו (22.7)
+  { key: 'יום בודד', label: 'יום בודד',      dates: '—' },
 ];
+
+const paidOf = (s) => s.total_payments || 0;
 
 export default function NanaSummerBreakdown({ students }) {
   const [popup, setPopup] = useState(null); // { label, names }
 
   const stats = OPTIONS.map(opt => {
     const group = students.filter(s => s.nana_option === opt.key);
-    const totalPaid = group.reduce((sum, s) => sum + (s.total_payments || 0), 0);
-    return { ...opt, count: group.length, totalPaid, names: group.map(s => s.full_name) };
+    return { ...opt, count: group.length, totalPaid: group.reduce((sum, s) => sum + paidOf(s), 0), names: group.map(s => s.full_name) };
   });
 
-  const grandTotal = stats.reduce((sum, s) => sum + s.totalPaid, 0);
-  const grandCount = stats.reduce((sum, s) => sum + s.count, 0);
+  // מי שאין לה אפשרות רישום כלל. עד כה היא נעדרה מהמונה אבל הופיעה ברשימה שנפתחת ממנו —
+  // ולכן המספר והרשימה לא הסכימו זה עם זה. מוצג כשורה נפרדת כדי שאופיר תראה את מי צריך להשלים.
+  const unassigned = students.filter(s => !OPTIONS.some(o => o.key === s.nana_option));
+  if (unassigned.length > 0) {
+    stats.push({
+      key: '__none__', label: 'ללא אפשרות רישום', dates: '—',
+      count: unassigned.length,
+      totalPaid: unassigned.reduce((sum, s) => sum + paidOf(s), 0),
+      names: unassigned.map(s => s.full_name)
+    });
+  }
+
+  // הסה"כ מחושב מכל הרשומים ולא מסכום הדליים, כך שהוא תמיד תואם לרשימה שנפתחת ממנו.
+  const grandTotal = students.reduce((sum, s) => sum + paidOf(s), 0);
+  const grandCount = students.length;
   const allNames = students.map(s => s.full_name);
 
   return (

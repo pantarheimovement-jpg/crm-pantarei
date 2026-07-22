@@ -9,6 +9,7 @@ export default function AttendanceManager({ courseId, students }) {
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const [existingDates, setExistingDates] = useState([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState({});
@@ -65,56 +66,73 @@ export default function AttendanceManager({ courseId, students }) {
     setLoading(false);
   };
 
-  const updateStatus = async (studentId, newStatus) => {
-    setSaving(true);
-    const item = attendance.find(a => a.student_id === studentId);
-    
+  // שומרת סימון בודד ומחזירה האם הצליח. לא מעדכנת מסך — זה באחריות הקורא,
+  // כדי שהמסך לעולם לא יראה ירוק על שמירה שנכשלה.
+  const persistStatus = async (item, newStatus) => {
     if (item.record_id) {
-      // Update existing
       await base44.entities.Attendance.update(item.record_id, { status: newStatus });
     } else {
-      // Create new
       const created = await base44.entities.Attendance.create({
         course_id: courseId,
-        student_id: studentId,
+        student_id: item.student_id,
         student_name: item.student_name,
         date: selectedDate,
         status: newStatus
       });
       item.record_id = created.id;
     }
+  };
 
-    setAttendance(prev => prev.map(a => 
-      a.student_id === studentId ? { ...a, status: newStatus } : a
-    ));
+  const updateStatus = async (studentId, newStatus) => {
+    setSaving(true);
+    setSaveError(null);
+    const item = attendance.find(a => a.student_id === studentId);
 
-    // Refresh dates list
-    if (!existingDates.includes(selectedDate)) {
-      setExistingDates(prev => [selectedDate, ...prev].sort().reverse());
+    try {
+      await persistStatus(item, newStatus);
+      setAttendance(prev => prev.map(a =>
+        a.student_id === studentId ? { ...a, status: newStatus } : a
+      ));
+      if (!existingDates.includes(selectedDate)) {
+        setExistingDates(prev => [selectedDate, ...prev].sort().reverse());
+      }
+    } catch (error) {
+      // עד 22.7 לא הייתה כאן תפיסת שגיאות כלל: שמירה שנכשלה נבלעה בשקט
+      // והמורה לא ידעה. זה מה שקרה בהילינג דאנס ב-20.7.
+      console.error('שמירת נוכחות נכשלה:', error);
+      setSaveError(`הסימון של ${item?.student_name || 'המשתתפת'} לא נשמר. נסי שוב.`);
+      await loadAttendance();
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
   };
 
   const markAllPresent = async () => {
     setSaving(true);
+    setSaveError(null);
+    const failed = [];
+
     for (const item of attendance) {
       if (item.status !== 'נוכח/ת') {
-        if (item.record_id) {
-          await base44.entities.Attendance.update(item.record_id, { status: 'נוכח/ת' });
-        } else {
-          const created = await base44.entities.Attendance.create({
-            course_id: courseId,
-            student_id: item.student_id,
-            student_name: item.student_name,
-            date: selectedDate,
-            status: 'נוכח/ת'
-          });
-          item.record_id = created.id;
+        try {
+          await persistStatus(item, 'נוכח/ת');
+        } catch (error) {
+          // ממשיכים לשאר ולא עוצרים באמצע — קודם היתה הלולאה נקטעת
+          // בכישלון הראשון, וכל מי שאחריה לא נשמרה.
+          console.error('שמירת נוכחות נכשלה:', item.student_name, error);
+          failed.push(item.student_name);
         }
       }
     }
-    setAttendance(prev => prev.map(a => ({ ...a, status: 'נוכח/ת' })));
+
+    if (failed.length > 0) {
+      setSaveError(
+        `${failed.length} מתוך ${attendance.length} לא נשמרו: ${failed.join(', ')}. נסי שוב או סמני אותן ידנית.`
+      );
+    }
+
+    // תמיד נטענים מחדש מהשרת — המסך מציג מה שבאמת נשמר, לא מה שניסינו לשמור.
+    await loadAttendance();
     if (!existingDates.includes(selectedDate)) {
       setExistingDates(prev => [selectedDate, ...prev].sort().reverse());
     }
@@ -152,6 +170,23 @@ export default function AttendanceManager({ courseId, students }) {
           </Button>
         </div>
       </div>
+
+      {/* התראת שמירה שנכשלה — קודם כישלון נבלע בשקט והמורה חשבה שנשמר */}
+      {saveError && (
+        <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-300 bg-red-50 p-3">
+          <span className="text-lg leading-none">⚠️</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-800">הנוכחות לא נשמרה במלואה</p>
+            <p className="mt-1 text-sm text-red-700">{saveError}</p>
+          </div>
+          <button
+            onClick={() => setSaveError(null)}
+            className="text-sm text-red-500 hover:text-red-700"
+          >
+            סגור
+          </button>
+        </div>
+      )}
 
       {/* History Section */}
       {existingDates.filter(d => d !== selectedDate).length > 0 && (

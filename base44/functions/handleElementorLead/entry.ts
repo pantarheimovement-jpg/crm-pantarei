@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { toLocalPhone, findStudentByPhone } from '../../shared/phone.ts';
 
 Deno.serve(async (req) => {
   console.log('=== 📝 handleElementorLead Webhook Started ===');
@@ -137,9 +138,8 @@ Deno.serve(async (req) => {
       
       if (!existingStudent && phone) {
         console.log(`🔍 Searching student by phone: ${phone}`);
-        const byPhone = await base44.asServiceRole.entities.Student.filter({ phone });
-        existingStudent = byPhone && byPhone.length > 0 ? byPhone[0] : null;
-        if (existingStudent) console.log(`✅ Found by phone: ${existingStudent.full_name} (ID: ${existingStudent.id})`);
+        // היה כאן filter({ phone }) על הערך הגולמי מהטופס — בלי נרמול ובלי וריאנטים.
+        existingStudent = await findStudentByPhone(base44, phone);
       }
       
       if (!existingStudent && full_name) {
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
     let studentData = {
       full_name,
       email,
-      phone: phone || null,
+      phone: toLocalPhone(phone) || null,  // צורה קנונית 0XXXXXXXXX — לא הערך הגולמי מהטופס
       lead_source: 'אתר',
       lead_entry_date: new Date().toISOString().split('T')[0],
       last_contact_date: new Date().toISOString(),
@@ -256,8 +256,8 @@ Deno.serve(async (req) => {
           duplicates = await base44.asServiceRole.entities.Student.filter({ email });
         }
         if (duplicates.length <= 1 && phone) {
-          // בדיקה גם לפי טלפון
-          const byPhone = await base44.asServiceRole.entities.Student.filter({ phone: phone });
+          // בדיקה גם לפי טלפון — על הצורה הקנונית, לא על הערך הגולמי
+          const byPhone = await base44.asServiceRole.entities.Student.filter({ phone: toLocalPhone(phone) });
           if (byPhone.length > 1) duplicates = byPhone;
         }
         

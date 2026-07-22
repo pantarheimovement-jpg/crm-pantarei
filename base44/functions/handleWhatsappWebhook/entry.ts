@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { digitsOnly, toLocalPhone, findStudentByPhone } from '../../shared/phone.ts';
 
 // =============================================
 // CONFIGURATION (v2 — button-event unsubscribe)
@@ -122,9 +123,10 @@ const COURSE_KEYWORDS = [
 // =============================================
 // PHONE NORMALIZATION
 // =============================================
+// ⚠️ ספרות בלבד — רשימה לבנה. הגרסה הקודמת הסירה רשימה סגורה של תווים
+// ולכן השאירה תווי בידוד כיווניות (U+2066/U+2069) שדבקו למספרים ממקור RTL. ראה shared/phone.ts.
 function normalizePhone(phone) {
-  if (!phone) return '';
-  return phone.replace(/[\s\-\.\(\)\+]/g, '');
+  return digitsOnly(phone);
 }
 
 function getPhoneVariants(rawPhone) {
@@ -448,39 +450,11 @@ async function handleRequest(req) {
     }
 
     // --- STEP 4: Search for existing student ---
-    const phoneVariants = getPhoneVariants(phoneNumber);
-    console.log(`🔍 Searching with phone variants: ${phoneVariants.join(', ')}`);
+    console.log(`🔍 מחפש משתתפת קיימת לפי טלפון: ${phoneNumber}`);
+    const existingStudent = await findStudentByPhone(base44, phoneNumber);
+    if (!existingStudent) console.log('🆕 לא נמצאה משתתפת קיימת');
 
-    let existingStudent = null;
-    const variantResults = await Promise.all(
-      phoneVariants.map(v => base44.asServiceRole.entities.Student.filter({ phone: v }).catch(() => []))
-    );
-    for (let i = 0; i < variantResults.length; i++) {
-      if (variantResults[i] && variantResults[i].length > 0) {
-        existingStudent = variantResults[i][0];
-        console.log(`✅ Found existing student with variant "${phoneVariants[i]}": ${existingStudent.full_name}`);
-        break;
-      }
-    }
-
-    if (!existingStudent) {
-      const last9 = normalizePhone(phoneNumber).slice(-9);
-      if (last9.length === 9) {
-        const formatted = '0' + last9;
-        if (!phoneVariants.includes(formatted)) {
-          const results = await base44.asServiceRole.entities.Student.filter({ phone: formatted });
-          if (results && results.length > 0) {
-            existingStudent = results[0];
-            console.log(`✅ Found existing student with last-9 match: ${existingStudent.full_name}`);
-          }
-        }
-      }
-    }
-
-    let storedPhone = normalizePhone(phoneNumber);
-    if (storedPhone.startsWith('972')) {
-      storedPhone = '0' + storedPhone.substring(3);
-    }
+    const storedPhone = toLocalPhone(phoneNumber);
 
     // =============================================
     // FAST-REPLY PATHS: reply is computed now, heavy work runs in background

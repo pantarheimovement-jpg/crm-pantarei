@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { digitsOnly, toLocalPhone, findStudentByPhone } from '../../shared/phone.ts';
 
 // =============================================
 // SUPER AGENT: Gmail Lead Safety Net
@@ -173,17 +174,7 @@ ${emailBody}
 
         // Search by phone
         if (!existingStudent && leadData.phone) {
-          const cleanPhone = normalizePhone(leadData.phone);
-          const phoneVariants = getPhoneVariants(cleanPhone);
-          
-          for (const variant of phoneVariants) {
-            const byPhone = await base44.asServiceRole.entities.Student.filter({ phone: variant });
-            if (byPhone && byPhone.length > 0) {
-              existingStudent = byPhone[0];
-              console.log(`✅ Found existing student by phone: ${existingStudent.full_name}`);
-              break;
-            }
-          }
+          existingStudent = await findStudentByPhone(base44, leadData.phone);
         }
 
         // Search by name
@@ -233,13 +224,7 @@ ${emailBody}
         }
 
         // Normalize phone for storage
-        let storedPhone = '';
-        if (leadData.phone) {
-          storedPhone = normalizePhone(leadData.phone);
-          if (storedPhone.startsWith('972')) {
-            storedPhone = '0' + storedPhone.substring(3);
-          }
-        }
+        const storedPhone = toLocalPhone(leadData.phone);
 
         const studentData = {
           full_name: fullName || leadData.email || storedPhone,
@@ -449,9 +434,9 @@ function decodeBase64Url(data) {
   return new TextDecoder().decode(bytes);
 }
 
+// ספרות בלבד — ראה shared/phone.ts (הרשימה השחורה הישנה השאירה תווי RTL בלתי נראים)
 function normalizePhone(phone) {
-  if (!phone) return '';
-  return phone.replace(/[\s\-\.\(\)\+]/g, '');
+  return digitsOnly(phone);
 }
 
 function getPhoneVariants(phone) {

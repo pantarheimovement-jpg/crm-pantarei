@@ -107,6 +107,46 @@ export default function Students() {
     }
   };
 
+  // מחזירה טלפון לצורה הקנונית 0XXXXXXXXX. אם הערך אינו מספר טלפון תקין
+  // (ריק, "לא ידוע", "לא זמין") — מחזירה אותו כמות שהוא, כדי לא לאבד מידע שהוקלד בכוונה.
+  const normalizePhoneForSave = (raw) => {
+    const original = String(raw ?? '');
+    let n = original.replace(/\D/g, '');
+    if (!n) return original;
+    if (n.startsWith('00')) n = n.slice(2);
+    if (n.startsWith('972')) n = '0' + n.slice(3);
+    if (n.length === 9 && n.startsWith('5')) n = '0' + n;
+    return n.length === 10 && n.startsWith('0') ? n : original;
+  };
+
+  // סוגרת שיחת היכרות פתוחה כשמשתתפת עוברת ל"רשום".
+  // אותה לוגיקה בדיוק כמו ב-handleSummitPayment: מעדיפים משימה שמזכירה את הקורס הספציפי,
+  // ואם אין — סוגרים רק כשיש בדיוק משימה פתוחה אחת, כדי לא לסגור את הלא-נכונה.
+  const normalizeTaskName = (value) =>
+    String(value || '').replace(/["'״׳`]/g, '').replace(/\s*-\s*/g, '-').replace(/\s+/g, ' ').trim();
+
+  const closeIntroTaskOnRegistration = async (studentId, courseName) => {
+    try {
+      const tasks = await base44.entities.Task.filter({ student_id: studentId });
+      const openIntroTasks = (tasks || []).filter(t =>
+        String(t.name || '').includes('שיחת היכרות') &&
+        t.status !== 'הושלם' && t.status !== 'אבוד' && t.status !== 'לא רלוונטי'
+      );
+      if (openIntroTasks.length === 0) return;
+
+      const courseNorm = normalizeTaskName(courseName);
+      const match = (courseNorm && openIntroTasks.find(t =>
+        normalizeTaskName(t.name).includes(courseNorm) ||
+        normalizeTaskName(t.description).includes(courseNorm)
+      )) || (openIntroTasks.length === 1 ? openIntroTasks[0] : null);
+
+      if (match) await base44.entities.Task.update(match.id, { status: 'הושלם' });
+    } catch (error) {
+      // לא מפילים את השמירה בגלל סגירת משימה
+      console.error('שגיאה בסגירת שיחת ההיכרות:', error);
+    }
+  };
+
   const handleSave = async () => {
     try {
       // === DEDUP: בדיקת כפילות לפני יצירה חדשה ===
@@ -139,6 +179,10 @@ export default function Students() {
       // נקה שדות מספריים ריקים
       const cleanedData = {
         ...formData,
+        // קנוניזציה של הטלפון בשמירה. בלי זה, מספר שמודבק מוואטסאפ נשמר עם תווי
+        // בידוד כיווניות בלתי נראים (U+2066/U+2069) ואז שום חיפוש לא מוצא אותו —
+        // זה המקור לרוב כפילויות הלידים (אובחן 22.7). ערך שאינו מספר (למשל "לא ידוע") נשמר כמו שהוא.
+        phone: normalizePhoneForSave(formData.phone),
         payment_number: formData.payment_number === '' ? null : formData.payment_number,
         total_payments: formData.total_payments === '' ? null : formData.total_payments,
         amount_paid: formData.amount_paid === '' ? null : formData.amount_paid
@@ -185,6 +229,13 @@ export default function Students() {
         await base44.entities.Student.update(targetStudent.id, cleanedData);
       } else {
         await base44.entities.Student.create(cleanedData);
+      }
+
+      // סגירת שיחת ההיכרות כשההרשמה נעשית ידנית מהמסך.
+      // עד כה זה קרה רק בהרשמה דרך תשלום בסאמיט (handleSummitPayment) —
+      // למרות שמדריך המשתמש הבטיח שזה קורה תמיד. סעיף 9 ברשימת אופיר.
+      if (targetStudent && !wasRegistered && isNowRegistered) {
+        await closeIntroTaskOnRegistration(targetStudent.id, cleanedData.course_name);
       }
 
       // === סנכרון Subscribers לפי קבוצות קורסים ===

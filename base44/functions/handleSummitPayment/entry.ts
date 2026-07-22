@@ -291,9 +291,35 @@ Deno.serve(async (req) => {
 
     // מניעת עיבוד כפול: אם המסמך הזה כבר נרשם אצל המשתתפ.ת — מדלגים
     // (סאמיט לעיתים שולח את אותו אירוע פעמיים בגלל timeout/retry)
-    if (existingStudent && documentName && (existingStudent.notes || '').includes(documentName)) {
+    const existingNotes = existingStudent?.notes || '';
+    if (existingStudent && documentName && existingNotes.includes(documentName)) {
       console.log(`⏭️ Duplicate delivery for document "${documentName}" — skipping`);
       return Response.json({ success: true, skipped: 'duplicate_document', document: documentName });
+    }
+
+    // הגנה שנייה — בלעדיה נוצרה ספירה כפולה אמיתית (גל חורב, 14.7: ₪340 במקום ₪170).
+    // הטריגר של סאמיט נורה פעמיים על אותו חיוב: פעם אחת *לפני* שנוצר המסמך
+    // (ואז documentName ריק והבדיקה למעלה לא תופסת), ופעם שנייה אחריו.
+    //
+    // התנאי מכוון בדיוק לדפוס הזה ולא רחב ממנו: המסירה הנוכחית מחזיקה מסמך,
+    // וכבר קיימת שורה עם אותו תאריך ואותו סכום שנרשמה *בלי* מסמך.
+    // בלי ההידוק הזה, שני מוצרים שונים באותו יום ובאותו סכום היו נחסמים בטעות.
+    const amountSignature = installmentAmount ? `(₪${installmentAmount})` : null;
+    if (
+      existingStudent && documentName && amountSignature &&
+      existingNotes.split('\n').some((line) =>
+        line.includes(`בתאריך ${billingDate}`) &&
+        line.includes(amountSignature) &&
+        !line.includes('חשבון/קבלה') &&
+        // חייב להיות אותו קורס. בלי זה, שני מוצרים שונים באותו יום ובאותו סכום
+        // היו נראים כמו אותו חיוב. הערות ישנות (לפני 23.7) לא כוללות קורס —
+        // ואז נופלים חזרה להשוואת המוצר, כפי שהיה.
+        (course?.name ? line.includes(`קורס: ${course.name}`) : true) &&
+        (!mapping || productName === courseName || line.includes(productName))
+      )
+    ) {
+      console.log(`⏭️ Same charge already recorded before the document existed (${billingDate}, ₪${installmentAmount}) — skipping`);
+      return Response.json({ success: true, skipped: 'duplicate_charge_predocument', date: billingDate, amount: installmentAmount });
     }
 
     const registeredStatus = 'רשום';
@@ -328,9 +354,12 @@ Deno.serve(async (req) => {
     const paidBeforeRefund = Number(existingEntry?.paid_so_far) || 0;
     const isFullCancellation = isRefund && paidBeforeRefund > 0 && refundAmount >= paidBeforeRefund;
 
+    // שם הקורס נרשם תמיד — גם כדי שיהיה ברור על מה שולם, וגם כדי שאפשר יהיה
+    // להבחין בין שני חיובים שונים באותו יום ובאותו סכום (ראו הגנת הכפילות למעלה).
+    const courseTag = course ? ` — קורס: ${course.name}` : '';
     const noteText = isRefund
-      ? `${isFullCancellation ? 'ביטול הרשמה' : 'זיכוי חלקי'} דרך Summit בתאריך ${billingDate} (₪${refundAmount})${mapping && productName !== courseName ? ` — מסלול: ${productName}` : ''}${documentName ? ` — ${documentName}` : ''}`
-      : `תשלום ${paymentNumber}${paymentsTotal ? `/${paymentsTotal}` : ''} דרך Summit בתאריך ${billingDate}${installmentAmount ? ` (₪${installmentAmount})` : ''}${mapping && productName !== courseName ? ` — מסלול: ${productName}` : ''}${documentName ? ` — ${documentName}` : ''}`;
+      ? `${isFullCancellation ? 'ביטול הרשמה' : 'זיכוי חלקי'} דרך Summit בתאריך ${billingDate} (₪${refundAmount})${courseTag}${mapping && productName !== courseName ? ` — מסלול: ${productName}` : ''}${documentName ? ` — ${documentName}` : ''}`
+      : `תשלום ${paymentNumber}${paymentsTotal ? `/${paymentsTotal}` : ''} דרך Summit בתאריך ${billingDate}${installmentAmount ? ` (₪${installmentAmount})` : ''}${courseTag}${mapping && productName !== courseName ? ` — מסלול: ${productName}` : ''}${documentName ? ` — ${documentName}` : ''}`;
 
     // --- 4. בניית רשומת הקורס המעודכנת ---
     const courseEntryData = course ? {

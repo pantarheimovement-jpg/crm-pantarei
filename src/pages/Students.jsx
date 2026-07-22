@@ -442,9 +442,21 @@ export default function Students() {
     }
   };
 
+  // נרמול טלפון לחיפוש — מסיר רווחים/מקפים/סוגריים/תווי RTL ומאחד קידומת (972 ↔ 0),
+  // כדי ש-"0546740420" ימצא גם רשומה ששמורה כ-"+972 54-674-0420" ולהפך.
+  const normalizePhoneForSearch = (raw) => {
+    let digits = String(raw || '').replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.startsWith('00')) digits = digits.slice(2);
+    if (digits.startsWith('972')) digits = '0' + digits.slice(3);
+    if (digits.length === 9 && digits.startsWith('5')) digits = '0' + digits;
+    return digits;
+  };
+
   // חיפוש וסינון משתתפים
   const filteredStudents = students.filter(student => {
     const term = (searchTerm || '').trim().toLowerCase();
+    const phoneTerm = normalizePhoneForSearch(searchTerm);
     
     // חיפוש חופשי — שם, טלפון, מייל, הערות, תחום עניין, שם קורס, סטטוס, מקור, תאריכים
     let matchesSearch = true;
@@ -455,6 +467,7 @@ export default function Students() {
       matchesSearch = 
         (student.full_name || '').toLowerCase().includes(term) ||
         (student.phone || '').includes(term) ||
+        (phoneTerm.length >= 3 && normalizePhoneForSearch(student.phone).includes(phoneTerm)) ||
         (student.email || '').toLowerCase().includes(term) ||
         (student.notes || '').toLowerCase().includes(term) ||
         (student.interest_area || '').toLowerCase().includes(term) ||

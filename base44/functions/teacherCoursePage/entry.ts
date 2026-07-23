@@ -71,6 +71,15 @@ async function upsertAttendance(base44, courseId, studentId, studentName, date, 
   }
 }
 
+// ביטול סימון — מוחק את רשומת הנוכחות של אותה משתתפת באותו יום.
+// לרוב יש רק אחת, אבל מוחקים את כולן ליתר ביטחון (יכולות להיווצר כפילויות).
+async function clearAttendance(base44, courseId, studentId, date) {
+  const existing = await base44.asServiceRole.entities.Attendance.filter({ course_id: courseId, student_id: studentId, date });
+  for (const rec of (existing || [])) {
+    await base44.asServiceRole.entities.Attendance.delete(rec.id);
+  }
+}
+
 function buildHtml(course, students, records, selectedDate, saved, failed) {
   const token = course.teacher_token;
   const statusByStudent = {};
@@ -97,15 +106,30 @@ function buildHtml(course, students, records, selectedDate, saved, failed) {
         const btns = ATT_STATUSES.map((st) =>
           `<button type="submit" name="status" value="${esc(st)}" class="btn ${STATUS_CLS[st]}${cur === st ? ' on' : ''}">${esc(st)}</button>`
         ).join('');
-        return `<form method="POST" class="row">
+        // כפתור ביטול — מופיע רק כשכבר יש סימון, לתיקון טעויות.
+        // שולח status=__clear__ (סנטינל) כי שדה action כבר תפוס בטופס. השרת מזהה ומוחק.
+        const clearBtn = cur
+          ? `<button type="submit" name="status" value="__clear__" class="btn clear" formnovalidate>בטל</button>`
+          : '';
+        const rowState = cur ? ` marked ${STATUS_CLS[cur]}` : '';
+        return `<form method="POST" class="row${rowState}">
           <input type="hidden" name="token" value="${esc(token)}">
           <input type="hidden" name="action" value="set_status">
           <input type="hidden" name="date" value="${esc(selectedDate)}">
           <input type="hidden" name="student_id" value="${esc(s.id)}">
           <span class="name">${esc(s.name)}</span>
-          <span class="btns">${btns}</span>
+          <span class="btns">${btns}${clearBtn}</span>
         </form>`;
       }).join('');
+
+  // סיכום היום — כמה סומנו וכמה עדיין לא
+  const dayP = students.filter((s) => statusByStudent[s.id] === 'נוכח/ת').length;
+  const dayA = students.filter((s) => statusByStudent[s.id] === 'נעדר/ת').length;
+  const dayL = students.filter((s) => statusByStudent[s.id] === 'איחור').length;
+  const dayNone = students.length - dayP - dayA - dayL;
+  const daySummary = students.length > 0
+    ? `<div class="daysummary">היום: <b>${dayP}</b> נוכחים · <b>${dayA}</b> נעדרים · <b>${dayL}</b> באיחור${dayNone > 0 ? ` · <b>${dayNone}</b> טרם סומנו` : ' · הכל סומן ✓'}</div>`
+    : '';
 
   const histHtml = histDates.length === 0
     ? '<div class="empty">אין עדיין מפגשים שמולאו</div>'
@@ -132,7 +156,13 @@ function buildHtml(course, students, records, selectedDate, saved, failed) {
   h1 { font-family:'Amatic SC',cursive; color:#6D436D; font-size:38px; margin:0 0 6px; }
   h2 { font-size:18px; margin:0 0 12px; color:#6D436D; }
   .meta { font-size:14px; opacity:.8; line-height:1.7; }
-  .row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; background:#F8F5EF; border-radius:10px; margin:0 0 8px; flex-wrap:wrap; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; background:#F8F5EF; border-radius:10px; margin:0 0 8px; flex-wrap:wrap; border-right:4px solid transparent; }
+  .row.marked.p { background:#EAF6EF; border-right-color:#297058; }
+  .row.marked.a { background:#FBEBEA; border-right-color:#D9534F; }
+  .row.marked.l { background:#FBF4DF; border-right-color:#E6B800; }
+  .btn.clear { border-color:#ccc; color:#999; }
+  .daysummary { background:#F3EDF3; color:#6D436D; border-radius:10px; padding:9px 14px; font-size:14px; margin-bottom:12px; }
+  .daysummary b { font-size:16px; }
   .name { font-weight:500; }
   .btns { display:flex; gap:6px; }
   .btn { border:1px solid #ddd; background:#fff; border-radius:50px; padding:6px 12px; font-size:12px; font-family:inherit; cursor:pointer; color:#5E4B35; }
@@ -170,12 +200,21 @@ function buildHtml(course, students, records, selectedDate, saved, failed) {
       <button type="submit" class="primary">הצגת תאריך</button>
     </form>
     <div class="datebar">מפגש בתאריך: <b>${fmtHe(selectedDate, true)}</b></div>
-    ${students.length > 0 ? `<form method="POST" style="margin-bottom:12px;">
-      <input type="hidden" name="token" value="${esc(token)}">
-      <input type="hidden" name="action" value="mark_all">
-      <input type="hidden" name="date" value="${esc(selectedDate)}">
-      <button type="submit" class="ghost">סמן את כולם כנוכחים ✅</button>
-    </form>` : ''}
+    ${daySummary}
+    ${students.length > 0 ? `<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <form method="POST">
+        <input type="hidden" name="token" value="${esc(token)}">
+        <input type="hidden" name="action" value="mark_all">
+        <input type="hidden" name="date" value="${esc(selectedDate)}">
+        <button type="submit" class="ghost">סמן את כולם כנוכחים ✅</button>
+      </form>
+      <form method="POST">
+        <input type="hidden" name="token" value="${esc(token)}">
+        <input type="hidden" name="action" value="clear_all">
+        <input type="hidden" name="date" value="${esc(selectedDate)}">
+        <button type="submit" class="ghost" style="color:#999;border-color:#ccc;">נקה את כל הסימונים</button>
+      </form>
+    </div>` : ''}
     ${rowsHtml}
   </div>
 
@@ -212,13 +251,19 @@ Deno.serve(async (req) => {
 
       if (action === 'set_status') {
         const status = String(form.get('status') || '');
-        if (!ATT_STATUSES.includes(status)) return new Response('Invalid status', { status: 400 });
         const student = students.find((s) => s.id === form.get('student_id'));
         if (!student) return new Response('Student not in course', { status: 400 });
         try {
-          await upsertAttendance(base44, course.id, student.id, student.name, date, status);
+          if (status === '__clear__') {
+            // ביטול סימון בודד — למקרה של טעות
+            await clearAttendance(base44, course.id, student.id, date);
+          } else if (ATT_STATUSES.includes(status)) {
+            await upsertAttendance(base44, course.id, student.id, student.name, date, status);
+          } else {
+            return new Response('Invalid status', { status: 400 });
+          }
         } catch (e) {
-          console.error('שמירת נוכחות נכשלה:', student.name, e.message);
+          console.error('פעולת נוכחות נכשלה:', student.name, e.message);
           failed = 1;
         }
       } else if (action === 'mark_all') {
@@ -228,6 +273,16 @@ Deno.serve(async (req) => {
           } catch (e) {
             // ממשיכים לשאר במקום לקטוע את כולם
             console.error('שמירת נוכחות נכשלה:', s.name, e.message);
+            failed++;
+          }
+        }
+      } else if (action === 'clear_all') {
+        // ביטול כל הסימונים ליום הזה — למקרה שלחצו "סמן הכל" בטעות
+        for (const s of students) {
+          try {
+            await clearAttendance(base44, course.id, s.id, date);
+          } catch (e) {
+            console.error('ביטול נוכחות נכשל:', s.name, e.message);
             failed++;
           }
         }

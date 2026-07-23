@@ -198,10 +198,10 @@ export default function CourseView() {
           </CollapsibleSection>
         )}
 
-        <CollapsibleSection title="מעקב נוכחות">
-          <AttendanceManager 
-            courseId={courseId} 
-            students={registeredStudents} 
+        <CollapsibleSection title="מעקב נוכחות" defaultOpen={true}>
+          <AttendanceManager
+            courseId={courseId}
+            students={registeredStudents}
           />
         </CollapsibleSection>
 

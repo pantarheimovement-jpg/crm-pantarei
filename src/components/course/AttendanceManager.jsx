@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Calendar, Check, X, Clock, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Check, X, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -11,7 +11,6 @@ export default function AttendanceManager({ courseId, students }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [existingDates, setExistingDates] = useState([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState({});
 
   useEffect(() => {
@@ -188,60 +187,54 @@ export default function AttendanceManager({ courseId, students }) {
         </div>
       )}
 
-      {/* History Section */}
-      {existingDates.filter(d => d !== selectedDate).length > 0 && (
-        <div className="mb-4 border border-gray-200 rounded-xl overflow-hidden">
-          <button
-            onClick={() => setHistoryOpen(!historyOpen)}
-            className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[var(--crm-primary)]" />
-              <span className="text-sm font-medium text-[var(--crm-text)]">
-                היסטוריית נוכחות ({existingDates.filter(d => d !== selectedDate).length} מפגשים)
-              </span>
-            </div>
-            {historyOpen ? (
-              <ChevronUp className="w-4 h-4 text-gray-500" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-gray-500" />
-            )}
-          </button>
-          {historyOpen && (
-            <div className="divide-y divide-gray-100">
-              {existingDates.filter(d => d !== selectedDate).map(date => {
-                const info = historyData[date] || {};
-                return (
-                  <button
-                    key={date}
-                    onClick={() => { setSelectedDate(date); setHistoryOpen(false); }}
-                    className="w-full flex items-center justify-between p-3 hover:bg-[var(--crm-primary)]/5 transition-colors text-right"
-                  >
-                    <span className="text-sm font-medium text-[var(--crm-text)]">
-                      {new Date(date).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                    </span>
-                    <div className="flex items-center gap-3 text-xs">
-                      {info.present > 0 && (
-                        <span className="flex items-center gap-1 text-green-600">
-                          <Check className="w-3 h-3" /> {info.present}
-                        </span>
-                      )}
-                      {info.absent > 0 && (
-                        <span className="flex items-center gap-1 text-red-500">
-                          <X className="w-3 h-3" /> {info.absent}
-                        </span>
-                      )}
-                      {info.late > 0 && (
-                        <span className="flex items-center gap-1 text-yellow-600">
-                          <Clock className="w-3 h-3" /> {info.late}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+      {/* טבלת נוכחות לפי ימים — תמיד גלויה. זה התיעוד הקבוע במערכת:
+          כל מפגש שסומן (מדף המורה או מכאן) מופיע כאן עם הסיכום שלו,
+          ולחיצה על יום מציגה את הפירוט השמי של אותו יום למעלה. */}
+      {existingDates.length > 0 && (
+        <div className="mb-5 border border-gray-200 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-2 p-3 bg-[var(--crm-primary)]/5 border-b border-gray-200">
+            <Calendar className="w-4 h-4 text-[var(--crm-primary)]" />
+            <span className="text-sm font-bold text-[var(--crm-text)]">
+              נוכחות לפי ימים ({existingDates.length} מפגשים) — לחצי על יום לצפייה
+            </span>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {existingDates.map(date => {
+              const info = historyData[date] || {};
+              const isCur = date === selectedDate;
+              return (
+                <button
+                  key={date}
+                  onClick={() => setSelectedDate(date)}
+                  className={`w-full flex items-center justify-between p-3 transition-colors text-right ${
+                    isCur ? 'bg-[var(--crm-primary)]/10 font-bold' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="text-sm text-[var(--crm-text)]">
+                    {new Date(date).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    {isCur && <span className="mr-2 text-xs text-[var(--crm-primary)]">← מוצג עכשיו</span>}
+                  </span>
+                  <div className="flex items-center gap-3 text-xs">
+                    {info.present > 0 && (
+                      <span className="flex items-center gap-1 text-green-600 font-medium">
+                        <Check className="w-3 h-3" /> {info.present} נוכחים
+                      </span>
+                    )}
+                    {info.absent > 0 && (
+                      <span className="flex items-center gap-1 text-red-500 font-medium">
+                        <X className="w-3 h-3" /> {info.absent}
+                      </span>
+                    )}
+                    {info.late > 0 && (
+                      <span className="flex items-center gap-1 text-yellow-600 font-medium">
+                        <Clock className="w-3 h-3" /> {info.late}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

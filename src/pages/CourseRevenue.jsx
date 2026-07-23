@@ -213,6 +213,13 @@ export default function CourseRevenue() {
           </select>
         </div>
 
+        {/* מקרא — מסביר מה זה "מוערך" בלי צורך בריחוף (שלא עובד בטלפון) */}
+        <div className="mb-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 leading-relaxed">
+          <strong>מה זה "מוערך"?</strong> רוב הסכומים מגיעים ישירות מסאמיט ומדויקים.
+          סכום שכתוב לידו "מוערך" חושב לפי מספר התשלומים ולא נמשך ישירות מסאמיט,
+          ולכן ייתכן שאינו מדויק — כדאי לאמת אותו מול הקבלה כשצריך מספר מדויק.
+        </div>
+
         {/* Table */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderRadius: 'var(--crm-border-radius)' }}>
           <table className="w-full">
@@ -240,12 +247,9 @@ export default function CourseRevenue() {
                     <td className="px-4 py-3 text-center text-green-700 font-semibold">
                       {fmt(paidSoFar)}
                       {estimatedCount > 0 && (
-                        <span
-                          className="mr-1 text-amber-600 cursor-help"
-                          title={`${estimatedCount} מתוך ${registeredCount} הסכומים בקורס הזה הם אומדן ולא נתון מדויק — הם מחושבים כתשלום אחרון × מספר תשלומים. זה מדויק רק כשכל התשלומים שווים.`}
-                        >
-                          ⚠️
-                        </span>
+                        <div className="text-[11px] font-normal text-amber-700 mt-0.5 leading-tight">
+                          מתוכם {estimatedCount} מוערכים
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-center text-[var(--crm-text)]">{fmt(expected)}</td>

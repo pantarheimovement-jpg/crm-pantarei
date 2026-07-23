@@ -866,12 +866,6 @@ export default function Students() {
                       <span className="font-medium">סה"כ שולם:</span>
                       <span className="font-semibold text-green-700">₪{Number(student.amount_paid).toLocaleString()}</span>
                     </div>
-                  ) : student.total_payments ? (
-                    <div className="flex items-center gap-2 text-[var(--crm-text)] opacity-60 text-sm">
-                      <span className="font-medium">מחיר שנרשם ידנית:</span>
-                      <span>₪{Number(student.total_payments).toLocaleString()}</span>
-                      <span className="text-xs text-gray-400">(לא תשלום שנגבה)</span>
-                    </div>
                   ) : null}
                   </div>
 

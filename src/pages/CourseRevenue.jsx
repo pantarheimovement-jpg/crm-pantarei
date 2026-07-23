@@ -83,7 +83,11 @@ export default function CourseRevenue() {
       //   2. amount_paid — כשלמשתתפת יש קורס אחד בלבד, הסכום שלה שייך כולו לקורס הזה
       //   3. installment_amount × payment_number — אומדן בלבד. נכון רק כשכל התשלומים
       //      שווים; מי ששילמה ₪1,400 ואז ₪800 מוצגת כאן כ-₪1,600 במקום ₪2,200.
-      let estimatedCount = 0;
+      // סופרים רק כסף ודאי: paid_so_far (מצטבר אמיתי מסאמיט), או amount_paid
+      // כשלמשתתפת קורס אחד בלבד. סכום שאפשר רק לנחש (installment × payment_number)
+      // לא נספר כלל — מספר על המסך הוא תמיד מספר אמיתי, אחרת "—".
+      // hasUnknown מציין שיש רשומים ששילמו אך הסכום המדויק שלהם לא נמשך מסאמיט.
+      let hasUnknown = false;
       const paidSoFar = registeredEntries.reduce((sum, e) => {
         if (e.paid_so_far !== null && e.paid_so_far !== undefined && e.paid_so_far !== '') {
           return sum + (parseFloat(e.paid_so_far) || 0);
@@ -92,10 +96,9 @@ export default function CourseRevenue() {
         if (hasSingleCourse && e.student?.amount_paid) {
           return sum + (parseFloat(e.student.amount_paid) || 0);
         }
-        const inst = parseFloat(e.installment_amount) || 0;
-        const num = parseFloat(e.payment_number) || 0;
-        if (inst && num) estimatedCount++;
-        return sum + inst * num;
+        // יש חיוב אך אין סכום ודאי — לא מוסיפים לסכום, רק מסמנים
+        if ((parseFloat(e.installment_amount) || 0) || (parseFloat(e.payment_number) || 0)) hasUnknown = true;
+        return sum;
       }, 0);
 
       // Expected: sum of total_price, fallback installment_amount × payments_total
@@ -111,7 +114,7 @@ export default function CourseRevenue() {
         registeredCount: registeredStudents.length,
         paidSoFar,
         expected,
-        estimatedCount,
+        hasUnknown,
         entries: registeredEntries
       };
     });
@@ -213,11 +216,10 @@ export default function CourseRevenue() {
           </select>
         </div>
 
-        {/* מקרא — מסביר מה זה "מוערך" בלי צורך בריחוף (שלא עובד בטלפון) */}
-        <div className="mb-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 leading-relaxed">
-          <strong>מה זה "מוערך"?</strong> רוב הסכומים מגיעים ישירות מסאמיט ומדויקים.
-          סכום שכתוב לידו "מוערך" חושב לפי מספר התשלומים ולא נמשך ישירות מסאמיט,
-          ולכן ייתכן שאינו מדויק — כדאי לאמת אותו מול הקבלה כשצריך מספר מדויק.
+        {/* מקרא קצר — כל מספר על המסך הוא כסף אמיתי מסאמיט. אין ניחושים. */}
+        <div className="mb-3 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 leading-relaxed">
+          כל סכום שמופיע כאן הוא כסף שנגבה בפועל דרך סאמיט.
+          המסמן <span className="font-bold">—</span> מציין שהסכום עדיין לא נמשך מסאמיט (לרוב תשלומים שקדמו לחיבור) — יש להשלים ידנית.
         </div>
 
         {/* Table */}
@@ -234,7 +236,7 @@ export default function CourseRevenue() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredStats.map(({ course, registeredCount, paidSoFar, expected, estimatedCount, entries }) => (
+              {filteredStats.map(({ course, registeredCount, paidSoFar, expected, hasUnknown, entries }) => (
                 <React.Fragment key={course.id}>
                   <tr className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-[var(--crm-text)]">{course.name}</td>
@@ -245,12 +247,7 @@ export default function CourseRevenue() {
                     </td>
                     <td className="px-4 py-3 text-center font-bold text-[var(--crm-primary)]">{registeredCount}</td>
                     <td className="px-4 py-3 text-center text-green-700 font-semibold">
-                      {fmt(paidSoFar)}
-                      {estimatedCount > 0 && (
-                        <div className="text-[11px] font-normal text-amber-700 mt-0.5 leading-tight">
-                          מתוכם {estimatedCount} מוערכים
-                        </div>
-                      )}
+                      {paidSoFar > 0 ? fmt(paidSoFar) : '—'}
                     </td>
                     <td className="px-4 py-3 text-center text-[var(--crm-text)]">{fmt(expected)}</td>
                     <td className="px-4 py-3 text-center">

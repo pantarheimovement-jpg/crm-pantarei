@@ -232,6 +232,18 @@ export default function UserGuide() {
                   <AutoBadge>אוטומטי</AutoBadge>
                   <span className="text-sm"><strong>סגירת שיחה ברישום</strong> — כשמשתתף עובר לסטטוס ״רשום״, אם יש שיחה פתוחה מקושרת אליו — היא עוברת אוטומטית לסטטוס ״הושלם״</span>
                 </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>תשלום מ-Summit</strong> — תשלום שנקלט מסאמיט מסמן את המשתתף כ״רשום״, מעדכן את הסכום ששולם, וסוגר שיחת היכרות פתוחה. אותו תשלום לא נספר פעמיים גם אם סאמיט שולח אותו שוב</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>ביטול / זיכוי מ-Summit</strong> — זיכוי מלא מסמן את הקורס כ״ביטול הרשמה״ ומוריד מהמונה. זיכוי חלקי מוריד את הסכום ששולם. הכל נקלט אוטומטית מסאמיט</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <AutoBadge>אוטומטי</AutoBadge>
+                  <span className="text-sm"><strong>קורס חדש מ-Summit</strong> — מוצר חדש שנמכר בסאמיט ואין לו קורס במערכת — הקורס נוצר אוטומטית ונפתח להרשמה. הוא <strong>לא שולח הודעות</strong> ללקוחות עד שממלאים לו קישורי תשלום ואתר, כך שלא ייצא דבר בטעות</span>
+                </div>
               </div>
               <p className="font-semibold mb-2">שינויים ידניים:</p>
               <div className="space-y-1.5">
@@ -354,12 +366,32 @@ export default function UserGuide() {
               <ul className="list-disc list-inside space-y-1">
                 <li>בוחרים <strong>תאריך מפגש</strong> בשדה התאריך למעלה</li>
                 <li>לכל משתתף מופיעות 3 אפשרויות: <strong>נוכח/ת</strong>, <strong>נעדר/ת</strong>, <strong>איחור</strong></li>
-                <li>לוחצים על הכפתור המתאים — הנוכחות נשמרת מיד</li>
-                <li>כפתור <strong>״סמן כולם נוכחים״</strong> — מסמן את כל המשתתפים כנוכחים בלחיצה אחת</li>
-                <li><strong>מפגשים קודמים</strong> — כפתורי תאריכים מהירים מאפשרים לחזור ולראות/לערוך נוכחות ממפגשים קודמים</li>
+                <li>לוחצים על הכפתור המתאים — הנוכחות נשמרת מיד, והשורה נצבעת בהתאם</li>
+                <li><strong>סרגל סיכום</strong> בראש מראה כמה סומנו וכמה עדיין לא (״היום: 5 נוכחים · 18 טרם סומנו״)</li>
+                <li>כפתור <strong>״סמן כולם נוכחים״</strong> — מסמן את כולם בלחיצה אחת</li>
+                <li><strong>ביטול טעות:</strong> כפתור <strong>״בטל״</strong> ליד שורה שכבר סומנה מנקה אותה, וכפתור <strong>״נקה את כל הסימונים״</strong> מבטל את כולם ליום שנבחר</li>
               </ul>
               <p className="mt-3 p-3 bg-green-50 rounded-lg text-sm">
-                💡 <strong>טיפ:</strong> נתוני הנוכחות נשמרים לפי קורס + תאריך + משתתף. ניתן לערוך נוכחות בכל עת.
+                💡 <strong>אם סימון לא נשמר</strong> — תופיע הודעה אדומה ברורה עם מי לא נשמרה. אם אין הודעה אדומה, הכל נשמר בהצלחה.
+              </p>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ClipboardList}
+          color="#2ECC71"
+          question="איפה רואים את הנוכחות בתוך המערכת (לא בדף המורה)?"
+          answer={
+            <div>
+              <p>כל נוכחות שסומנה — בין אם מדף המורה ובין אם מהמערכת — נשמרת באותו מקום ונראית ב<strong>דף הקורס במערכת</strong>:</p>
+              <ol className="list-decimal list-inside mt-2 space-y-1">
+                <li>נכנסים ל<strong>קורסים</strong> ובוחרים את הקורס</li>
+                <li>הקטע <strong>״מעקב נוכחות״</strong> פתוח אוטומטית</li>
+                <li>הטבלה <strong>״נוכחות לפי ימים״</strong> מציגה כל מפגש שסומן, עם סיכום נוכחים / נעדרים / איחור</li>
+                <li>לחיצה על יום מציגה את הפירוט השמי — מי היה נוכח באותו מפגש</li>
+              </ol>
+              <p className="mt-3 p-3 bg-purple-50 rounded-lg text-sm">
+                💡 דף המורה והמערכת הם שני חלונות לאותם נתונים. מה שהמורה מסמנת מהלינק שלה מופיע כאן מיד, ולהפך.
               </p>
             </div>
           }

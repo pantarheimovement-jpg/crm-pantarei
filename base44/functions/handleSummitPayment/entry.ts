@@ -10,10 +10,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 // - התאמת שם קורס עמידה לשגיאות (נרמול)
 // =====================================================
 
-const OPEN_LEAD_STATUSES = ['ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'בבדיקה'];
+const OPEN_LEAD_STATUSES = ['ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'תיאום שיחה'];
 const REGISTERED_STATUSES = ['רשום', 'נרשם'];
 const OPEN_FOR_REGISTRATION = 'פתוח להרשמה';
 const CANCELLED_STATUS = 'ביטול הרשמה';
+const REFUND_TAG = 'זיכוי';
 
 function normalizeName(value) {
   return String(value || '')
@@ -411,6 +412,12 @@ Deno.serve(async (req) => {
       ...(customerPhone && customerPhone !== 'לא זמין' && { phone: customerPhone })
     };
     if (updatedCourses.length > 0) studentData.courses = updatedCourses;
+    // תגית "זיכוי" (אופיר, 27.07.2026) — כדי שאפשר יהיה לסנן במסך המשתתפות
+    // מי קיבלה זיכוי, גם כשהזיכוי חלקי והסטטוס נשאר "רשום".
+    if (isRefund) {
+      const currentTags = existingStudent?.tags || [];
+      if (!currentTags.includes(REFUND_TAG)) studentData.tags = [...currentTags, REFUND_TAG];
+    }
     // שמירת המסלול (למשל nana_option לסמסטר קיץ)
     if (mapping && mapping.optionField && courseOption) {
       studentData[mapping.optionField] = courseOption;

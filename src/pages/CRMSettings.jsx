@@ -806,7 +806,7 @@ export default function CRMSettings() {
                   items={taskStatuses}
                   entityName="TaskStatuses"
                   onReload={loadTaskStatuses}
-                  protectedNames={['ממתין', 'בבדיקה', 'הושלם', 'לא רלוונטי', 'אבוד']}
+                  protectedNames={['ממתין', 'תיאום שיחה', 'הושלם', 'לא רלוונטי', 'אבוד']}
                 />
 
                 <hr className="border-gray-200" />

@@ -180,7 +180,7 @@ export default function UserGuide() {
               <div className="space-y-2">
                 <StatusBadge name="ליד חדש" color="#6D436D" description="משתתף שנכנס למערכת — מוואטסאפ, אתר, או ידני. טרם נוצר קשר." />
                 <StatusBadge name="הודעה מוואטסאפ לבדיקה" color="#D29486" description="הודעה שנכנסה מוואטסאפ שלא עברה סף התעניינות ברור — צריך לבדוק ידנית אם רלוונטי. אופיר מקבלת התראה בוואטסאפ ומאשרת או דוחה." />
-                <StatusBadge name="במעקב ראשוני" color="#FAD980" description="נוצר קשר ראשוני, ממתינים לתגובה. מתעדכן אוטומטית כששיחה עוברת ל״בבדיקה״." />
+                <StatusBadge name="במעקב ראשוני" color="#FAD980" description="נוצר קשר ראשוני, ממתינים לתגובה. מתעדכן אוטומטית כששיחה עוברת ל״תיאום שיחה״." />
                 <StatusBadge name="היה ביום היכרות" color="#8B5CF6" description="הלקוח השתתף ביום היכרות." />
                 <StatusBadge name="רשום / נרשם" color="#2ECC71" description="המשתתף רשום ומשלם — נספר במונה הקורס." />
                 <StatusBadge name="לחזור לקראת הרשמה" color="#9B59B6" description="הליד מעוניין אבל הקורס עדיין לא פתוח להרשמה, או שרוצים לחזור אליו כשייפתח. משמש באוטומציה — כשקורס נפתח להרשמה, לידים בסטטוס הזה מקבלים שיחה ו/או וואטסאפ אוטומטית." />
@@ -210,7 +210,7 @@ export default function UserGuide() {
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
-                  <span className="text-sm"><strong>במעקב ראשוני</strong> — מתעדכן אוטומטית כששיחה עוברת לסטטוס ״בבדיקה״</span>
+                  <span className="text-sm"><strong>במעקב ראשוני</strong> — מתעדכן אוטומטית כששיחה עוברת לסטטוס ״תיאום שיחה״</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
@@ -429,7 +429,7 @@ export default function UserGuide() {
                 <li><strong>סינון לפי משתתף</strong> — בחירת משתתף ספציפי מסננת את כל השיחות לאותו משתתף</li>
                 <li><strong>סינון לפי סטטוס</strong> — בחירת סטטוס ספציפי או חיפוש חופשי</li>
                 <li><strong>בחירת משתתף חכמה</strong> — Combobox עם חיפוש לפי שם, טלפון או מייל (גם ביצירת שיחה וגם בסינון)</li>
-                <li><strong>סטטיסטיקות לחיצות</strong> — ניסיון לשיחה, בבדיקה, הושלמו, ומתוזמנות — <strong>כל סטטיסטיקה לחיצה שמסננת את הרשימה</strong></li>
+                <li><strong>סטטיסטיקות לחיצות</strong> — ניסיון לשיחה, תיאום שיחה, הושלמו, ומתוזמנות — <strong>כל סטטיסטיקה לחיצה שמסננת את הרשימה</strong></li>
                 <li><strong>מעבר על הכרטיס</strong> (hover) — מציג כרטיס מהיר של המשתתף עם טלפון, מייל וקורס</li>
                 <li><strong>יצירת משתתף חדש</strong> — ניתן ליצור משתתף חדש ישירות מתוך השיחה</li>
                 <li><strong>ייבוא / ייצוא CSV + Google Sheets</strong></li>
@@ -448,7 +448,7 @@ export default function UserGuide() {
             <div className="space-y-2">
               <StatusBadge name="ממתין" color="#F39C12" description="השיחה טרם בוצעה, ממתינה לטיפול." />
               <StatusBadge name="ניסיון לשיחה" color="#E74C3C" description="נעשה ניסיון ליצור קשר — צריך לנסות שוב." />
-              <StatusBadge name="בבדיקה" color="#3498DB" description="נמצאת בתהליך בדיקה, עדיין לא הושלמה. → הלקוח עובר אוטומטית ל״במעקב ראשוני״." />
+              <StatusBadge name="תיאום שיחה" color="#3498DB" description="נקבעה שיחה עם הלקוחה, עדיין לא הושלמה. → הלקוח עובר אוטומטית ל״במעקב ראשוני״." />
               <StatusBadge name="הושלם" color="#6D436D" description="השיחה/משימה טופלה בהצלחה." />
               <StatusBadge name="לחזור לקראת הרשמה" color="#9B59B6" description="הליד מעוניין אך ממתין לפתיחת הרשמה לקורס. אם הקורס כבר פתוח להרשמה ונוסח מתאים שמור בהגדרות — יכולה להישלח גם הודעת וואטסאפ אוטומטית. אם הקורס עדיין לא פתוח — המערכת ממתינה לפתיחת ההרשמה." />
               <StatusBadge name="לא רלוונטי" color="#BDC3C7" description="לא רלוונטי יותר. → משנה אוטומטית את סטטוס הקורס הספציפי של השיחה ל״לא רלוונטי״. הסטטוס הכללי מחושב מחדש לפי סדר עדיפות." />
@@ -463,7 +463,7 @@ export default function UserGuide() {
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
-                  <span className="text-sm">שינוי שיחה ל<strong>״בבדיקה״</strong> → לקוח עובר אוטומטית ל״במעקב ראשוני״</span>
+                  <span className="text-sm">שינוי שיחה ל<strong>״תיאום שיחה״</strong> → לקוח עובר אוטומטית ל״במעקב ראשוני״</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AutoBadge>אוטומטי</AutoBadge>
@@ -824,8 +824,8 @@ export default function UserGuide() {
                   <p className="font-bold text-yellow-800 mb-1">🔄 שינוי סטטוס שיחה → עדכון לקוח + הודעות וואטסאפ</p>
                   <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
                     <li>שיחה עוברת ל<strong>״ניסיון לשיחה״</strong> → נשלחת הודעת וואטסאפ מיידית לפי נוסח ההגדרות</li>
-                    <li>שיחה עוברת ל<strong>״בבדיקה״</strong> → הלקוח המקושר עובר אוטומטית ל<strong>״במעקב ראשוני״</strong></li>
-                    <li>שיחה עוברת ל<strong>״בבדיקה״</strong> או <strong>״לחזור לקראת הרשמה״</strong> → יכולה להישלח הודעת וואטסאפ אוטומטית רק לקורסי נענע/LBMS, ורק אם הקורס כבר <strong>פתוח להרשמה</strong></li>
+                    <li>שיחה עוברת ל<strong>״תיאום שיחה״</strong> → הלקוח המקושר עובר אוטומטית ל<strong>״במעקב ראשוני״</strong></li>
+                    <li>שיחה עוברת ל<strong>״תיאום שיחה״</strong> או <strong>״לחזור לקראת הרשמה״</strong> → יכולה להישלח הודעת וואטסאפ אוטומטית רק לקורסי נענע/LBMS, ורק אם הקורס כבר <strong>פתוח להרשמה</strong></li>
                     <li>אם הקורס עדיין לא פתוח להרשמה — המערכת לא שולחת וואטסאפ בשלב הזה וממתינה לפתיחת הרשמה</li>
                     <li>שיחה עוברת ל<strong>״לא רלוונטי״</strong> → <strong>הקורס הספציפי</strong> של אותה שיחה עובר ל"לא רלוונטי". הסטטוס הכללי מחושב מחדש</li>
                     <li>שיחה עוברת ל<strong>״אבוד״</strong> → אותו דבר — הקורס הספציפי עובר ל"לא רלוונטי", הסטטוס הכללי מחושב מחדש</li>
@@ -1085,7 +1085,7 @@ export default function UserGuide() {
                 <li>המערכת מזהה <strong>לאיזה קורס השיחה שייכת</strong> (מתוך שם המשימה, למשל "שיחת היכרות - נענע")</li>
                 <li>רק <strong>הקורס הזה</strong> עובר לסטטוס "לא רלוונטי"</li>
                 <li>אם יש קורס אחר בסטטוס חזק יותר (למשל "ליד חדש") — <strong>הסטטוס הכללי לא משתנה</strong></li>
-                <li>אותה לוגיקה גם ל"בבדיקה" → "במעקב ראשוני" — רק הקורס הספציפי מושפע</li>
+                <li>אותה לוגיקה גם ל"תיאום שיחה" → "במעקב ראשוני" — רק הקורס הספציפי מושפע</li>
               </ul>
             </div>
           }

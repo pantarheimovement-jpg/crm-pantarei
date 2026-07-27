@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { normalizePhone972, queueFollowup1, missingCourseLinks, notifyMissingCourseLinks } from '../../shared/waFollowups.ts';
 
 const OPEN_FOR_REGISTRATION = 'פתוח להרשמה';
-const TARGET_REGISTRATION_STATUSES = ['בבדיקה', 'לחזור לקראת הרשמה'];
+const TARGET_REGISTRATION_STATUSES = ['תיאום שיחה', 'לחזור לקראת הרשמה'];
 
 function getEntryDate(entry) {
   const value = entry?.registration_date || entry?.lead_entry_date || '';
@@ -218,8 +218,8 @@ Deno.serve(async (req) => {
 
     let newStudentStatus = null;
 
-    // Rule 1: Task "בבדיקה" → Student "במעקב ראשוני"
-    if (newStatus === 'בבדיקה') {
+    // Rule 1: Task "תיאום שיחה" → Student "במעקב ראשוני"
+    if (newStatus === 'תיאום שיחה') {
       newStudentStatus = 'במעקב ראשוני';
     }
 
@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
 
         // חישוב סטטוס ראשי (מודל דו-ממדי):
         // הליד הפתוח החם ביותר גובר; אם אין לידים פתוחים — "רשום" (אם לקוחה)
-        const OPEN_LEAD_STATUSES = ['ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'בבדיקה'];
+        const OPEN_LEAD_STATUSES = ['ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'תיאום שיחה'];
         const REGISTERED_SET = ['רשום', 'נרשם'];
 
         let bestStatus = null;

@@ -714,7 +714,7 @@ export default function PipelineDashboard() {
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-xs font-semibold text-gray-600">שיחות מתוזמנות</h4>
                   <Link
-                    to={createPageUrl('Tasks') + '?status=בבדיקה'}
+                    to={createPageUrl('Tasks') + '?status=תיאום שיחה'}
                     className="text-xs text-[var(--crm-primary)] hover:underline"
                   >
                     צפה

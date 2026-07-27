@@ -449,7 +449,7 @@ export default function Students() {
 
   const OPEN_STATUSES = new Set([
     'ליד חדש', 'חדש', 'במעקב ראשוני', 'לחזור לקראת הרשמה',
-    'בבדיקה', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה'
+    'תיאום שיחה', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה'
   ]);
 
   const getOpenCourse = (student) =>

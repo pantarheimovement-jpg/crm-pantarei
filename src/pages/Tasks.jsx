@@ -228,7 +228,7 @@ export default function Tasks() {
 
   const handleToggleStatus = async (task) => {
     try {
-      const newStatus = task.status === 'הושלם' ? 'בבדיקה' : 'הושלם';
+      const newStatus = task.status === 'הושלם' ? 'תיאום שיחה' : 'הושלם';
       await base44.entities.Task.update(task.id, { ...task, status: newStatus });
       loadData();
     } catch (error) {
@@ -301,7 +301,7 @@ export default function Tasks() {
       description: task.description || '',
       student_id: task.student_id || '',
       student_name: task.student_name || '',
-      status: task.status || 'בבדיקה',
+      status: task.status || 'תיאום שיחה',
       scheduled_date: task.scheduled_date || '',
       status_changed_date: task.status_changed_date ? new Date(task.status_changed_date).toISOString().slice(0, 16) : ''
     });
@@ -336,7 +336,7 @@ export default function Tasks() {
           description: item.description || '',
           student_id: studentId,
           student_name: studentName,
-          status: item.status || 'בבדיקה',
+          status: item.status || 'תיאום שיחה',
           scheduled_date: item.scheduled_date || ''
         });
         successCount++;
@@ -409,7 +409,7 @@ export default function Tasks() {
 
   const stats = {
     tryCall: tasks.filter(t => t.status === 'ניסיון לשיחה').length,
-    inReview: tasks.filter(t => t.status === 'בבדיקה').length,
+    inReview: tasks.filter(t => t.status === 'תיאום שיחה').length,
     completed: tasks.filter(t => t.status === 'הושלם').length,
     scheduled: tasks.filter(t => t.scheduled_date && new Date(t.scheduled_date) >= new Date() && t.status !== 'הושלם').length,
     waitingRegistration: tasks.filter(t => t.status === 'לחזור לקראת הרשמה').length
@@ -483,11 +483,11 @@ export default function Tasks() {
           <div 
             className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-md transition-shadow" 
             style={{ borderRadius: 'var(--crm-border-radius)' }}
-            onClick={() => setFilterStatus('בבדיקה')}
+            onClick={() => setFilterStatus('תיאום שיחה')}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">בבדיקה</p>
+                <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">תיאום שיחה</p>
                 <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{stats.inReview}</p>
               </div>
               <div className="p-3 rounded-xl" style={{ backgroundColor: 'var(--crm-accent)' }}>
@@ -724,7 +724,7 @@ export default function Tasks() {
                     <div className="flex items-center gap-2 mt-2">
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         task.status === 'ניסיון לשיחה' ? 'bg-red-100 text-red-800' :
-                        task.status === 'בבדיקה' ? 'bg-blue-100 text-blue-800' :
+                        task.status === 'תיאום שיחה' ? 'bg-blue-100 text-blue-800' :
                         task.status === 'הושלם' ? 'bg-green-100 text-green-800' :
                         task.status === 'לא רלוונטי' ? 'bg-gray-100 text-gray-800' :
                         task.status === 'אבוד' ? 'bg-gray-100 text-gray-800' :

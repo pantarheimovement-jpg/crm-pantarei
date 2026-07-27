@@ -13,6 +13,10 @@ const NOTIFICATION_EMAIL = 'pantarhei.movement@gmail.com';
 // uChat business phone (WhatsApp Cloud API via uChat)
 const UCHAT_BUSINESS_PHONE = '972515041100';
 
+// קליטת לידים מוואטסאפ — כבוי לבקשת אופיר (27.07.2026).
+// כדי להחזיר את המסלול: להחזיר ל-true (או להגדיר WHATSAPP_LEAD_INGESTION=on).
+const LEAD_INGESTION_ENABLED = (Deno.env.get('WHATSAPP_LEAD_INGESTION') || '').toLowerCase() === 'on';
+
 // Per-request state for uChat inbound flow (reply is returned in the response, not sent via API)
 const uchatCapture = { active: false, chatId: null, reply: null, userNs: null, phone972: null };
 
@@ -414,6 +418,19 @@ async function handleRequest(req) {
       console.log('👩‍💼 Message from Pantarei phone - checking for approval/rejection');
       const result = await handleOfirResponse(base44, messageText);
       return Response.json(result);
+    }
+
+    // =============================================
+    // LEAD INGESTION KILL-SWITCH (אופיר, 27.07.2026)
+    // =============================================
+    // אופיר ביקשה לבטל לגמרי את המסלול של "ליד חדש מוואטסאפ":
+    // אין יצירת/עדכון רשומות, אין משימת שיחת היכרות, אין תגובה אוטומטית
+    // ללקוחה, אין התראת וואטסאפ לאופיר ואין מיילים.
+    // מה שכן ממשיך לעבוד מעל השורה הזו: בקשות "הסר" (חובה רגולטורית),
+    // שמירת uchat_user_ns ו-last_incoming_text, ומענה אופיר.
+    if (!LEAD_INGESTION_ENABLED) {
+      console.log('🛑 Lead ingestion disabled — message logged only, nothing created');
+      return Response.json({ status: 'ignored', reason: 'Lead ingestion disabled by request (Ofir, 27.07.2026)' });
     }
 
     // =============================================

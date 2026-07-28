@@ -15,6 +15,7 @@ const REGISTERED_STATUSES = ['רשום', 'נרשם'];
 const OPEN_FOR_REGISTRATION = 'פתוח להרשמה';
 const CANCELLED_STATUS = 'ביטול הרשמה';
 const REFUND_TAG = 'זיכוי';
+const PENDING_TAG = 'ממתין לשיוך לקורס';
 
 function normalizeName(value) {
   return String(value || '')
@@ -29,6 +30,41 @@ function parseNum(value) {
   if (value === null || value === undefined) return null;
   const num = parseFloat(String(value).replace(/[^\d.\-]/g, ''));
   return Number.isFinite(num) ? num : null;
+}
+
+// שליפת ערך מאובייקט פריט לפי רשימת שמות אפשריים
+function pickFrom(obj, names) {
+  for (const name of names) {
+    const value = obj?.[name];
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return null;
+}
+
+// שם הקטלוג (דף התשלום) שאליו שייך המוצר. סאמיט שולח אותו — התצוגה
+// "תשלומים במערכת / כל השדות" שעליה יושב הטריגר כוללת עמודת "קטלוג".
+// השם המדויק של המפתח ב-JSON לא מתועד, ולכן: קודם שמות מוכרים, אחר כך
+// סריקה של כל מפתח שנראה כמו קטלוג, ולבסוף על הפריט עצמו. מה שנתפס
+// נכתב ללוג — כך החיוב האמיתי הבא מאמת את השם לבד.
+function resolveCatalogName(properties, item) {
+  const asName = (v) => {
+    const first = Array.isArray(v) ? v[0] : v;
+    if (!first) return null;
+    return typeof first === 'string' ? first : (first.Name || null);
+  };
+  for (const key of ['Billing_Catalog', 'Billing_PurchasePage', 'Billing_Folder', 'Catalog', 'PurchasePage', 'קטלוג']) {
+    const name = asName(properties?.[key]);
+    if (name) { console.log(`🗂️ Catalog from "${key}": ${name}`); return name; }
+  }
+  for (const key of Object.keys(properties || {})) {
+    if (!/catalog|purchasepage|folder|קטלוג/i.test(key)) continue;
+    const name = asName(properties[key]);
+    if (name) { console.log(`🗂️ Catalog found under key "${key}": ${name}`); return name; }
+  }
+  const onItem = asName(item?.Catalog) || asName(item?.Folder) || asName(item?.PurchasePage);
+  if (onItem) { console.log(`🗂️ Catalog from the item itself: ${onItem}`); return onItem; }
+  console.log('🗂️ No catalog field found in payload — keys:', Object.keys(properties || {}).join(', '));
+  return null;
 }
 
 function pickProperty(properties, names) {
@@ -200,9 +236,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    const productName =
-      properties.Billing_Items?.[0]?.Name ||
-      properties.Property_3?.[0]?.Name || null;
+    const billingItems = (
+      Array.isArray(properties.Billing_Items) ? properties.Billing_Items :
+      Array.isArray(properties.Property_3) ? properties.Property_3 : []
+    ).filter(Boolean);
+    const catalogName = resolveCatalogName(properties, billingItems[0]);
 
     // זיהוי הוראת קבע (מסמך מחזורי) לעומת תשלום רגיל
     const isStandingOrder = Boolean(properties.Billing_CustomerItems?.[0]?.Name?.includes('הוראת קבע'));
@@ -215,11 +253,6 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, skipped: 'invalid_charge' });
     }
 
-    // מיפוי מוצר → קורס-אב (למשל: כל מוצרי "סמסטר קיץ" → "סמסטר קיץ נענע")
-    const mapping = resolveCourseMapping(productName);
-    const courseName = mapping ? mapping.courseName : productName;
-    const courseOption = mapping ? mapping.option : null;
-    if (mapping) console.log(`🗺️ Product "${productName}" mapped → course "${courseName}"${courseOption ? ` (option: ${courseOption})` : ''}`);
     const billingDate = (pickProperty(properties, ['Billing_Date', 'Property_1']) || new Date().toISOString()).split('T')[0];
     const documentName =
       properties.Accounting_Document?.[0]?.Name ||
@@ -233,46 +266,13 @@ Deno.serve(async (req) => {
     const installmentAmount = parseNum(pickProperty(properties, ['Billing_Amount', 'סכום התשלום למחזור', 'סכום התשלום', 'מחיר כולל מע"מ']));
     const totalAmount = parseNum(pickProperty(properties, ['Billing_TotalAmount', 'סה"כ', 'סה״כ', 'סכום כולל', 'סה"כ כולל מע"מ']));
 
-    console.log('✅ Extracted:', { customerName, resolvedEmail, customerPhone, courseName, paymentsTotal, currentPaymentRaw, installmentAmount, totalAmount, isStandingOrder });
+    console.log('✅ Extracted:', { customerName, resolvedEmail, customerPhone, catalogName, paymentsTotal, currentPaymentRaw, installmentAmount, totalAmount, isStandingOrder });
 
     if (!customerName) {
       return Response.json({ error: 'Customer name is required' }, { status: 400 });
     }
 
-    // --- 1. איתור/יצירת קורס (עם התאמה מנורמלת כרשת ביטחון) ---
-    let course = null;
-    if (courseName) {
-      const exact = await base44.asServiceRole.entities.Course.filter({ name: courseName });
-      course = exact?.[0] || null;
-
-      if (!course) {
-        const allCourses = await base44.asServiceRole.entities.Course.list();
-        const target = normalizeName(courseName);
-        course = (allCourses || []).find((c) => normalizeName(c.name) === target) || null;
-        if (course) console.log(`🔎 Fuzzy-matched course "${courseName}" → "${course.name}"`);
-      }
-
-      if (!course) {
-        console.log(`✨ Creating new course: ${courseName}`);
-        try {
-          // קורס חדש נפתח אוטומטית להרשמה (בקשת אופיר, סעיף 6).
-          // בטוח לעשות זאת: onCourseOpenForRegistration ו-onTaskStatusChange שניהם
-          // חוסמים שליחת הודעות כשחסרים payment_link/registration_link
-          // (`missingCourseLinks`), וקורס טרי נוצר בלי קישורים — כך שאף הודעה
-          // לא תצא עד שמישהו ימלא אותם ידנית ובכוונה.
-          course = await base44.asServiceRole.entities.Course.create({
-            name: courseName,
-            type: 'קורס קבוע',
-            status: OPEN_FOR_REGISTRATION,
-            current_students: 0
-          });
-        } catch (e) {
-          console.error(`⚠️ Failed to create course: ${e.message}`);
-        }
-      }
-    }
-
-    // --- 2. איתור משתתפ.ת (מייל → טלפון → שם) ---
+    // --- 0. איתור משתתפ.ת (מייל → טלפון → שם) ---
     let existingStudent = null;
 
     if (resolvedEmail) {
@@ -298,229 +298,282 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, skipped: 'duplicate_document', document: documentName });
     }
 
+    // --- 1. פריטי העסקה: כל הפריטים, לא רק הראשון ---
+    // עד היום נקרא Billing_Items[0] בלבד. רכישה של שני מוצרים בצ'קאאוט אחד
+    // רשמה רק את הראשון והשני נעלם — קרה באמת (טליה בר לב, 22.7: פאשיה
+    // יסודות ב' + הנחה לקורס שני, ₪2,150). עם הקטלוגים של אופיר זה רק יגדל.
+    const perItem = [];
+    for (const item of billingItems) {
+      const itemName = item?.Name || null;
+      if (!itemName) continue;
+      perItem.push({
+        productName: itemName,
+        amount: parseNum(pickFrom(item, ['Amount', 'TotalAmount', 'Total', 'Price', 'UnitPrice']))
+      });
+    }
+    if (perItem.length === 0) perItem.push({ productName: null, amount: null });
+    console.log(`🧾 ${perItem.length} item(s) in this charge:`, perItem.map((i) => i.productName).join(' | '));
+
+    // זיכוי/ביטול נקבע ברמת המסמך: בסאמיט מסמך זיכוי מזכה את כל העסקה.
+    const isRefund = (Number(installmentAmount) || 0) < 0 || /זיכוי/.test(String(documentName || ''));
+    const chargedTotal = Math.abs(Number(installmentAmount) || 0);
+
+    // חלוקת הסכום בין הפריטים. אם לכל פריט יש מחיר — מחלקים לפי היחס ביניהם,
+    // כך שהנחה על העסקה מתחלקת נכון. אם אין — הסכום כולו נרשם על הפריט הראשון
+    // והשאר מסומנים, כי עדיף לדעת שהחלוקה לא ודאית מאשר לנחש בשקט.
+    let unsplitAmount = false;
+    const pricedSum = perItem.reduce((s, it) => s + Math.abs(it.amount || 0), 0);
+    if (perItem.length === 1) {
+      perItem[0].share = chargedTotal;
+    } else if (perItem.every((it) => it.amount !== null) && pricedSum > 0) {
+      perItem.forEach((it) => { it.share = Math.round((Math.abs(it.amount) / pricedSum) * chargedTotal); });
+    } else {
+      perItem.forEach((it, i) => { it.share = i === 0 ? chargedTotal : 0; });
+      unsplitAmount = true;
+      console.log('⚠️ Items have no individual prices — full amount recorded on the first item');
+    }
+
     // הגנה שנייה — בלעדיה נוצרה ספירה כפולה אמיתית (גל חורב, 14.7: ₪340 במקום ₪170).
-    // הטריגר של סאמיט נורה פעמיים על אותו חיוב: פעם אחת *לפני* שנוצר המסמך
-    // (ואז documentName ריק והבדיקה למעלה לא תופסת), ופעם שנייה אחריו.
+    // הטריגר בסאמיט מוגדר על "יצירת כרטיס", כלומר הוא נורה עוד לפני שנוצר המסמך
+    // (ואז documentName ריק והבדיקה למעלה לא תופסת), ושוב אחריו. אומת מול
+    // סאמיט ב-28.7, וגם בשטח: מאיה קאופמן 23.7 09:42 — שתי שורות, אחת בלי מסמך.
     //
-    // התנאי מכוון בדיוק לדפוס הזה ולא רחב ממנו: המסירה הנוכחית מחזיקה מסמך,
-    // וכבר קיימת שורה עם אותו תאריך ואותו סכום שנרשמה *בלי* מסמך.
-    // בלי ההידוק הזה, שני מוצרים שונים באותו יום ובאותו סכום היו נחסמים בטעות.
-    const amountSignature = installmentAmount ? `(₪${installmentAmount})` : null;
+    // התנאי מכוון בדיוק לדפוס הזה: המסירה הנוכחית מחזיקה מסמך, וכבר קיימת שורה
+    // עם אותו תאריך ואותו סכום שנרשמה בלי מסמך, ושמזכירה אחד ממוצרי העסקה.
+    const amountSignature = chargedTotal ? `(₪${chargedTotal})` : null;
+    const itemNames = perItem.map((i) => i.productName).filter(Boolean);
     if (
       existingStudent && documentName && amountSignature &&
       existingNotes.split('\n').some((line) =>
         line.includes(`בתאריך ${billingDate}`) &&
         line.includes(amountSignature) &&
         !line.includes('חשבון/קבלה') &&
-        // חייב להיות אותו קורס. בלי זה, שני מוצרים שונים באותו יום ובאותו סכום
-        // היו נראים כמו אותו חיוב. הערות ישנות (לפני 23.7) לא כוללות קורס —
-        // ואז נופלים חזרה להשוואת המוצר, כפי שהיה.
-        (course?.name ? line.includes(`קורס: ${course.name}`) : true) &&
-        (!mapping || productName === courseName || line.includes(productName))
+        (itemNames.length === 0 || itemNames.some((n) => line.includes(n) ||
+          line.includes(resolveCourseMapping(n)?.courseName || n)))
       )
     ) {
-      console.log(`⏭️ Same charge already recorded before the document existed (${billingDate}, ₪${installmentAmount}) — skipping`);
-      return Response.json({ success: true, skipped: 'duplicate_charge_predocument', date: billingDate, amount: installmentAmount });
+      console.log(`⏭️ Same charge already recorded before the document existed (${billingDate}, ₪${chargedTotal}) — skipping`);
+      return Response.json({ success: true, skipped: 'duplicate_charge_predocument', date: billingDate, amount: chargedTotal });
     }
 
     const registeredStatus = 'רשום';
-
-    // --- 3. חישוב מספר התשלום הנוכחי ---
     const existingCourses = existingStudent?.courses || [];
-    const existingEntry = course ? existingCourses.find((c) => c.course_id === course.id) : null;
+    let workingCourses = [...existingCourses];
+    const noteLines = [];
+    const results = [];
+    let totalDelta = 0;
+    let pendingAssignment = false;
+    let optionFieldUpdates = {};
 
-    // זיכוי/ביטול (סעיף 7 ברשימת אופיר). בסאמיט זה מסמך "חשבון/קבלה זיכוי"
-    // עם סכום שלילי. עד היום הוא נקלט כתשלום רגיל: המונה התקדם, נוצרה משימה,
-    // ומונה הנרשמים בקורס עלה — במקום לרדת.
-    const isRefund = (Number(installmentAmount) || 0) < 0 || /זיכוי/.test(String(documentName || ''));
-    const refundAmount = Math.abs(Number(installmentAmount) || 0);
+    // --- 2. עיבוד כל פריט: איתור הקורס ובניית הרישום ---
+    for (const it of perItem) {
+      const productName = it.productName;
+      const mapping = resolveCourseMapping(productName);
+      const courseName = mapping ? mapping.courseName : productName;
+      const courseOption = mapping ? mapping.option : null;
+      if (mapping) console.log(`🗺️ "${productName}" → "${courseName}"${courseOption ? ` (${courseOption})` : ''}`);
 
-    let paymentNumber;
-    if (isRefund) {
-      // זיכוי אינו תשלום — המונה נשאר כפי שהיה
-      paymentNumber = existingEntry?.payment_number || 1;
-    } else if (currentPaymentRaw) {
-      paymentNumber = currentPaymentRaw;
-    } else if (existingEntry && REGISTERED_STATUSES.includes(existingEntry.status)) {
-      // חיוב חוזר של הוראת קבע — מקדמים את המונה
-      paymentNumber = (existingEntry.payment_number || 1) + 1;
-    } else {
-      paymentNumber = 1;
-    }
-
-    const isRecurringCharge = !isRefund && Boolean(existingEntry && REGISTERED_STATUSES.includes(existingEntry.status));
-    const isNewRegistration = !isRefund && !isRecurringCharge && Boolean(course);
-
-    // האם הזיכוי מכסה את כל מה ששולם — ואז זה ביטול מלא ולא החזר חלקי
-    const paidBeforeRefund = Number(existingEntry?.paid_so_far) || 0;
-    const isFullCancellation = isRefund && paidBeforeRefund > 0 && refundAmount >= paidBeforeRefund;
-
-    // שם הקורס נרשם תמיד — גם כדי שיהיה ברור על מה שולם, וגם כדי שאפשר יהיה
-    // להבחין בין שני חיובים שונים באותו יום ובאותו סכום (ראו הגנת הכפילות למעלה).
-    const courseTag = course ? ` — קורס: ${course.name}` : '';
-    const noteText = isRefund
-      ? `${isFullCancellation ? 'ביטול הרשמה' : 'זיכוי חלקי'} דרך Summit בתאריך ${billingDate} (₪${refundAmount})${courseTag}${mapping && productName !== courseName ? ` — מסלול: ${productName}` : ''}${documentName ? ` — ${documentName}` : ''}`
-      : `תשלום ${paymentNumber}${paymentsTotal ? `/${paymentsTotal}` : ''} דרך Summit בתאריך ${billingDate}${installmentAmount ? ` (₪${installmentAmount})` : ''}${courseTag}${mapping && productName !== courseName ? ` — מסלול: ${productName}` : ''}${documentName ? ` — ${documentName}` : ''}`;
-
-    // --- 4. בניית רשומת הקורס המעודכנת ---
-    const courseEntryData = course ? {
-      course_id: course.id,
-      course_name: course.name,
-      // ביטול מלא מוריד מהרשומים; זיכוי חלקי משאיר אותה רשומה
-      status: isFullCancellation ? CANCELLED_STATUS : (isRefund ? (existingEntry?.status || registeredStatus) : registeredStatus),
-      ...(mapping && !mapping.optionField && courseOption ? { option: courseOption } : {}),
-      registration_date: existingEntry?.registration_date || billingDate,
-      payment_number: paymentNumber,
-      // סכום מצטבר אמיתי לקורס הזה. עד היום מסך ההכנסות חישב
-      // installment_amount × payment_number, וזה נכון רק כשכל התשלומים שווים —
-      // מי ששילמה ₪1,400 ואז ₪800 הוצגה כמי ששילמה ₪1,600 במקום ₪2,200 (אובחן 22.7).
-      paid_so_far: Math.max(0, (Number(existingEntry?.paid_so_far) || 0) + (Number(installmentAmount) || 0)),
-      ...(paymentsTotal && { payments_total: paymentsTotal }),
-      ...(installmentAmount && { installment_amount: installmentAmount }),
-      ...(totalAmount ? { total_price: totalAmount }
-        : (installmentAmount && paymentsTotal ? { total_price: installmentAmount * paymentsTotal } : {}))
-    } : null;
-
-    let updatedCourses = [...existingCourses];
-    if (courseEntryData) {
-      const idx = updatedCourses.findIndex((c) => c.course_id === course.id);
-      if (idx >= 0) {
-        updatedCourses[idx] = { ...updatedCourses[idx], ...courseEntryData };
-      } else {
-        updatedCourses.push(courseEntryData);
+      let course = null;
+      if (courseName) {
+        const exact = await base44.asServiceRole.entities.Course.filter({ name: courseName });
+        course = exact?.[0] || null;
+        if (!course) {
+          const allCourses = await base44.asServiceRole.entities.Course.list();
+          const target = normalizeName(courseName);
+          course = (allCourses || []).find((c) => normalizeName(c.name) === target) || null;
+          if (course) console.log(`🔎 Fuzzy-matched "${courseName}" → "${course.name}"`);
+        }
       }
+
+      // מוצר שלא מוכר כבר לא יוצר קורס. עד היום כל שם חדש הוליד קורס, וכך
+      // נולדו "תמיכה בפנטהריי" (16 נרשמים) ו"מקדמה עבור השכרת הסטודיו".
+      // עכשיו: הכסף נרשם, המוצר ממתין לשיוך ידני, ואף קורס לא נוצר בטעות.
+      if (!course) {
+        pendingAssignment = true;
+        console.log(`⏸️ Unknown product "${productName}" — recorded, waiting for manual assignment`);
+        noteLines.push(
+          `${isRefund ? 'זיכוי' : 'תשלום'} דרך Summit בתאריך ${billingDate} (₪${it.share})` +
+          ` — מוצר: ${productName || 'ללא שם'}${catalogName ? ` — קטלוג: ${catalogName}` : ''}` +
+          ` — ⏸️ ממתין לשיוך לקורס${documentName ? ` — ${documentName}` : ''}`
+        );
+        totalDelta += isRefund ? -it.share : it.share;
+        continue;
+      }
+
+      const existingEntry = workingCourses.find((c) => c.course_id === course.id);
+
+      let paymentNumber;
+      if (isRefund) {
+        paymentNumber = existingEntry?.payment_number || 1;
+      } else if (currentPaymentRaw) {
+        paymentNumber = currentPaymentRaw;
+      } else if (existingEntry && REGISTERED_STATUSES.includes(existingEntry.status)) {
+        paymentNumber = (existingEntry.payment_number || 1) + 1;
+      } else {
+        paymentNumber = 1;
+      }
+
+      const isRecurringCharge = !isRefund && Boolean(existingEntry && REGISTERED_STATUSES.includes(existingEntry.status));
+      const isNewRegistration = !isRefund && !isRecurringCharge;
+      const paidBeforeRefund = Number(existingEntry?.paid_so_far) || 0;
+      const isFullCancellation = isRefund && paidBeforeRefund > 0 && it.share >= paidBeforeRefund;
+
+      const catalogTag = catalogName ? ` — קטלוג: ${catalogName}` : '';
+      const courseTag = ` — קורס: ${course.name}`;
+      const optionTag = mapping && productName !== courseName ? ` — אפשרות: ${productName}` : '';
+      noteLines.push(
+        isRefund
+          ? `${isFullCancellation ? 'ביטול הרשמה' : 'זיכוי חלקי'} דרך Summit בתאריך ${billingDate} (₪${it.share})${courseTag}${optionTag}${catalogTag}${documentName ? ` — ${documentName}` : ''}`
+          : `תשלום ${paymentNumber}${paymentsTotal ? `/${paymentsTotal}` : ''} דרך Summit בתאריך ${billingDate} (₪${it.share})${courseTag}${optionTag}${catalogTag}${documentName ? ` — ${documentName}` : ''}${unsplitAmount ? ' — ⚠️ הסכום לא פוצל בין הפריטים' : ''}`
+      );
+
+      const signedShare = isRefund ? -it.share : it.share;
+      totalDelta += signedShare;
+
+      const entry = {
+        course_id: course.id,
+        course_name: course.name,
+        status: isFullCancellation ? CANCELLED_STATUS : (isRefund ? (existingEntry?.status || registeredStatus) : registeredStatus),
+        ...(mapping && !mapping.optionField && courseOption ? { option: courseOption } : {}),
+        registration_date: existingEntry?.registration_date || billingDate,
+        payment_number: paymentNumber,
+        paid_so_far: Math.max(0, paidBeforeRefund + signedShare),
+        ...(paymentsTotal && { payments_total: paymentsTotal }),
+        ...(it.share && { installment_amount: it.share }),
+        ...(totalAmount && perItem.length === 1 ? { total_price: totalAmount } : {})
+      };
+
+      const idx = workingCourses.findIndex((c) => c.course_id === course.id);
+      if (idx >= 0) workingCourses[idx] = { ...workingCourses[idx], ...entry };
+      else workingCourses.push(entry);
+
+      if (mapping && mapping.optionField && courseOption) optionFieldUpdates[mapping.optionField] = courseOption;
+
+      results.push({ course, isNewRegistration, isFullCancellation });
     }
 
-    // --- 5. יצירה/עדכון משתתפ.ת ---
-    const mainStatus = computeMainStatus(updatedCourses, registeredStatus);
-
-    // סכום ששולם בפועל — מצטבר על פני כל החיובים
-    // בזיכוי installmentAmount שלילי, ולכן הסכום יורד מעצמו. חוסמים ירידה מתחת לאפס.
-    const amountPaid = Math.max(0, (existingStudent?.amount_paid || 0) + (installmentAmount || 0));
+    // --- 3. יצירה/עדכון משתתפ.ת (פעם אחת לכל העסקה) ---
+    const mainStatus = computeMainStatus(workingCourses, registeredStatus);
+    const amountPaid = Math.max(0, (existingStudent?.amount_paid || 0) + totalDelta);
+    const primary = results[0]?.course || null;
+    const noteText = noteLines.join('\n');
 
     const studentData = {
       full_name: customerName,
       status: mainStatus,
       is_customer: true,
       registration_date: billingDate,
-      course_id: course?.id,
-      course_name: course?.name,
-      payment_number: paymentNumber,
+      course_id: primary?.id,
+      course_name: primary?.name,
       amount_paid: amountPaid,
       ...(paymentsTotal && { total_payments: paymentsTotal }),
       ...(resolvedEmail && { email: resolvedEmail }),
-      ...(customerPhone && customerPhone !== 'לא זמין' && { phone: customerPhone })
+      ...(customerPhone && customerPhone !== 'לא זמין' && { phone: customerPhone }),
+      ...optionFieldUpdates
     };
-    if (updatedCourses.length > 0) studentData.courses = updatedCourses;
-    // תגית "זיכוי" (אופיר, 27.07.2026) — כדי שאפשר יהיה לסנן במסך המשתתפות
-    // מי קיבלה זיכוי, גם כשהזיכוי חלקי והסטטוס נשאר "רשום".
-    if (isRefund) {
-      const currentTags = existingStudent?.tags || [];
-      if (!currentTags.includes(REFUND_TAG)) studentData.tags = [...currentTags, REFUND_TAG];
-    }
-    // שמירת המסלול (למשל nana_option לסמסטר קיץ)
-    if (mapping && mapping.optionField && courseOption) {
-      studentData[mapping.optionField] = courseOption;
-    }
+    if (workingCourses.length > 0) studentData.courses = workingCourses;
+
+    const tags = [...(existingStudent?.tags || [])];
+    if (isRefund && !tags.includes(REFUND_TAG)) tags.push(REFUND_TAG);
+    if (pendingAssignment && !tags.includes(PENDING_TAG)) tags.push(PENDING_TAG);
+    if (tags.length !== (existingStudent?.tags || []).length) studentData.tags = tags;
 
     let student;
     if (existingStudent) {
-      // לא דורסים פרטי קשר קיימים
       if (existingStudent.email) delete studentData.email;
       if (existingStudent.phone && existingStudent.phone !== 'לא זמין') delete studentData.phone;
       studentData.notes = (existingStudent.notes ? existingStudent.notes + '\n' : '') + noteText;
       student = await base44.asServiceRole.entities.Student.update(existingStudent.id, studentData);
-      console.log(`📝 Student updated (${isRecurringCharge ? 'recurring charge #' + paymentNumber : 'registration'})`);
+      console.log(`📝 Student updated — ${results.length} course entrie(s), ₪${totalDelta}`);
     } else {
       studentData.lead_source = 'אחר';
       studentData.notes = noteText;
-      if (!studentData.phone) studentData.phone = 'לא זמין'; // phone הוא שדה חובה בסכימה
+      if (!studentData.phone) studentData.phone = 'לא זמין';
       student = await base44.asServiceRole.entities.Student.create(studentData);
       console.log(`✅ Student created: ${student.id}`);
     }
 
-    // --- 6. עדכון מונה קורס ---
-    if (course && isNewRegistration) {
-      await base44.asServiceRole.entities.Course.update(course.id, {
-        current_students: (course.current_students || 0) + 1
-      });
-    } else if (course && isFullCancellation) {
-      // ביטול מלא — המשתתפת יורדת מהרשומים. עד היום זיכוי דווקא *העלה* את המונה.
-      await base44.asServiceRole.entities.Course.update(course.id, {
-        current_students: Math.max(0, (course.current_students || 0) - 1)
-      });
-    }
+    // --- 4. לכל קורס בעסקה: מונה, משימת היכרות, רשימת תפוצה ---
+    const closedTaskIds = [];
+    for (const r of results) {
+      const course = r.course;
 
-    // --- 7. סגירת משימת שיחת היכרות (אם קיימת ופתוחה) ---
-    let closedTaskId = null;
-    if (course && isNewRegistration) {
-      try {
-        const tasks = await base44.asServiceRole.entities.Task.filter({ student_id: student.id });
-        const openIntroTasks = (tasks || []).filter((t) =>
-          String(t.name || '').includes('שיחת היכרות') &&
-          t.status !== 'הושלם' && t.status !== 'אבוד' && t.status !== 'לא רלוונטי'
-        );
-        // עדיפות: משימה שמזכירה את הקורס הספציפי; אחרת משימת היכרות כללית
-        const courseNorm = normalizeName(course.name);
-        const match = openIntroTasks.find((t) =>
-          normalizeName(t.name).includes(courseNorm) || normalizeName(t.description || '').includes(courseNorm)
-        ) || (openIntroTasks.length === 1 ? openIntroTasks[0] : null);
-
-        if (match) {
-          await base44.asServiceRole.entities.Task.update(match.id, { status: 'הושלם' });
-          closedTaskId = match.id;
-          console.log(`✅ Intro task closed: ${match.id} ("${match.name}")`);
-        }
-      } catch (taskError) {
-        console.error('⚠️ Intro task close error (non-fatal):', taskError.message);
+      if (r.isNewRegistration) {
+        await base44.asServiceRole.entities.Course.update(course.id, {
+          current_students: (course.current_students || 0) + 1
+        });
+      } else if (r.isFullCancellation) {
+        await base44.asServiceRole.entities.Course.update(course.id, {
+          current_students: Math.max(0, (course.current_students || 0) - 1)
+        });
       }
-    }
 
-    // --- 8. סנכרון Subscribers: העברה מ"מתעניינים" ל"רשומים" ---
-    if (resolvedEmail && course) {
-      try {
-        const interestedGroup = `${course.name} - מתעניינים`;
-        const registeredGroup = `${course.name} - רשומים`;
-
-        let existingSub = null;
-        const bySubEmail = await base44.asServiceRole.entities.Subscribers.filter({ email: resolvedEmail });
-        if (bySubEmail?.length) existingSub = bySubEmail[0];
-
-        let whatsappNum = '';
-        if (customerPhone && customerPhone !== 'לא זמין') whatsappNum = normalizeWhatsapp(customerPhone);
-
-        if (!existingSub && whatsappNum) {
-          const bySubPhone = await base44.asServiceRole.entities.Subscribers.filter({ whatsapp: whatsappNum });
-          if (bySubPhone?.length) existingSub = bySubPhone[0];
+      if (r.isNewRegistration) {
+        try {
+          const tasks = await base44.asServiceRole.entities.Task.filter({ student_id: student.id });
+          const openIntroTasks = (tasks || []).filter((t) =>
+            String(t.name || '').includes('שיחת היכרות') &&
+            t.status !== 'הושלם' && t.status !== 'אבוד' && t.status !== 'לא רלוונטי'
+          );
+          const courseNorm = normalizeName(course.name);
+          const match = openIntroTasks.find((t) =>
+            normalizeName(t.name).includes(courseNorm) || normalizeName(t.description || '').includes(courseNorm)
+          ) || (openIntroTasks.length === 1 && results.length === 1 ? openIntroTasks[0] : null);
+          if (match) {
+            await base44.asServiceRole.entities.Task.update(match.id, { status: 'הושלם' });
+            closedTaskIds.push(match.id);
+            console.log(`✅ Intro task closed: ${match.id} ("${match.name}")`);
+          }
+        } catch (taskError) {
+          console.error('⚠️ Intro task close error (non-fatal):', taskError.message);
         }
+      }
 
-        if (existingSub) {
-          const groups = (existingSub.groups || []).filter((g) => g !== interestedGroup);
-          if (!groups.includes(registeredGroup)) groups.push(registeredGroup);
-          await base44.asServiceRole.entities.Subscribers.update(existingSub.id, {
-            subscribed: true,
-            name: customerName || existingSub.name,
-            whatsapp: whatsappNum || existingSub.whatsapp,
-            source: existingSub.source || 'Summit',
-            group: registeredGroup,
-            groups
-          });
-          console.log(`✅ Subscriber moved to "${registeredGroup}"`);
-        } else {
-          await base44.asServiceRole.entities.Subscribers.create({
-            email: resolvedEmail,
-            name: customerName || '',
-            whatsapp: whatsappNum,
-            subscribed: true,
-            marketing_consent: false,
-            source: 'Summit',
-            group: registeredGroup,
-            groups: [registeredGroup]
-          });
-          console.log(`✅ New subscriber in "${registeredGroup}"`);
+      if (resolvedEmail) {
+        try {
+          const interestedGroup = `${course.name} - מתעניינים`;
+          const registeredGroup = `${course.name} - רשומים`;
+
+          let existingSub = null;
+          const bySubEmail = await base44.asServiceRole.entities.Subscribers.filter({ email: resolvedEmail });
+          if (bySubEmail?.length) existingSub = bySubEmail[0];
+
+          let whatsappNum = '';
+          if (customerPhone && customerPhone !== 'לא זמין') whatsappNum = normalizeWhatsapp(customerPhone);
+
+          if (!existingSub && whatsappNum) {
+            const bySubPhone = await base44.asServiceRole.entities.Subscribers.filter({ whatsapp: whatsappNum });
+            if (bySubPhone?.length) existingSub = bySubPhone[0];
+          }
+
+          if (existingSub) {
+            const groups = (existingSub.groups || []).filter((g) => g !== interestedGroup);
+            if (!groups.includes(registeredGroup)) groups.push(registeredGroup);
+            await base44.asServiceRole.entities.Subscribers.update(existingSub.id, {
+              subscribed: true,
+              name: customerName || existingSub.name,
+              whatsapp: whatsappNum || existingSub.whatsapp,
+              source: existingSub.source || 'Summit',
+              group: registeredGroup,
+              groups
+            });
+            console.log(`✅ Subscriber moved to "${registeredGroup}"`);
+          } else {
+            await base44.asServiceRole.entities.Subscribers.create({
+              email: resolvedEmail,
+              name: customerName || '',
+              whatsapp: whatsappNum,
+              subscribed: true,
+              marketing_consent: false,
+              source: 'Summit',
+              group: registeredGroup,
+              groups: [registeredGroup]
+            });
+            console.log(`✅ New subscriber in "${registeredGroup}"`);
+          }
+        } catch (subError) {
+          console.error('⚠️ Subscriber sync error (non-fatal):', subError.message);
         }
-      } catch (subError) {
-        console.error('⚠️ Subscriber sync error (non-fatal):', subError.message);
       }
     }
 
@@ -530,12 +583,15 @@ Deno.serve(async (req) => {
       student_name: student.full_name,
       status: student.status,
       is_customer: true,
-      course: course ? course.name : 'לא שויך',
-      payment: `${paymentNumber}${paymentsTotal ? '/' + paymentsTotal : ''}`,
-      recurring_charge: isRecurringCharge,
-      is_new_registration: isNewRegistration,
-      intro_task_closed: closedTaskId
+      catalog: catalogName || null,
+      items: perItem.map((i) => i.productName),
+      courses: results.map((r) => r.course.name),
+      pending_assignment: pendingAssignment,
+      amount_not_split: unsplitAmount,
+      is_refund: isRefund,
+      intro_tasks_closed: closedTaskIds
     });
+
 
   } catch (error) {
     console.error('❌ Error:', error.message);

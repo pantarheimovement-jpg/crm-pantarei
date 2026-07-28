@@ -13,9 +13,10 @@ const NOTIFICATION_EMAIL = 'pantarhei.movement@gmail.com';
 // uChat business phone (WhatsApp Cloud API via uChat)
 const UCHAT_BUSINESS_PHONE = '972515041100';
 
-// קליטת לידים מוואטסאפ — כבוי לבקשת אופיר (27.07.2026).
-// כדי להחזיר את המסלול: להחזיר ל-true (או להגדיר WHATSAPP_LEAD_INGESTION=on).
-const LEAD_INGESTION_ENABLED = (Deno.env.get('WHATSAPP_LEAD_INGESTION') || '').toLowerCase() === 'on';
+// מסלול ה"לבדיקה" (for_review) — כבוי לבקשת אופיר (27.07.2026).
+// ליד מובהק (strong_lead) ממשיך להיקלט כרגיל.
+// כדי להחזיר את מסלול הלבדיקה: WHATSAPP_REVIEW_PATH=on.
+const REVIEW_PATH_ENABLED = (Deno.env.get('WHATSAPP_REVIEW_PATH') || '').toLowerCase() === 'on';
 
 // Per-request state for uChat inbound flow (reply is returned in the response, not sent via API)
 const uchatCapture = { active: false, chatId: null, reply: null, userNs: null, phone972: null };
@@ -421,19 +422,6 @@ async function handleRequest(req) {
     }
 
     // =============================================
-    // LEAD INGESTION KILL-SWITCH (אופיר, 27.07.2026)
-    // =============================================
-    // אופיר ביקשה לבטל לגמרי את המסלול של "ליד חדש מוואטסאפ":
-    // אין יצירת/עדכון רשומות, אין משימת שיחת היכרות, אין תגובה אוטומטית
-    // ללקוחה, אין התראת וואטסאפ לאופיר ואין מיילים.
-    // מה שכן ממשיך לעבוד מעל השורה הזו: בקשות "הסר" (חובה רגולטורית),
-    // שמירת uchat_user_ns ו-last_incoming_text, ומענה אופיר.
-    if (!LEAD_INGESTION_ENABLED) {
-      console.log('🛑 Lead ingestion disabled — message logged only, nothing created');
-      return Response.json({ status: 'ignored', reason: 'Lead ingestion disabled by request (Ofir, 27.07.2026)' });
-    }
-
-    // =============================================
     // CHECK IF THIS IS A KNOWN CONTACT (SKIP)
     // =============================================
     const senderVariants = getPhoneVariants(phoneNumber);
@@ -636,6 +624,15 @@ async function handleRequest(req) {
     // FOR REVIEW PATH — notification to Ofir runs in background
     // =============================================
     if (intent.intentType === 'for_review') {
+
+      // מסלול ה"לבדיקה" מבוטל (אופיר, 27.07.2026): הודעה שלא זוהתה בה כוונה
+      // מובהקת לא יוצרת רשומה, לא משנה סטטוס, ולא שולחת התראת וואטסאפ או מייל
+      // לאופיר עם כן/לא. ליד מובהק (strong_lead) ממשיך להיקלט כרגיל, וכך גם
+      // בקשות "הסר", שמירת uchat_user_ns ומענה אופיר — כולם מעל השורה הזו.
+      if (!REVIEW_PATH_ENABLED) {
+        console.log('🛑 For-review path disabled — nothing created, Ofir not notified');
+        return Response.json({ status: 'ignored', reason: 'For-review path disabled by request (Ofir, 27.07.2026)' });
+      }
 
       if (existingStudent) {
         console.log(`📝 Existing student "${existingStudent.full_name}" - message for review`);

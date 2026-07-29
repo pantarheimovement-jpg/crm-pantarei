@@ -16,8 +16,11 @@ const UCHAT_BUSINESS_PHONE = '972515041100';
 // קליטת לידים מוואטסאפ — כבויה לבקשת אופיר (27.07.2026), על שני מסלוליה:
 // גם ליד מובהק (strong_lead) וגם הודעה לבדיקה (for_review).
 // לידים מטופס האתר נקלטים כרגיל — הם עוברים ב-handleElementorLead, לא כאן.
-// כדי להחזיר: WHATSAPP_LEAD_INGESTION=on.
-const LEAD_INGESTION_ENABLED = (Deno.env.get('WHATSAPP_LEAD_INGESTION') || '').toLowerCase() === 'on';
+//
+// קבוע ולא משתנה סביבה בכוונה: ב-29.07 התברר שהמתג לא פעל בפרודקשן למרות
+// שהקוד סונכרן, ומשתנה סביבה שלא מוגדר הוא עוד נעלם שצריך לשלול. כדי להחזיר
+// את הקליטה — לשנות כאן ל-true ולפרוס.
+const LEAD_INGESTION_ENABLED = false;
 
 // Per-request state for uChat inbound flow (reply is returned in the response, not sent via API)
 const uchatCapture = { active: false, chatId: null, reply: null, userNs: null, phone972: null };

@@ -47,10 +47,18 @@ function pickFrom(obj, names) {
 // סריקה של כל מפתח שנראה כמו קטלוג, ולבסוף על הפריט עצמו. מה שנתפס
 // נכתב ללוג — כך החיוב האמיתי הבא מאמת את השם לבד.
 function resolveCatalogName(properties, item) {
+  // ערך שנראה כמו שם קטלוג — ולא כמו בלוק JSON. ב-29.7 התגלה שהסריקה
+  // הגנרית תפסה את בלוק זיהוי ההונאה של סאמיט (IPAddress, RecaptchaScore)
+  // וכתבה אותו כ"קטלוג" בהערות. מכאן: כל מועמד עובר אימות צורה.
+  const looksLikeName = (s) =>
+    typeof s === 'string' && s.trim() && s.trim().length <= 60 &&
+    !s.trim().startsWith('{') && !s.trim().startsWith('[') &&
+    !/IPAddress|Recaptcha|Alerts|Complexity/i.test(s);
   const asName = (v) => {
     const first = Array.isArray(v) ? v[0] : v;
     if (!first) return null;
-    return typeof first === 'string' ? first : (first.Name || null);
+    const candidate = typeof first === 'string' ? first : (typeof first?.Name === 'string' ? first.Name : null);
+    return looksLikeName(candidate) ? candidate.trim() : null;
   };
   for (const key of ['Billing_Catalog', 'Billing_PurchasePage', 'Billing_Folder', 'Catalog', 'PurchasePage', 'קטלוג']) {
     const name = asName(properties?.[key]);
@@ -63,7 +71,13 @@ function resolveCatalogName(properties, item) {
   }
   const onItem = asName(item?.Catalog) || asName(item?.Folder) || asName(item?.PurchasePage);
   if (onItem) { console.log(`🗂️ Catalog from the item itself: ${onItem}`); return onItem; }
-  console.log('🗂️ No catalog field found in payload — keys:', Object.keys(properties || {}).join(', '));
+  // לא נמצא שם תקין — מדפיסים את כל המפתחות עם דגימת ערך, כדי שהחיוב
+  // האמיתי הבא יגלה את שם המפתח הנכון מתוך הלוג.
+  const dump = {};
+  for (const key of Object.keys(properties || {})) {
+    dump[key] = JSON.stringify(properties[key])?.slice(0, 120);
+  }
+  console.log('🗂️ No valid catalog name found — key samples:', JSON.stringify(dump));
   return null;
 }
 

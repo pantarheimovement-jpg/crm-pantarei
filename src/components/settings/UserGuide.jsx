@@ -3,7 +3,7 @@ import {
   ChevronDown, ChevronUp, BookOpen, LayoutDashboard, Users, GraduationCap, 
   CheckSquare, Mail, Zap, Settings, Search, ArrowRight,
   Sparkles, AlertCircle, RefreshCw, MessageSquare, ClipboardList, ShieldCheck, BarChart3,
-  Copy, Check, Image, FileText, Globe, Upload
+  Copy, Check, Image, FileText, Globe, Upload, CreditCard, Send
 } from 'lucide-react';
 
 function FAQItem({ question, answer, icon: Icon, color = '#6D436D' }) {
@@ -963,6 +963,189 @@ export default function UserGuide() {
                 <li>התגובה הכללית נשלחת רק <strong>ללידים חדשים</strong> שזוהו כהתעניינות ברורה</li>
                 <li>הודעות ש״לבדיקה״ <strong>לא מקבלות תגובה אוטומטית</strong> — אופיר מקבלת התראה ומאשרת/דוחה</li>
               </ul>
+            </div>
+          }
+        />
+      </Section>
+
+      {/* החיבור לסאמיט */}
+      <Section title="החיבור לסאמיט (מערכת החיובים)" icon={CreditCard} color="#16A085">
+        <FAQItem
+          icon={Zap}
+          color="#16A085"
+          question="מה נכנס אוטומטית מסאמיט?"
+          answer={
+            <div>
+              <p className="mb-3">כל תשלום בסליקת אשראי מגיע מסאמיט ל-CRM דרך טריגר, בלי שצריך לגעת בו:</p>
+              <div className="space-y-4">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <p className="font-bold text-green-800 mb-1">💳 תשלום בכרטיס אשראי</p>
+                  <ul className="list-disc list-inside text-sm text-green-700 space-y-1">
+                    <li>נרשם על המשתתפת עם <strong>מספר הקבלה</strong> בהערות</li>
+                    <li><strong>הוראת קבע באשראי</strong> נכנסת אותו דבר — כל <strong>חיוב חודשי</strong> נקלט בנפרד, לא רק החיוב הראשון</li>
+                  </ul>
+                </div>
+                <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <p className="font-bold text-green-800 mb-1">🔄 זיכויים</p>
+                  <ul className="list-disc list-inside text-sm text-green-700 space-y-1">
+                    <li>זיכוי שמופק בסאמיט נקלט גם הוא אוטומטית ומתעדכן על המשתתפת</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={AlertCircle}
+          color="#16A085"
+          question="מה לא נכנס אוטומטית? (נכון ל-29.07.2026)"
+          answer={
+            <div>
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <p className="font-bold text-yellow-800 mb-1">✋ קבלות שמופקות ידנית</p>
+                <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
+                  <li><strong>העברה בנקאית, מזומן, ביט</strong> — כל תשלום שלא עובר דרך סליקת האשראי</li>
+                  <li>אלה חייבים להיות <strong>מוקלדים ידנית</strong> ב-CRM, או להמתין לפתרון שנמצא כרגע בעבודה</li>
+                </ul>
+              </div>
+              <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
+                ⚠️ <strong>חשוב:</strong> אם הוצאת קבלה ידנית — לוודא תמיד שהמשתתפת והסכום נרשמו גם ב-CRM. אחרת התשלום קיים בסאמיט אבל "נעלם" מהמערכת.
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={Search}
+          color="#16A085"
+          question="למה שם המוצר בסאמיט הוא כל כך קריטי?"
+          answer={
+            <div>
+              <p className="mb-2">המערכת מזהה <strong>לאיזה קורס שייך תשלום</strong> אך ורק לפי שם המוצר בסאמיט — זה המפתח היחיד שהיא מכירה.</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>שם המוצר של קורס או של הוראת קבע חייב להיות <strong>זהה אות באות</strong> לשם הקורס ב-CRM</li>
+                <li><strong>אסור לשנות</strong> שם מוצר או שם קורס באמצע שנה — זה שובר את ההתאמה בין סאמיט ל-CRM</li>
+                <li>הנחות וקודי קופון שייכים <strong>לתיאור המוצר</strong>, לא לשם שלו</li>
+              </ul>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ClipboardList}
+          color="#16A085"
+          question="תשלום על מוצר שהמערכת לא מכירה — מה קורה?"
+          answer={
+            <div>
+              <p className="mb-2">תשלום על מוצר שהשם שלו לא תואם אף קורס קיים <strong>לא פותח קורס חדש</strong> באופן אוטומטי:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>הכסף נרשם על המשתתפת, עם תגית <strong>״ממתין לשיוך לקורס״</strong></li>
+                <li>נוספת הערה עם <strong>שם המוצר והקטלוג</strong> כפי שהתקבלו מסאמיט</li>
+                <li>צריך <strong>לשייך ידנית</strong> לקורס הנכון</li>
+              </ul>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={Users}
+          color="#16A085"
+          question="לקוח שהוא ארגון (למשל השכרת סטודיו לעמותה) — מה עושים?"
+          answer={
+            <div>
+              <p>תשלום של ארגון (ולא של אדם פרטי) — כמו השכרת סטודיו לעמותה — <strong>לא נקלט אוטומטית</strong> כרגע.</p>
+              <p className="mt-2">יש לרשום אותו <strong>ידנית</strong> ב-CRM.</p>
+            </div>
+          }
+        />
+      </Section>
+
+      {/* הודעות פולואפ אוטומטיות */}
+      <Section title="הודעות פולואפ אוטומטיות בוואטסאפ" icon={Send} color="#E67E22">
+        <FAQItem
+          icon={Sparkles}
+          color="#E67E22"
+          question="אילו הודעות אוטומטיות נשלחות למתעניינות?"
+          answer={
+            <div>
+              <p className="mb-3">שלוש הודעות מבוססות <strong>תבניות מאושרות במטא</strong> — ולכן מגיעות גם למי שלא כתבה לנו ב-24 השעות האחרונות. לכולן כפתור ״הסר״:</p>
+              <div className="space-y-4">
+                <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                  <p className="font-bold text-orange-800 mb-1">📝 הודעת פרטי הרשמה (followup_1)</p>
+                  <ul className="list-disc list-inside text-sm text-orange-700 space-y-1">
+                    <li>נשלחת כש<strong>קורס נפתח להרשמה</strong> — לכל מי שממתינה בסטטוס ״לחזור לקראת הרשמה״</li>
+                    <li>וגם כשמשימה עוברת לסטטוס הזה והקורס <strong>כבר</strong> פתוח להרשמה</li>
+                    <li>כוללת: מועדים, קישור לתשלום וקישור לדף הקורס</li>
+                  </ul>
+                </div>
+                <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                  <p className="font-bold text-orange-800 mb-1">⏰ תזכורת המשך (followup_3days)</p>
+                  <ul className="list-disc list-inside text-sm text-orange-700 space-y-1">
+                    <li>3 ימים אחרי שיחת ההיכרות (ניתן לשינוי בהגדרות — ״ימים לפני מעקב אוטומטי״)</li>
+                  </ul>
+                </div>
+                <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                  <p className="font-bold text-orange-800 mb-1">📅 שבוע לפני הקורס (week_before)</p>
+                  <ul className="list-disc list-inside text-sm text-orange-700 space-y-1">
+                    <li>נשלחת בדיוק שבוע לפני תאריך ההתחלה של הקורס המקושר</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={CheckSquare}
+          color="#E67E22"
+          question="איך מפעילים את זה על מתעניינת?"
+          answer={
+            <div>
+              <p className="mb-2">מתג ההפעלה הוא <strong>סטטוס המשימה</strong>: מעבירים את המשימה שלה לסטטוס <strong>״לחזור לקראת הרשמה״</strong> — וזהו. מכאן הכל אוטומטי.</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>ברגע שינוי הסטטוס נרשם ״תאריך שינוי סטטוס״ על המשימה — ממנו נספרים 3 הימים</li>
+                <li>השדה <strong>ניתן לעריכה</strong>: הזזה אחורה = הפולואפ יישלח מוקדם יותר, קדימה = דחייה</li>
+                <li>הודעות נשלחות רק למשימות ששינו סטטוס <strong>מרגע ההפעלה ואילך</strong> — משימות ישנות בלי תאריך לא יקבלו כלום (בכוונה)</li>
+              </ul>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={GraduationCap}
+          color="#E67E22"
+          question="מה חייב להיות מלא בקורס כדי שההודעות ייצאו?"
+          answer={
+            <div>
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <ul className="list-disc list-inside text-sm text-yellow-800 space-y-1">
+                  <li><strong>הודעת ההרשמה</strong> צריכה בקורס: מועדים כטקסט, קישור תשלום, קישור לדף הקורס — אם חסר אחד מהם, ההודעה <strong>לא תישלח</strong> (הגנה מכוונת, לא תקלה)</li>
+                  <li><strong>שבוע לפני</strong> צריכה: תאריך התחלה על הקורס</li>
+                </ul>
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={RefreshCw}
+          color="#E67E22"
+          question="מתי זה רץ בפועל, ומה מונע הצפה?"
+          answer={
+            <div>
+              <ul className="list-disc list-inside space-y-1">
+                <li>בדיקה אוטומטית <strong>פעם ביום ב-10:00 בבוקר</strong></li>
+                <li>כל הודעה נשלחת <strong>פעם אחת בלבד</strong> — נרשם על המשימה מתי נשלחה</li>
+                <li>מקסימום <strong>הודעה אחת לבוקר</strong> למתעניינת: אם מגיעות גם ״שבוע לפני״ וגם תזכורת — ״שבוע לפני״ קודמת, והשנייה נדחית למחר</li>
+                <li>משימות שעברו יותר מ-30 יום מאז שינוי הסטטוס — לא נשלחות</li>
+              </ul>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={ShieldCheck}
+          color="#E67E22"
+          question="למה אי אפשר לערוך את הנוסח? ומי לא תקבל הודעות?"
+          answer={
+            <div>
+              <p className="mb-2">הנוסח <strong>נעול אצל מטא</strong> — תבנית מאושרת אי אפשר לערוך מהמערכת. לשינוי נוסח מגישים תבנית חדשה לאישור במטא (ומסנכרנים ב-uChat).</p>
+              <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
+                ⚠️ <strong>הגנת הסרה:</strong> מי שלחצה ״הסר״ או מסומנת ללא הסכמת דיוור — מדולגת אוטומטית בכל שלוש ההודעות. אין צורך לזכור את זה ידנית.
+              </div>
             </div>
           }
         />

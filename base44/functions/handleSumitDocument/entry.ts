@@ -1,35 +1,184 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-// לכידת payload מהטריגר של סאמיט על יצירת מסמך בתיקיית ההכנסות
-// (קבלות ידניות: העברה בנקאית / מזומן / ביט — וגם קבלות אשראי, שיזוהו
-// וידולגו בשלב המיפוי). שלב 1 מתוך 2: תיעוד בלבד, אפס כתיבה לרשומות
-// משתתפות. כל אירוע נשמר ב-SumitWebhookCapture כדי שאפשר יהיה לקרוא
-// את המבנה האמיתי דרך ה-MCP ולכתוב את המיפוי על סמך אמת, לא ניחוש.
+// שלב 2 — מיפוי מסמכים מסאמיט (טריגר "יצירת מסמך" בתיקיית ההכנסות).
+// סוגר את הפער שקבלות ידניות (העברה בנקאית / מזומן) לא נקלטו בו:
+// הטריגר הוותיק יושב על "יצירת כרטיס", וקבלה ידנית לא יוצרת כרטיס.
+//
+// הכלל הפוך-בטוח: מעבדים אך ורק אמצעי תשלום ידניים מוכרים (2=מזומן,
+// 3=העברה בנקאית). אשראי מגיע כ-Type=null ומטופל בטריגר התשלומים —
+// כל סוג לא מוכר מדולג ונרשם ב-SumitWebhookCapture, כך שסוג חדש
+// (ביט?) יתגלה מהתיעוד ולא ינחש.
+// מוצר שלא תואם קורס קיים לא יוצר קורס — תגית "ממתין לשיוך לקורס".
+const MANUAL_PAYMENT_TYPES = { 2: 'מזומן', 3: 'העברה בנקאית' };
+const PENDING_TAG = 'ממתין לשיוך לקורס';
+const VERSION = 'v3-2026-07-30';
+
+function normalizeName(s) {
+  return String(s || '').replace(/["״'׳]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function phoneVariants(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return [];
+  const variants = new Set([digits]);
+  if (digits.startsWith('972')) variants.add('0' + digits.slice(3));
+  if (digits.startsWith('0')) variants.add('972' + digits.slice(1));
+  return [...variants];
+}
+
 Deno.serve(async (req) => {
-  console.log('=== 🧾 handleSumitDocument capture v2 ===');
+  console.log(`=== 🧾 handleSumitDocument ${VERSION} ===`);
+  const base44 = createClientFromRequest(req);
   let payload = null;
+  try { payload = await req.json(); } catch (_e) { /* non-JSON */ }
+
+  let decision = 'captured';
+  let detail = null;
+
   try {
-    payload = await req.json();
-  } catch (_e) {
-    console.log('🧾 Non-JSON body');
-  }
-  try {
-    console.log('🧾 FULL PAYLOAD:', JSON.stringify(payload, null, 2));
-  } catch (_e) {
-    console.log('🧾 Payload not serializable');
+    if (payload?.probe) {
+      decision = 'probe';
+    } else {
+      const docNumber = payload?.Properties?.Accounting_Number?.[0];
+      if (!docNumber) {
+        decision = 'no-doc-number';
+      } else {
+        const SUMIT_API_KEY = Deno.env.get('SUMIT_API_KEY');
+        const SUMIT_COMPANY_ID = Deno.env.get('SUMIT_COMPANY_ID');
+        const credentials = {
+          CompanyID: Number(String(SUMIT_COMPANY_ID).replace(/\D/g, '')),
+          APIKey: String(SUMIT_API_KEY).trim()
+        };
+        async function getDetails(docType) {
+          const res = await fetch('https://api.sumit.co.il/accounting/documents/getdetails/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Credentials: credentials, DocumentNumber: docNumber, DocumentType: docType })
+          });
+          const json = await res.json().catch(() => null);
+          return json?.Data || null;
+        }
+        let isRefund = false;
+        let d = await getDetails(1); // חשבון/קבלה
+        if (!d) { d = await getDetails(6); isRefund = Boolean(d); } // חשבון/קבלה זיכוי
+        if (!d) {
+          decision = 'details-not-found';
+        } else {
+          const payments = d.Payments || [];
+          const payTypes = payments.map((p) => p.Type ?? null);
+          const allManual = payments.length > 0 && payTypes.every((t) => t !== null && MANUAL_PAYMENT_TYPES[t]);
+          detail = { docNumber, payTypes, customer: d.Document?.Customer?.Name || null };
+
+          if (!allManual) {
+            // אשראי (null) או סוג לא מוכר — הטריגר הוותיק מטפל / דורש פענוח
+            decision = payTypes.every((t) => t === null) ? 'skipped-credit' : 'skipped-unknown-paytype';
+          } else {
+            const payLabel = [...new Set(payTypes.map((t) => MANUAL_PAYMENT_TYPES[t]))].join(', ');
+            const docMarker = `חשבון/קבלה${isRefund ? ' זיכוי' : ''} / ${docNumber}`;
+            const customerName = d.Document?.Customer?.Name || null;
+            const customerEmail = (d.Document?.Customer?.EmailAddress || '').trim().toLowerCase() || null;
+            const customerPhone = (d.Document?.Customer?.Phone || '').trim() || null;
+            const billingDate = d.Document?.Date?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+
+            // --- איתור משתתפ.ת: מייל → טלפון (בשני הפורמטים) → שם ---
+            let student = null;
+            if (customerEmail) {
+              student = (await base44.asServiceRole.entities.Student.filter({ email: customerEmail }))?.[0] || null;
+            }
+            if (!student && customerPhone) {
+              for (const v of phoneVariants(customerPhone)) {
+                student = (await base44.asServiceRole.entities.Student.filter({ phone: v }))?.[0] || null;
+                if (student) break;
+              }
+            }
+            if (!student && customerName) {
+              student = (await base44.asServiceRole.entities.Student.filter({ full_name: customerName }))?.[0] || null;
+            }
+
+            if (student && (student.notes || '').includes(docMarker)) {
+              decision = 'duplicate-skip';
+            } else {
+              // --- פריטים → קורסים קיימים בלבד (בלי יצירה) ---
+              const allCourses = await base44.asServiceRole.entities.Course.list();
+              const items = (d.Items || []).map((it) => ({
+                name: it.Item?.Name || it.Description || 'ללא שם',
+                total: Number(it.TotalPrice ?? 0)
+              }));
+              const noteLines = [];
+              const newCourseEntries = [];
+              let pendingAssignment = false;
+              let totalDelta = 0;
+
+              for (const it of items) {
+                const target = normalizeName(it.name);
+                const course = (allCourses || []).find((c) => normalizeName(c.name) === target) || null;
+                totalDelta += it.total;
+                const kind = isRefund || it.total < 0 ? 'זיכוי' : 'תשלום 1';
+                if (course) {
+                  noteLines.push(`${kind} דרך Summit בתאריך ${billingDate} (₪${it.total}) — קורס: ${course.name} — ${docMarker} — קבלה ידנית (${payLabel})`);
+                  const already = (student?.courses || []).some((c) => c.course_id === course.id) ||
+                    newCourseEntries.some((c) => c.course_id === course.id);
+                  if (!already && !isRefund && it.total > 0) {
+                    newCourseEntries.push({
+                      course_id: course.id, course_name: course.name, registration_date: billingDate,
+                      installment_amount: it.total, payment_number: 1, payments_total: null,
+                      total_price: null, status: 'רשום', option: null
+                    });
+                  }
+                } else {
+                  pendingAssignment = true;
+                  noteLines.push(`${kind} דרך Summit בתאריך ${billingDate} (₪${it.total}) — מוצר: ${it.name} — ⏸️ ${PENDING_TAG} — ${docMarker} — קבלה ידנית (${payLabel})`);
+                }
+              }
+
+              const noteBlock = noteLines.join('\n');
+              if (student) {
+                const tags = [...new Set([...(student.tags || []), ...(pendingAssignment ? [PENDING_TAG] : [])])];
+                await base44.asServiceRole.entities.Student.update(student.id, {
+                  notes: student.notes ? `${student.notes}\n${noteBlock}` : noteBlock,
+                  amount_paid: (Number(student.amount_paid) || 0) + totalDelta,
+                  courses: [...(student.courses || []), ...newCourseEntries],
+                  is_customer: true,
+                  tags
+                });
+                decision = 'processed-existing';
+                detail.student_id = student.id;
+              } else {
+                const created = await base44.asServiceRole.entities.Student.create({
+                  full_name: customerName || `לקוח סאמיט ${docNumber}`,
+                  email: customerEmail, phone: customerPhone || 'לא זמין',
+                  status: 'רשום', is_customer: true, lead_source: 'אחר', marketing_consent: false,
+                  amount_paid: totalDelta, registration_date: billingDate,
+                  course_id: newCourseEntries[0]?.course_id || null,
+                  course_name: newCourseEntries[0]?.course_name || null,
+                  courses: newCourseEntries,
+                  tags: pendingAssignment ? [PENDING_TAG] : [],
+                  notes: noteBlock
+                });
+                decision = 'processed-new';
+                detail.student_id = created?.id || null;
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('🧾 Mapping error:', err.message);
+    decision = 'error';
+    detail = { ...(detail || {}), error: err.message };
   }
 
-  // שמירה לישות — עטופה כך שכשל שמירה לא יפיל את התשובה לסאמיט
+  // תיעוד כל אירוע — ההחלטה נשמרת בשדה source כדי שאפשר לבקר דילוגים
   try {
-    const base44 = createClientFromRequest(req);
     await base44.asServiceRole.entities.SumitWebhookCapture.create({
-      source: payload?.probe ? 'probe' : 'document-create',
-      payload: JSON.stringify(payload)?.slice(0, 90000) || 'null',
+      source: payload?.probe ? 'probe' : `document-create:${decision}`,
+      payload: (JSON.stringify({ event: payload, detail }) || 'null').slice(0, 90000),
       received_at: new Date().toISOString()
     });
   } catch (persistErr) {
     console.error('🧾 Persist failed (non-fatal):', persistErr.message);
   }
 
-  return Response.json({ status: 'captured', mode: 'log+persist', version: 'v2-2026-07-30' });
+  return Response.json({ status: 'ok', decision, version: VERSION });
 });

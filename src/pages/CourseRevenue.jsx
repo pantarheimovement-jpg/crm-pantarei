@@ -79,21 +79,26 @@ export default function CourseRevenue() {
       });
 
       // כמה שולם בפועל, לפי סדר אמינות יורד:
-      //   1. paid_so_far — סכום מצטבר אמיתי שנצבר מכל חיוב בסאמיט
-      //   2. amount_paid — כשלמשתתפת יש קורס אחד בלבד, הסכום שלה שייך כולו לקורס הזה
+      //   1. paid_so_far — הסכום שנצבר לקורס הזה בלבד
+      //   2. amount_paid — כשלמשתתפת רישום רשום אחד בלבד, כל הכסף שלה שייך לו
       //   3. installment_amount × payment_number — אומדן בלבד. נכון רק כשכל התשלומים
       //      שווים; מי ששילמה ₪1,400 ואז ₪800 מוצגת כאן כ-₪1,600 במקום ₪2,200.
-      // סופרים רק כסף ודאי: paid_so_far (מצטבר אמיתי מסאמיט), או amount_paid
-      // כשלמשתתפת קורס אחד בלבד. סכום שאפשר רק לנחש (installment × payment_number)
+      // סופרים רק כסף ודאי. סכום שאפשר רק לנחש (installment × payment_number)
       // לא נספר כלל — מספר על המסך הוא תמיד מספר אמיתי, אחרת "—".
+      //
+      // ⚠️ התנאי בודק רישומים *רשומים*, לא את אורך המערך. עד 30.7 הוא ספר את כל
+      // המערך, ולכן מי שיש לה גם רשומת "ליד היסטורי" או "לא רלוונטי" נעלמה בשקט:
+      // נסרין עואד, ₪180, רישום רשום אחד מתוך שלוש רשומות. 22 משתתפות כאלה.
       // hasUnknown מציין שיש רשומים ששילמו אך הסכום המדויק שלהם לא נמשך מסאמיט.
       let hasUnknown = false;
       const paidSoFar = registeredEntries.reduce((sum, e) => {
         if (e.paid_so_far !== null && e.paid_so_far !== undefined && e.paid_so_far !== '') {
           return sum + (parseFloat(e.paid_so_far) || 0);
         }
-        const hasSingleCourse = (e.student?.courses || []).length === 1;
-        if (hasSingleCourse && e.student?.amount_paid) {
+        const registeredCourseCount = (e.student?.courses || []).filter(
+          c => REGISTERED_STATUSES.has(c.status)
+        ).length;
+        if (registeredCourseCount === 1 && e.student?.amount_paid) {
           return sum + (parseFloat(e.student.amount_paid) || 0);
         }
         // יש חיוב אך אין סכום ודאי — לא מוסיפים לסכום, רק מסמנים

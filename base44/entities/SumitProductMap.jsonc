@@ -1,0 +1,70 @@
+{
+  "name": "SumitProductMap",
+  "type": "object",
+  "description": "שכבת השיוך בין מוצרי סאמיט לקורסים ואפשרויות ב-CRM. מחליפה את COURSE_MAPPINGS הקשיח שבקוד — נערכת מהמסך, לא מפריסה",
+  "properties": {
+    "summit_product": {
+      "type": "string",
+      "description": "שם המוצר המדויק כפי שהוא מגיע מסאמיט — עוגן השיוך"
+    },
+    "summit_catalog": {
+      "type": "string",
+      "description": "שם הקטלוג בסאמיט. לידיעתנו בלבד — הוובהוק לא שולח אותו (אומת 30.7)"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["קורס", "יום היכרות", "אירוע", "תרומה", "השכרה", "בדיקה", "להתעלם"],
+      "default": "קורס",
+      "description": "מה המוצר הזה באמת. רק 'קורס' הופך ללקוחה; 'יום היכרות' נשאר ליד עם תגית נוכחות"
+    },
+    "course_id": {
+      "type": "string",
+      "description": "מזהה הקורס שאליו המוצר נכנס"
+    },
+    "course_name": {
+      "type": "string",
+      "description": "שם הקורס — לתצוגה בלבד"
+    },
+    "option_id": {
+      "type": "string",
+      "description": "מזהה האפשרות בתוך Course.options[]"
+    },
+    "payment_link": {
+      "type": "string",
+      "description": "הקישור הישיר למוצר. סגמנטי ה-URL מקודדים קטלוג/מוצר — זהו מקור האמת היציב ביותר לזהות המוצר"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["משויך", "ממתין לשיוך"],
+      "default": "ממתין לשיוך",
+      "description": "מוצר לא-מוכר נכנס לכאן כ'ממתין' ולא יוצר קורס אוטומטית"
+    },
+    "times_seen": {
+      "type": "number",
+      "default": 0,
+      "description": "כמה עסקאות נקלטו עם המוצר הזה"
+    },
+    "last_seen_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "מתי נראה לאחרונה"
+    },
+    "last_amount": {
+      "type": "number",
+      "description": "הסכום בעסקה האחרונה — עוזר לזהות לאיזו אפשרות לשייך"
+    },
+    "notes": {
+      "type": "string",
+      "description": "הערות"
+    }
+  },
+  "required": ["summit_product"],
+  "rls": {
+    "read": {
+      "$or": [
+        { "user_condition": { "role": "admin" } },
+        { "user_condition": { "role": "user" } }
+      ]
+    }
+  }
+}

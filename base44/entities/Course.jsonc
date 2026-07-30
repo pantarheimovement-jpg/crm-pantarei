@@ -4,134 +4,213 @@
   "properties": {
     "name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05e7\u05d5\u05e8\u05e1"
+      "description": "שם הקורס"
     },
     "type": {
       "type": "string",
       "enum": [
-        "\u05e7\u05d5\u05e8\u05e1 \u05e7\u05d1\u05d5\u05e2",
-        "\u05e1\u05d3\u05e0\u05d4",
-        "\u05e4\u05e8\u05d8\u05d9",
-        "\u05d0\u05d5\u05e0\u05dc\u05d9\u05d9\u05df"
+        "קורס קבוע",
+        "סדנה",
+        "פרטי",
+        "אונליין"
       ],
-      "default": "\u05e7\u05d5\u05e8\u05e1 \u05e7\u05d1\u05d5\u05e2",
-      "description": "\u05e1\u05d5\u05d2 \u05d4\u05e7\u05d5\u05e8\u05e1"
+      "default": "קורס קבוע",
+      "description": "סוג הקורס"
     },
     "description": {
       "type": "string",
-      "description": "\u05ea\u05d9\u05d0\u05d5\u05e8"
+      "description": "תיאור"
     },
     "schedule": {
       "type": "string",
-      "description": "\u05dc\u05d5\u05d6 (\u05dc\u05de\u05e9\u05dc: \u05d9\u05de\u05d9 \u05e9\u05e0\u05d9 \u05d5\u05e8\u05d1\u05d9\u05e2\u05d9 18:00)"
+      "description": "לוז (למשל: ימי שני ורביעי 18:00)"
     },
     "location": {
       "type": "string",
-      "description": "\u05de\u05d9\u05e7\u05d5\u05dd"
+      "description": "מיקום"
     },
     "dates_text": {
       "type": "string",
-      "description": "\u05de\u05d5\u05e2\u05d3\u05d9 \u05d4\u05e7\u05d5\u05e8\u05e1 \u05db\u05d8\u05e7\u05e1\u05d8 \u05d7\u05d5\u05e4\u05e9\u05d9, \u05dc\u05de\u05e9\u05dc: 5-16.7 (\u05de\u05e9\u05de\u05e9 \u05d1\u05ea\u05d1\u05e0\u05d9\u05ea \u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4 followup_1)"
+      "description": "מועדי הקורס כטקסט חופשי, למשל: 5-16.7 (משמש בתבנית וואטסאפ followup_1)"
     },
     "payment_link": {
       "type": "string",
-      "description": "\u05e7\u05d9\u05e9\u05d5\u05e8 \u05dc\u05d3\u05e3 \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd \u05d1\u05e1\u05d0\u05de\u05d9\u05d8 (\u05de\u05e9\u05de\u05e9 \u05d1\u05ea\u05d1\u05e0\u05d9\u05ea \u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4 followup_1)"
+      "description": "קישור לדף התשלום בסאמיט (משמש בתבנית וואטסאפ followup_1)"
     },
     "registration_link": {
       "type": "string",
-      "description": "\u05e7\u05d9\u05e9\u05d5\u05e8 \u05dc\u05d3\u05e3 \u05d4\u05e7\u05d5\u05e8\u05e1 \u05d1\u05d0\u05ea\u05e8 (\u05de\u05e9\u05de\u05e9 \u05d1\u05ea\u05d1\u05e0\u05d9\u05ea \u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4 followup_1)"
+      "description": "קישור לדף הקורס באתר (משמש בתבנית וואטסאפ followup_1)"
     },
     "price_early": {
       "type": "number",
-      "description": "\u05de\u05d7\u05d9\u05e8 \u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d5\u05e7\u05d3\u05de\u05ea"
+      "description": "מחיר הרשמה מוקדמת"
     },
     "price_late": {
       "type": "number",
-      "description": "\u05de\u05d7\u05d9\u05e8 \u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d0\u05d5\u05d7\u05e8\u05ea"
+      "description": "מחיר הרשמה מאוחרת"
     },
     "price_early_week1": {
       "type": "number",
-      "description": "\u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d5\u05e7\u05d3\u05de\u05ea \u2013 \u05e9\u05d1\u05d5\u05e2 \u05e8\u05d0\u05e9\u05d5\u05df (\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2)"
+      "description": "הרשמה מוקדמת – שבוע ראשון (סמסטר קיץ נענע)"
     },
     "price_early_week2": {
       "type": "number",
-      "description": "\u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d5\u05e7\u05d3\u05de\u05ea \u2013 \u05e9\u05d1\u05d5\u05e2 \u05e9\u05e0\u05d9 (\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2)"
+      "description": "הרשמה מוקדמת – שבוע שני (סמסטר קיץ נענע)"
     },
     "price_early_two_weeks": {
       "type": "number",
-      "description": "\u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d5\u05e7\u05d3\u05de\u05ea \u2013 \u05e9\u05d1\u05d5\u05e2\u05d9\u05d9\u05dd \u05de\u05dc\u05d0\u05d9\u05dd (\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2)"
+      "description": "הרשמה מוקדמת – שבועיים מלאים (סמסטר קיץ נענע)"
     },
     "price_early_3days_week1": {
       "type": "number",
-      "description": "\u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d5\u05e7\u05d3\u05de\u05ea \u2013 3 \u05d9\u05de\u05d9\u05dd \u05de\u05d4\u05e9\u05d1\u05d5\u05e2 \u05d4\u05e8\u05d0\u05e9\u05d5\u05df (\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2)"
+      "description": "הרשמה מוקדמת – 3 ימים מהשבוע הראשון (סמסטר קיץ נענע)"
     },
     "price_early_3days_week2": {
       "type": "number",
-      "description": "\u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d5\u05e7\u05d3\u05de\u05ea \u2013 3 \u05d9\u05de\u05d9\u05dd \u05de\u05d4\u05e9\u05d1\u05d5\u05e2 \u05d4\u05e9\u05e0\u05d9 (\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2)"
+      "description": "הרשמה מוקדמת – 3 ימים מהשבוע השני (סמסטר קיץ נענע)"
     },
     "price_late_week1": {
       "type": "number",
-      "description": "\u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d0\u05d5\u05d7\u05e8\u05ea \u2013 \u05e9\u05d1\u05d5\u05e2 \u05e8\u05d0\u05e9\u05d5\u05df (\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2)"
+      "description": "הרשמה מאוחרת – שבוע ראשון (סמסטר קיץ נענע)"
     },
     "price_late_week2": {
       "type": "number",
-      "description": "\u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d0\u05d5\u05d7\u05e8\u05ea \u2013 \u05e9\u05d1\u05d5\u05e2 \u05e9\u05e0\u05d9 (\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2)"
+      "description": "הרשמה מאוחרת – שבוע שני (סמסטר קיץ נענע)"
     },
     "price_late_two_weeks": {
       "type": "number",
-      "description": "\u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d0\u05d5\u05d7\u05e8\u05ea \u2013 \u05e9\u05d1\u05d5\u05e2\u05d9\u05d9\u05dd \u05de\u05dc\u05d0\u05d9\u05dd (\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2)"
+      "description": "הרשמה מאוחרת – שבועיים מלאים (סמסטר קיץ נענע)"
     },
     "price_late_3days_week1": {
       "type": "number",
-      "description": "\u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d0\u05d5\u05d7\u05e8\u05ea \u2013 3 \u05d9\u05de\u05d9\u05dd \u05de\u05d4\u05e9\u05d1\u05d5\u05e2 \u05d4\u05e8\u05d0\u05e9\u05d5\u05df (\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2)"
+      "description": "הרשמה מאוחרת – 3 ימים מהשבוע הראשון (סמסטר קיץ נענע)"
     },
     "price_late_3days_week2": {
       "type": "number",
-      "description": "\u05d4\u05e8\u05e9\u05de\u05d4 \u05de\u05d0\u05d5\u05d7\u05e8\u05ea \u2013 3 \u05d9\u05de\u05d9\u05dd \u05de\u05d4\u05e9\u05d1\u05d5\u05e2 \u05d4\u05e9\u05e0\u05d9 (\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2)"
+      "description": "הרשמה מאוחרת – 3 ימים מהשבוע השני (סמסטר קיץ נענע)"
     },
     "max_students": {
       "type": "number",
-      "description": "\u05de\u05e1\u05e4\u05e8 \u05de\u05e9\u05ea\u05ea\u05e4\u05d9\u05dd \u05de\u05e7\u05e1\u05d9\u05de\u05dc\u05d9"
+      "description": "מספר משתתפים מקסימלי"
     },
     "current_students": {
       "type": "number",
       "default": 0,
-      "description": "\u05de\u05e1\u05e4\u05e8 \u05de\u05e9\u05ea\u05ea\u05e4\u05d9\u05dd \u05e0\u05d5\u05db\u05d7\u05d9"
+      "description": "מספר משתתפים נוכחי"
     },
     "start_date": {
       "type": "string",
       "format": "date",
-      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d4\u05ea\u05d7\u05dc\u05d4"
+      "description": "תאריך התחלה"
     },
     "end_date": {
       "type": "string",
       "format": "date",
-      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05e1\u05d9\u05d5\u05dd"
+      "description": "תאריך סיום"
     },
     "status": {
       "type": "string",
       "enum": [
-        "\u05dc\u05d0 \u05e4\u05ea\u05d5\u05d7 \u05dc\u05d4\u05e8\u05e9\u05de\u05d4",
-        "\u05e4\u05ea\u05d5\u05d7 \u05dc\u05d4\u05e8\u05e9\u05de\u05d4",
-        "\u05de\u05dc\u05d0",
-        "\u05d1\u05ea\u05d4\u05dc\u05d9\u05da",
-        "\u05d4\u05e1\u05ea\u05d9\u05d9\u05dd"
+        "לא פתוח להרשמה",
+        "פתוח להרשמה",
+        "מלא",
+        "בתהליך",
+        "הסתיים"
       ],
-      "default": "\u05dc\u05d0 \u05e4\u05ea\u05d5\u05d7 \u05dc\u05d4\u05e8\u05e9\u05de\u05d4",
-      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1"
+      "default": "לא פתוח להרשמה",
+      "description": "סטטוס"
     },
     "image_url": {
       "type": "string",
-      "description": "\u05ea\u05de\u05d5\u05e0\u05d4"
+      "description": "תמונה"
     },
     "teacher_email": {
       "type": "string",
       "format": "email",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d4\u05de\u05d5\u05e8\u05d4 (\u05dc\u05d2\u05d9\u05e9\u05d4 \u05dc\u05d3\u05e3 \u05e7\u05d5\u05e8\u05e1 \u05d9\u05d9\u05e2\u05d5\u05d3\u05d9)"
+      "description": "אימייל המורה (לגישה לדף קורס ייעודי)"
     },
     "teacher_token": {
       "type": "string",
-      "description": "\u05d8\u05d5\u05e7\u05df \u05e1\u05d5\u05d3\u05d9 \u05dc\u05d3\u05e3 \u05d4\u05de\u05d5\u05e8\u05d4 \u05d4\u05e6\u05d9\u05d1\u05d5\u05e8\u05d9 \u2014 \u05de\u05d9 \u05e9\u05de\u05d7\u05d6\u05d9\u05e7 \u05d1\u05e7\u05d9\u05e9\u05d5\u05e8 \u05e2\u05dd \u05d4\u05d8\u05d5\u05e7\u05df \u05d9\u05db\u05d5\u05dc \u05dc\u05e6\u05e4\u05d5\u05ea \u05d5\u05dc\u05de\u05dc\u05d0 \u05e0\u05d5\u05db\u05d7\u05d5\u05ea \u05dc\u05dc\u05d0 \u05d4\u05ea\u05d7\u05d1\u05e8\u05d5\u05ea"
+      "description": "טוקן סודי לדף המורה הציבורי — מי שמחזיק בקישור עם הטוקן יכול לצפות ולמלא נוכחות ללא התחברות"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "קורס",
+        "יום היכרות",
+        "אירוע",
+        "תרומה",
+        "השכרה",
+        "בדיקה"
+      ],
+      "default": "קורס",
+      "description": "מה המיכל הזה באמת. רק 'קורס' הופך משתתפת ללקוחה — 'יום היכרות' הוא שלב במשפך"
+    },
+    "summit_catalog": {
+      "type": "string",
+      "description": "שם הקטלוג המקביל בסאמיט, להתמצאות בלבד"
+    },
+    "options": {
+      "type": "array",
+      "description": "המסלולים שאפשר לרכוש בקורס הזה. ניתן לפתוח אפשרות עם מחיר לפני שמישהי שילמה — ומכאן צפי הכנסות מול בפועל",
+      "items": {
+        "type": "object",
+        "properties": {
+          "option_id": {
+            "type": "string",
+            "description": "מזהה יציב — כדי ששינוי שם לא ישבור שיוכים קיימים"
+          },
+          "name": {
+            "type": "string",
+            "description": "שם האפשרות, למשל: יסודות ב' · מפגש בודד · כרטיס אוהבתכם"
+          },
+          "price": {
+            "type": "number",
+            "description": "המחיר — גם לפני שמישהי שילמה. זה מה שמאפשר לחשב צפי הכנסות"
+          },
+          "summit_product_name": {
+            "type": "string",
+            "description": "השם המדויק בסאמיט — עוגן השיוך האוטומטי"
+          },
+          "payment_link": {
+            "type": "string",
+            "description": "קישור התשלום הישיר למסלול הזה"
+          },
+          "dates_text": {
+            "type": "string",
+            "description": "מועדים כטקסט חופשי — לימי היכרות וסדנאות שלכל תאריך יש מועד משלו"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "תאריך המסלול — לתזכורות ולנוכחות"
+          },
+          "capacity": {
+            "type": "number",
+            "description": "מקומות במסלול הזה"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "פתוח להרשמה",
+              "מלא",
+              "לא פתוח להרשמה",
+              "הסתיים"
+            ],
+            "default": "פתוח להרשמה",
+            "description": "מסלול אחד יכול להיות מלא בזמן שאחר פתוח"
+          },
+          "is_manual": {
+            "type": "boolean",
+            "default": true,
+            "description": "הוזן ידנית — כדי שקליטה מסאמיט לא תדרוס בשקט"
+          }
+        },
+        "required": [
+          "option_id",
+          "name"
+        ]
+      }
     }
   },
   "required": [

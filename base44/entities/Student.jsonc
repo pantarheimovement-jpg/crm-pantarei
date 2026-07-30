@@ -4,55 +4,55 @@
   "properties": {
     "full_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05de\u05dc\u05d0"
+      "description": "שם מלא"
     },
     "phone": {
       "type": "string",
-      "description": "\u05d8\u05dc\u05e4\u05d5\u05df"
+      "description": "טלפון"
     },
     "email": {
       "type": "string",
       "format": "email",
-      "description": "\u05de\u05d9\u05d9\u05dc"
+      "description": "מייל"
     },
     "status": {
       "type": "string",
-      "default": "\u05dc\u05d9\u05d3 \u05d7\u05d3\u05e9",
-      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d1\u05e4\u05d9\u05d9\u05e4\u05dc\u05d9\u05d9\u05df"
+      "default": "ליד חדש",
+      "description": "סטטוס בפייפליין"
     },
     "lead_source": {
       "type": "string",
       "enum": [
-        "\u05d0\u05ea\u05e8",
-        "\u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4",
-        "\u05e4\u05d9\u05d9\u05e1\u05d1\u05d5\u05e7",
-        "\u05d9\u05d3\u05e0\u05d9",
-        "\u05d0\u05d7\u05e8"
+        "אתר",
+        "וואטסאפ",
+        "פייסבוק",
+        "ידני",
+        "אחר"
       ],
-      "default": "\u05d0\u05d7\u05e8",
-      "description": "\u05de\u05e7\u05d5\u05e8 \u05dc\u05d9\u05d3"
+      "default": "אחר",
+      "description": "מקור ליד"
     },
     "interest_area": {
       "type": "string",
-      "description": "\u05ea\u05d7\u05d5\u05dd \u05e2\u05e0\u05d9\u05d9\u05df"
+      "description": "תחום עניין"
     },
     "lead_entry_date": {
       "type": "string",
       "format": "date",
-      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05db\u05e0\u05d9\u05e1\u05ea \u05d4\u05dc\u05d9\u05d3"
+      "description": "תאריך כניסת הליד"
     },
     "registration_date": {
       "type": "string",
       "format": "date",
-      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05e8\u05d9\u05e9\u05d5\u05dd \u05dc\u05e7\u05d5\u05e8\u05e1"
+      "description": "תאריך רישום לקורס"
     },
     "course_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05e7\u05d5\u05e8\u05e1 (\u05e7\u05d5\u05e8\u05e1 \u05e2\u05d9\u05e7\u05e8\u05d9 \u05dc\u05ea\u05d0\u05d9\u05de\u05d5\u05ea \u05dc\u05d0\u05d7\u05d5\u05e8)"
+      "description": "מזהה קורס (קורס עיקרי לתאימות לאחור)"
     },
     "course_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05e7\u05d5\u05e8\u05e1 (\u05e7\u05d5\u05e8\u05e1 \u05e2\u05d9\u05e7\u05e8\u05d9 \u05dc\u05ea\u05e6\u05d5\u05d2\u05d4, \u05dc\u05ea\u05d0\u05d9\u05de\u05d5\u05ea \u05dc\u05d0\u05d7\u05d5\u05e8)"
+      "description": "שם קורס (קורס עיקרי לתצוגה, לתאימות לאחור)"
     },
     "courses": {
       "type": "array",
@@ -61,40 +61,57 @@
         "properties": {
           "course_id": {
             "type": "string",
-            "description": "\u05de\u05d6\u05d4\u05d4 \u05e7\u05d5\u05e8\u05e1"
+            "description": "מזהה קורס"
           },
           "course_name": {
             "type": "string",
-            "description": "\u05e9\u05dd \u05e7\u05d5\u05e8\u05e1"
+            "description": "שם קורס"
           },
           "status": {
             "type": "string",
-            "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d1\u05e7\u05d5\u05e8\u05e1 \u05d4\u05d6\u05d4 (\u05dc\u05d9\u05d3 \u05d7\u05d3\u05e9, \u05e8\u05e9\u05d5\u05dd \u05d5\u05db\u05d5')"
+            "description": "סטטוס בקורס הזה (ליד חדש, רשום וכו')"
           },
           "option": {
             "type": "string",
-            "description": "\u05d4\u05d0\u05e4\u05e9\u05e8\u05d5\u05ea/\u05de\u05e1\u05dc\u05d5\u05dc \u05e9\u05e0\u05e8\u05db\u05e9 \u05d1\u05e7\u05d5\u05e8\u05e1 (\u05dc\u05de\u05e9\u05dc: 3 \u05e1\u05d3\u05e0\u05d0\u05d5\u05ea, \u05db\u05e8\u05d8\u05d9\u05e1 \u05e8\u05d2\u05d9\u05dc)"
+            "description": "שם האפשרות כטקסט (תאימות לאחור — המקור האמיתי הוא option_id)"
           },
           "registration_date": {
             "type": "string",
             "format": "date",
-            "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05e8\u05d9\u05e9\u05d5\u05dd \u05dc\u05e7\u05d5\u05e8\u05e1"
+            "description": "תאריך רישום לקורס"
           },
           "total_price": {
             "type": "number",
-            "description": "\u05d4\u05e1\u05db\u05d5\u05dd \u05d4\u05db\u05d5\u05dc\u05dc \u05e2\u05d1\u05d5\u05e8 \u05d4\u05e7\u05d5\u05e8\u05e1"
+            "description": "הסכום הכולל עבור הקורס"
           },
           "installment_amount": {
             "type": "number",
-            "description": "\u05e1\u05db\u05d5\u05dd \u05d4\u05ea\u05e9\u05dc\u05d5\u05dd \u05d4\u05d7\u05d5\u05d3\u05e9\u05d9"
+            "description": "סכום התשלום החודשי"
           },
           "payment_number": {
             "type": "number",
-            "description": "\u05de\u05e1\u05e4\u05e8 \u05ea\u05e9\u05dc\u05d5\u05dd \u05e0\u05d5\u05db\u05d7\u05d9 (\u05d7\u05d3\u05e9)"
+            "description": "מספר תשלום נוכחי (חדש)"
           },
           "payments_total": {
             "type": "number",
-            "description": "\u05de\u05e1\u05e4\u05e8 \u05d4\u05ea\u05e9\u05dc\u05d5\u05de\u05d9\u05dd \u05d4\u05db\u05d5\u05dc\u05dc"
+            "description": "מספר התשלומים הכולל"
+          },
+          "option_id": {
+            "type": "string",
+            "description": "מזהה האפשרות ב-Course.options[] — קישור יציב שלא נשבר משינוי שם"
+          },
+          "paid_so_far": {
+            "type": "number",
+            "description": "כמה שולם בפועל עבור הקורס הזה (₪) — מצטבר מכל החיובים המשויכים אליו"
+          },
+          "paid_source": {
+            "type": "string",
+            "enum": [
+              "סאמיט",
+              "יומן הערות",
+              "ידני"
+            ],
+            "description": "מקור הסכום ב-paid_so_far — כדי שערך שהוזן ידנית לא יידרס בשקט"
           }
         },
         "required": [
@@ -103,40 +120,40 @@
           "status"
         ]
       },
-      "description": "\u05e8\u05e9\u05d9\u05de\u05ea \u05db\u05dc \u05d4\u05e7\u05d5\u05e8\u05e1\u05d9\u05dd \u05d5\u05d4\u05e1\u05d8\u05d8\u05d5\u05e1\u05d9\u05dd \u05e9\u05dc \u05d4\u05de\u05e9\u05ea\u05ea\u05e3"
+      "description": "רשימת כל הקורסים והסטטוסים של המשתתף"
     },
     "notes": {
       "type": "string",
-      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea"
+      "description": "הערות"
     },
     "tags": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "\u05ea\u05d2\u05d9\u05d5\u05ea"
+      "description": "תגיות"
     },
     "last_contact_date": {
       "type": "string",
       "format": "date-time",
-      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d9\u05e6\u05d9\u05e8\u05ea \u05e7\u05e9\u05e8 \u05d0\u05d7\u05e8\u05d5\u05df"
+      "description": "תאריך יצירת קשר אחרון"
     },
     "payment_number": {
       "type": "number",
-      "description": "\u05de\u05e1\u05e4\u05e8 \u05ea\u05e9\u05dc\u05d5\u05dd \u05e0\u05d5\u05db\u05d7\u05d9 (1, 2, 3...) \u2014 \u05d1\u05e8\u05de\u05ea \u05d4\u05e1\u05d8\u05d5\u05d3\u05e0\u05d8 \u05dc\u05ea\u05d0\u05d9\u05de\u05d5\u05ea \u05dc\u05d0\u05d7\u05d5\u05e8"
+      "description": "מספר תשלום נוכחי (1, 2, 3...) — ברמת הסטודנט לתאימות לאחור"
     },
     "total_payments": {
       "type": "number",
-      "description": "\u05e1\u05d4\"\u05db \u05ea\u05e9\u05dc\u05d5\u05de\u05d9\u05dd"
+      "description": "סה\"כ תשלומים"
     },
     "amount_paid": {
       "type": "number",
-      "description": "\u05e1\u05db\u05d5\u05dd \u05e9\u05e9\u05d5\u05dc\u05dd \u05e2\u05d3 \u05db\u05d4 \u05d1\u05e4\u05d5\u05e2\u05dc (\u20aa) \u2014 \u05de\u05e6\u05d8\u05d1\u05e8 \u05de\u05db\u05dc \u05d4\u05d7\u05d9\u05d5\u05d1\u05d9\u05dd \u05d3\u05e8\u05da Summit"
+      "description": "סכום ששולם עד כה בפועל (₪) — מצטבר מכל החיובים דרך Summit"
     },
     "marketing_consent": {
       "type": "boolean",
       "default": false,
-      "description": "\u05d0\u05d5\u05e9\u05e8 \u05de\u05d3\u05d9\u05e0\u05d9\u05d5\u05ea \u05d4\u05e4\u05e8\u05d8\u05d9\u05d5\u05ea \u05d5\u05d4\u05e1\u05db\u05de\u05d4 \u05dc\u05e7\u05d1\u05dc \u05e2\u05d3\u05db\u05d5\u05e0\u05d9\u05dd \u05d1\u05de\u05d9\u05d9\u05dc \u05d5\u05d1\u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4"
+      "description": "אושר מדיניות הפרטיות והסכמה לקבל עדכונים במייל ובוואטסאפ"
     },
     "nana_option": {
       "type": "string",
@@ -146,18 +163,18 @@
         "12-16.7",
         "5-7.7",
         "12-14.7",
-        "\u05d9\u05d5\u05dd \u05d1\u05d5\u05d3\u05d3"
+        "יום בודד"
       ],
-      "description": "\u05d0\u05e4\u05e9\u05e8\u05d5\u05ea \u05e8\u05d9\u05e9\u05d5\u05dd \u05dc\u05e1\u05de\u05e1\u05d8\u05e8 \u05e7\u05d9\u05e5 \u05e0\u05e2\u05e0\u05e2"
+      "description": "אפשרות רישום לסמסטר קיץ נענע (מיושן — מוחלף ב-Course.options[])"
     },
     "is_customer": {
       "type": "boolean",
       "default": false,
-      "description": "\u05d4\u05d0\u05dd \u05d4\u05e4\u05da \u05dc\u05dc\u05e7\u05d5\u05d7 (\u05e0\u05e8\u05e9\u05dd \u05dc\u05e4\u05d7\u05d5\u05ea \u05dc\u05e7\u05d5\u05e8\u05e1 \u05d0\u05d7\u05d3)"
+      "description": "האם הפך ללקוח (נרשם לפחות לקורס אחד)"
     },
     "uchat_user_ns": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05de\u05e0\u05d5\u05d9 \u05d1-uChat (user_ns) \u05dc\u05e9\u05dc\u05d9\u05d7\u05ea \u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4 \u05dc\u05dc\u05d0 lookup"
+      "description": "מזהה מנוי ב-uChat (user_ns) לשליחת וואטסאפ ללא lookup"
     }
   },
   "required": [

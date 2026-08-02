@@ -6,7 +6,6 @@ import ExportButtons from '../components/shared/ExportButtons';
 import PendingAssignmentModal from '../components/revenue/PendingAssignmentModal';
 
 const REGISTERED_STATUSES = new Set(['רשום', 'נרשם']);
-const PENDING_TAG = 'ממתין לשיוך לקורס';
 
 export default function CourseRevenue() {
   const { designSettings } = useSystemSettings();
@@ -140,17 +139,24 @@ export default function CourseRevenue() {
 
   // רשימת משתתפות עם כספים ממתינים לשיוך — הסכום הממתין של כל אחת הוא
   // amount_paid פחות מה שכבר שויך לרישום רשום שלה בפועל (paid_so_far).
+  // ⚠️ הסינון הוא הפער עצמו, לא תגית — התגית מסומנת רק בקליטה הראשונה
+  // של מוצר לא-מוכר, ולא מתעדכנת אם המשתתפת קיבלה חיובים נוספים אחריה.
   const pendingStudents = useMemo(() => {
     return students
-      .filter(s => (s.tags || []).includes(PENDING_TAG))
       .map(s => {
-        const matchedForStudent = (s.courses || [])
-          .filter(c => REGISTERED_STATUSES.has(c.status))
-          .reduce((sum, c) => sum + (parseFloat(c.paid_so_far) || 0), 0);
-        const pendingAmount = Math.max(0, (parseFloat(s.amount_paid) || 0) - matchedForStudent);
-        return { id: s.id, name: s.full_name, phone: s.phone, pendingAmount };
+        const registeredEntries = (s.courses || []).filter(c => REGISTERED_STATUSES.has(c.status));
+        const matchedForStudent = registeredEntries.reduce((sum, c) => sum + (parseFloat(c.paid_so_far) || 0), 0);
+        const pendingAmount = Math.round(((parseFloat(s.amount_paid) || 0) - matchedForStudent) * 100) / 100;
+        return {
+          id: s.id,
+          name: s.full_name,
+          phone: s.phone,
+          courses: registeredEntries.map(c => c.course_name),
+          pendingAmount
+        };
       })
-      .filter(s => s.pendingAmount > 0);
+      .filter(s => s.pendingAmount >= 1)
+      .sort((a, b) => b.pendingAmount - a.pendingAmount);
   }, [students]);
 
   const filteredStats = courseStats.filter(({ course }) => {

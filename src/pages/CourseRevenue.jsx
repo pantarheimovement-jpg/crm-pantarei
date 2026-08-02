@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { DollarSign, Search, Download, Users, TrendingUp, ChevronDown, ChevronUp, X, Loader2 } from 'lucide-react';
+import { DollarSign, Search, Download, Users, TrendingUp, ChevronDown, ChevronUp, X, Loader2, Clock } from 'lucide-react';
 import { useSystemSettings } from '../components/SystemSettingsContext';
 import ExportButtons from '../components/shared/ExportButtons';
+import PendingAssignmentModal from '../components/revenue/PendingAssignmentModal';
 
 const REGISTERED_STATUSES = new Set(['רשום', 'נרשם']);
+const PENDING_TAG = 'ממתין לשיוך לקורס';
 
 export default function CourseRevenue() {
   const { designSettings } = useSystemSettings();
@@ -14,6 +16,7 @@ export default function CourseRevenue() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [expandedCourse, setExpandedCourse] = useState(null);
+  const [showPending, setShowPending] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -129,6 +132,27 @@ export default function CourseRevenue() {
   const totalExpected = courseStats.reduce((s, c) => s + c.expected, 0);
   const totalStudents = courseStats.reduce((s, c) => s + c.registeredCount, 0);
 
+  // סה"כ שנגבה בפועל דרך סאמיט לכל משתתפת (amount_paid) — כולל כספים
+  // שעדיין לא שויכו לקורס. ההפרש בין זה לבין "משויך" הוא "ממתין לשיוך".
+  const totalCollected = students.reduce((s, st) => s + (parseFloat(st.amount_paid) || 0), 0);
+  const matchedTotal = totalPaid;
+  const pendingTotal = Math.max(0, totalCollected - matchedTotal);
+
+  // רשימת משתתפות עם כספים ממתינים לשיוך — הסכום הממתין של כל אחת הוא
+  // amount_paid פחות מה שכבר שויך לרישום רשום שלה בפועל (paid_so_far).
+  const pendingStudents = useMemo(() => {
+    return students
+      .filter(s => (s.tags || []).includes(PENDING_TAG))
+      .map(s => {
+        const matchedForStudent = (s.courses || [])
+          .filter(c => REGISTERED_STATUSES.has(c.status))
+          .reduce((sum, c) => sum + (parseFloat(c.paid_so_far) || 0), 0);
+        const pendingAmount = Math.max(0, (parseFloat(s.amount_paid) || 0) - matchedForStudent);
+        return { id: s.id, name: s.full_name, phone: s.phone, pendingAmount };
+      })
+      .filter(s => s.pendingAmount > 0);
+  }, [students]);
+
   const filteredStats = courseStats.filter(({ course }) => {
     const matchSearch = !search || course.name.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || course.status === statusFilter;
@@ -175,18 +199,24 @@ export default function CourseRevenue() {
           />
         </div>
 
-        {/* Summary KPIs */}
+        {/* Summary KPIs — שלושה מספרים מתאזנים: נגבה בפועל = משויך + ממתין לשיוך */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {[
-            { label: 'סה"כ הכנסות ששולמו', value: fmt(totalPaid), icon: DollarSign, color: 'var(--crm-accent)' },
-            { label: 'סה"כ הכנסות צפויות', value: fmt(totalExpected), icon: TrendingUp, color: 'var(--crm-primary)' },
-            { label: 'סה"כ לקוחות רשומים', value: totalStudents, icon: Users, color: 'var(--crm-action)' },
-          ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+            { label: 'נגבה בפועל', value: fmt(totalCollected), icon: DollarSign, color: 'var(--crm-accent)' },
+            { label: 'משויך לקורסים', value: fmt(matchedTotal), icon: TrendingUp, color: 'var(--crm-primary)' },
+            { label: 'ממתין לשיוך', value: fmt(pendingTotal), icon: Clock, color: 'var(--crm-action)', clickable: true },
+          ].map(({ label, value, icon: Icon, color, clickable }) => (
+            <div
+              key={label}
+              onClick={clickable ? () => setShowPending(true) : undefined}
+              className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-6 ${clickable ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+              style={{ borderRadius: 'var(--crm-border-radius)' }}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">{label}</p>
                   <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{value}</p>
+                  {clickable && <p className="text-xs text-[var(--crm-primary)] mt-1 underline">לצפייה ברשימה</p>}
                 </div>
                 <div className="p-3 rounded-xl" style={{ backgroundColor: color }}>
                   <Icon size={24} className="text-white" />
@@ -195,6 +225,10 @@ export default function CourseRevenue() {
             </div>
           ))}
         </div>
+
+        {showPending && (
+          <PendingAssignmentModal students={pendingStudents} onClose={() => setShowPending(false)} />
+        )}
 
         {/* Filters */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-4" style={{ borderRadius: 'var(--crm-border-radius)' }}>
@@ -284,7 +318,7 @@ export default function CourseRevenue() {
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
                               {entries.map((e, i) => {
-                                const paid = (parseFloat(e.installment_amount) || 0) * (parseFloat(e.payment_number) || 0);
+                                const paid = parseFloat(e.paid_so_far) || 0;
                                 return (
                                   <tr key={i} className="hover:bg-gray-50">
                                     <td className="px-3 py-2 font-medium">{e.student.full_name}</td>

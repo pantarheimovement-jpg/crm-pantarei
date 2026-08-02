@@ -1,23 +1,29 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
-export default function CourseOptionsBreakdown({ students, courseId }) {
+export default function CourseOptionsBreakdown({ students, courseId, course }) {
   const [selected, setSelected] = useState(null);
+  const fmt = (n) => n ? `₪${Math.round(n).toLocaleString('he-IL')}` : '—';
 
   const groups = {};
   students.forEach(s => {
     const entry = (s.courses || []).find(c => c.course_id === courseId);
     if (!entry) return;
-    const key = entry.option || 'ללא אפשרות מוגדרת';
-    if (!groups[key]) groups[key] = { count: 0, total: 0, names: [] };
+    const key = entry.option_id || entry.option || 'ללא אפשרות מוגדרת';
+    const label = entry.option || key;
+    if (!groups[key]) groups[key] = { label, count: 0, paid: 0, names: [] };
+    groups[key].paid += parseFloat(entry.paid_so_far) || 0;
     groups[key].count++;
-    groups[key].total += entry.total_price || 0;
     groups[key].names.push(s.full_name);
   });
 
-  const rows = Object.entries(groups).sort((a, b) => b[1].total - a[1].total);
+  const rows = Object.entries(groups).sort((a, b) => b[1].paid - a[1].paid);
   const totalCount = rows.reduce((sum, [, g]) => sum + g.count, 0);
-  const totalPaid = rows.reduce((sum, [, g]) => sum + g.total, 0);
+  const totalPaid = rows.reduce((sum, [, g]) => sum + g.paid, 0);
+  const totalExpected = rows.reduce((sum, [key, g]) => {
+    const opt = (course?.options || []).find(o => o.option_id === key);
+    return sum + (opt ? (opt.price || 0) * g.count : 0);
+  }, 0);
 
   return (
     <div className="bg-white rounded-xl p-4">
@@ -27,25 +33,32 @@ export default function CourseOptionsBreakdown({ students, courseId }) {
           <tr className="bg-purple-50 text-[var(--crm-primary)]">
             <th className="text-right p-2">אפשרות</th>
             <th className="text-center p-2">רשומים</th>
-            <th className="text-center p-2">סכום ששולם</th>
+            <th className="text-center p-2">שולם בפועל</th>
+            <th className="text-center p-2">צפוי</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(([option, g]) => (
-            <tr key={option} className="border-b">
-              <td className="p-2 font-medium">{option}</td>
-              <td className="p-2 text-center">
-                <button onClick={() => setSelected({ option, names: g.names })} className="text-[var(--crm-primary)] font-bold underline">
-                  {g.count}
-                </button>
-              </td>
-              <td className="p-2 text-center text-green-700 font-medium">₪{g.total.toLocaleString()}</td>
-            </tr>
-          ))}
+          {rows.map(([key, g]) => {
+            const opt = (course?.options || []).find(o => o.option_id === key);
+            const expected = opt ? (opt.price || 0) * g.count : null;
+            return (
+              <tr key={key} className="border-b">
+                <td className="p-2 font-medium">{g.label}</td>
+                <td className="p-2 text-center">
+                  <button onClick={() => setSelected({ option: g.label, names: g.names })} className="text-[var(--crm-primary)] font-bold underline">
+                    {g.count}
+                  </button>
+                </td>
+                <td className="p-2 text-center text-green-700 font-medium">{fmt(g.paid)}</td>
+                <td className="p-2 text-center text-gray-500">{expected !== null ? fmt(expected) : '—'}</td>
+              </tr>
+            );
+          })}
           <tr className="bg-purple-50 font-bold">
             <td className="p-2">סה"כ</td>
             <td className="p-2 text-center">{totalCount}</td>
-            <td className="p-2 text-center text-green-700">₪{totalPaid.toLocaleString()}</td>
+            <td className="p-2 text-center text-green-700">{fmt(totalPaid)}</td>
+            <td className="p-2 text-center text-gray-600">{totalExpected ? fmt(totalExpected) : '—'}</td>
           </tr>
         </tbody>
       </table>

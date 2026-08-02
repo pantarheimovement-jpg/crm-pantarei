@@ -100,7 +100,7 @@ export default function AttendanceManager({ courseId, students }) {
       // והמורה לא ידעה. זה מה שקרה בהילינג דאנס ב-20.7.
       console.error('שמירת נוכחות נכשלה:', error);
       setSaveError(`הסימון של ${item?.student_name || 'המשתתפת'} לא נשמר. נסי שוב.`);
-      await loadAttendance();
+      await loadAttendanceForDate(selectedDate);
     } finally {
       setSaving(false);
     }
@@ -131,7 +131,7 @@ export default function AttendanceManager({ courseId, students }) {
     }
 
     // תמיד נטענים מחדש מהשרת — המסך מציג מה שבאמת נשמר, לא מה שניסינו לשמור.
-    await loadAttendance();
+    await loadAttendanceForDate(selectedDate);
     if (!existingDates.includes(selectedDate)) {
       setExistingDates(prev => [selectedDate, ...prev].sort().reverse());
     }

@@ -10,6 +10,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import CourseView from './pages/CourseView';
 import CourseRevenue from './pages/CourseRevenue';
 import NewsletterAnalytics from './pages/NewsletterAnalytics';
+import SumitInbox from './pages/SumitInbox';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -74,6 +75,11 @@ const AuthenticatedApp = () => {
       <Route path="/NewsletterAnalytics" element={
         <LayoutWrapper currentPageName="NewsletterAnalytics">
           <NewsletterAnalytics />
+        </LayoutWrapper>
+      } />
+      <Route path="/SumitInbox" element={
+        <LayoutWrapper currentPageName="SumitInbox">
+          <SumitInbox />
         </LayoutWrapper>
       } />
       <Route path="*" element={<PageNotFound />} />

@@ -1,13 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 // =====================================================
-// handleSummitPayment v3
-// - תיקון שדות תשלום (payments_total, payment_number)
-// - ספירת חיובים חודשיים בהוראת קבע (כרטיס אשראי)
-// - קבוצות תפוצה: "{קורס} - מתעניינים" / "{קורס} - רשומים"
-// - סגירה אוטומטית של משימת שיחת היכרות
-// - סטטוס דו-ממדי: is_customer + סטטוס ראשי מחושב
-// - התאמת שם קורס עמידה לשגיאות (נרמול)
+// handleSummitPayment v4
+// - שכבת שיוך ראשונה: SumitProductMap (עריכה מהמסך, לא מהקוד)
+// - שכבה שנייה: COURSE_MAPPINGS הקשיח (נשאר כגיבוי לתבניות רג'קס)
+// - שכבה שלישית: תיבת נכנסות (ממתין לשיוך, בלי יצירת קורס)
+// - כל התאמה (שכבה 1 או 2) כותבת/מעדכנת רשומת SumitProductMap אוטומטית
+// - הקטלוג (resolveCatalogName) נכתב ל-Course.summit_catalog + SumitProductMap.summit_catalog
+// - option_id נכתב על רישום המשתתפת, ומונה current_students מתעדכן גם ברמת האפשרות
 // =====================================================
 
 const OPEN_LEAD_STATUSES = ['ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'תיאום שיחה'];
@@ -100,9 +100,9 @@ function normalizeWhatsapp(phone) {
   return digits;
 }
 
-// מיפוי מוצרים → קורס-אב + מסלול ("קורס גדול עם מסלולים")
-// מוצרי סמסטר קיץ ("סמסטר קיץ שבוע ראשון 5-9.7") נכנסים כולם
-// לקורס "סמסטר קיץ נענע" עם ציון המסלול ב-nana_option
+// מיפוי מוצרים → קורס-אב + מסלול ("קורס גדול עם מסלולים") — שכבה 2, גיבוי בלבד.
+// אלה תבניות רג'קס ולא שמות מוצרים מדויקים, ולכן לא נזרעות כרשומות SumitProductMap —
+// כל מוצר שעובר בשכבה הזו נרשם אוטומטית ב-SumitProductMap כדי שהמחזור הבא יתפוס אותו בשכבה 1.
 const COURSE_MAPPINGS = [
   {
     matches: (productName) => normalizeName(productName).startsWith('סמסטר קיץ'),
@@ -171,8 +171,47 @@ function computeMainStatus(courses, fallback) {
   return fallback || 'רשום';
 }
 
+// שכבה 1: חיפוש שיוך קיים ב-SumitProductMap לפי שם מוצר מדויק.
+async function lookupProductMap(base44, productName) {
+  if (!productName) return null;
+  const matches = await base44.asServiceRole.entities.SumitProductMap.filter({ summit_product: productName });
+  return matches?.[0] || null;
+}
+
+// כותב/מעדכן את רשומת השיוך של המוצר — פעם אחת לכל מוצר לא-ידני.
+// לא דורס שיוך שקיים כבר (status === 'משויך') כדי לא לאבד עבודה ידנית של אופיר.
+async function upsertProductMap(base44, { productName, catalogName, course, optionId, amount, existingMap }) {
+  if (!productName) return;
+  const rec = existingMap !== undefined ? existingMap : await lookupProductMap(base44, productName);
+  const patch = {
+    times_seen: (rec?.times_seen || 0) + 1,
+    last_seen_at: new Date().toISOString(),
+    ...(amount !== null && amount !== undefined && { last_amount: amount }),
+    ...(catalogName && !rec?.summit_catalog && { summit_catalog: catalogName })
+  };
+  const alreadyAssigned = rec?.status === 'משויך' && rec?.course_id;
+  if (course && !alreadyAssigned) {
+    patch.course_id = course.id;
+    patch.course_name = course.name;
+    patch.status = 'משויך';
+    if (optionId) patch.option_id = optionId;
+    if (!rec?.kind) patch.kind = 'קורס';
+  } else if (!course && !rec) {
+    patch.status = 'ממתין לשיוך';
+  }
+  try {
+    if (rec) {
+      await base44.asServiceRole.entities.SumitProductMap.update(rec.id, patch);
+    } else {
+      await base44.asServiceRole.entities.SumitProductMap.create({ summit_product: productName, ...patch });
+    }
+  } catch (mapError) {
+    console.error('⚠️ SumitProductMap upsert error (non-fatal):', mapError.message);
+  }
+}
+
 Deno.serve(async (req) => {
-  console.log('=== 💳 handleSummitPayment Webhook Started (v3) ===');
+  console.log('=== 💳 handleSummitPayment Webhook Started (v4) ===');
 
   try {
     const base44 = createClientFromRequest(req);
@@ -189,13 +228,10 @@ Deno.serve(async (req) => {
     const properties = payload.Properties || {};
 
     // --- חילוץ שדות ---
-    // פורמט חדש (עמותה, תצוגת "כל השדות"): Billing_Customer / Billing_Items / Billing_Date...
-    // פורמט ישן (תצוגה מותאמת): Property_N
     const customerName =
       properties.Billing_Customer?.[0]?.Name ||
       properties.Property_2?.[0]?.Name || null;
 
-    // מייל/טלפון: חיפוש לפי שמות שדות מוכרים, ואם אין — סריקה גנרית של כל הערכים
     function scanValues(props) {
       const values = [];
       for (const key of Object.keys(props || {})) {
@@ -217,8 +253,6 @@ Deno.serve(async (req) => {
     let customerPhone = (phoneByName || phoneByScan || 'לא זמין');
     let resolvedEmail = customerEmail;
 
-    // העשרה מ-API של סאמיט: ה-payload של הטריגר לא כולל מייל/טלפון,
-    // אז שולפים אותם מכרטיס הלקוח לפי ID (דורש SUMIT_API_KEY + SUMIT_COMPANY_ID ב-Secrets)
     const sumitCustomerId = properties.Billing_Customer?.[0]?.ID;
     const SUMIT_API_KEY = Deno.env.get('SUMIT_API_KEY');
     const SUMIT_COMPANY_ID = Deno.env.get('SUMIT_COMPANY_ID');
@@ -238,7 +272,6 @@ Deno.serve(async (req) => {
         });
         const apiData = await apiRes.json();
         const ent = apiData?.Data?.Entity || {};
-        // סאמיט מחזיר את הערכים כמערכים תחת שמות Customers_*
         const apiEmail = ent.Customers_EmailAddress?.[0] || ent.EmailAddress || null;
         const apiPhone = ent.Customers_Phone?.[0] || ent.Phone || null;
         const apiName = ent.Customers_FullName?.[0] || null;
@@ -256,11 +289,8 @@ Deno.serve(async (req) => {
     ).filter(Boolean);
     const catalogName = resolveCatalogName(properties, billingItems[0]);
 
-    // זיהוי הוראת קבע (מסמך מחזורי) לעומת תשלום רגיל
     const isStandingOrder = Boolean(properties.Billing_CustomerItems?.[0]?.Name?.includes('הוראת קבע'));
 
-    // חיוב שנכשל — לא רושמים! מדלגים רק כשהמערכת אומרת במפורש שהחיוב לא תקין.
-    // (בטריגר על "יצירת כרטיס" ייתכן שהשדה עוד ריק — אז ממשיכים לעבד)
     const billingValidRaw = Array.isArray(properties.Billing_Valid) ? properties.Billing_Valid[0] : properties.Billing_Valid;
     if (billingValidRaw === false) {
       console.log('⏭️ Skipping invalid/failed charge (Billing_Valid === false)');
@@ -272,11 +302,8 @@ Deno.serve(async (req) => {
       properties.Accounting_Document?.[0]?.Name ||
       properties['Property_M-1']?.[0]?.Name || null;
 
-    // "מספר תשלומים" — סה"כ התשלומים בעסקה (בפורמט החדש לא תמיד נשלח)
     const paymentsTotal = parseNum(pickProperty(properties, ['Billing_PaymentsCount', 'מספר תשלומים', 'סה״כ תשלומים', 'סה"כ תשלומים']));
-    // תשלום נוכחי — אם סאמיט שולח (מחזור בהוראת קבע). אם לא, נחשב לבד.
     const currentPaymentRaw = parseNum(pickProperty(properties, ['Billing_PaymentIndex', 'תשלום נוכחי', 'מספר תשלום', 'מספר חיוב', 'מחזור']));
-    // סכומים: Billing_Amount = הסכום שחויב בפועל בחיוב הזה
     const installmentAmount = parseNum(pickProperty(properties, ['Billing_Amount', 'סכום התשלום למחזור', 'סכום התשלום', 'מחיר כולל מע"מ']));
     const totalAmount = parseNum(pickProperty(properties, ['Billing_TotalAmount', 'סה"כ', 'סה״כ', 'סכום כולל', 'סה"כ כולל מע"מ']));
 
@@ -304,8 +331,6 @@ Deno.serve(async (req) => {
 
     console.log(existingStudent ? `✅ Found student: ${existingStudent.full_name} (${existingStudent.id})` : '👤 New student');
 
-    // מניעת עיבוד כפול: אם המסמך הזה כבר נרשם אצל המשתתפ.ת — מדלגים
-    // (סאמיט לעיתים שולח את אותו אירוע פעמיים בגלל timeout/retry)
     const existingNotes = existingStudent?.notes || '';
     if (existingStudent && documentName && existingNotes.includes(documentName)) {
       console.log(`⏭️ Duplicate delivery for document "${documentName}" — skipping`);
@@ -313,9 +338,6 @@ Deno.serve(async (req) => {
     }
 
     // --- 1. פריטי העסקה: כל הפריטים, לא רק הראשון ---
-    // עד היום נקרא Billing_Items[0] בלבד. רכישה של שני מוצרים בצ'קאאוט אחד
-    // רשמה רק את הראשון והשני נעלם — קרה באמת (טליה בר לב, 22.7: פאשיה
-    // יסודות ב' + הנחה לקורס שני, ₪2,150). עם הקטלוגים של אופיר זה רק יגדל.
     const perItem = [];
     for (const item of billingItems) {
       const itemName = item?.Name || null;
@@ -328,13 +350,9 @@ Deno.serve(async (req) => {
     if (perItem.length === 0) perItem.push({ productName: null, amount: null });
     console.log(`🧾 ${perItem.length} item(s) in this charge:`, perItem.map((i) => i.productName).join(' | '));
 
-    // זיכוי/ביטול נקבע ברמת המסמך: בסאמיט מסמך זיכוי מזכה את כל העסקה.
     const isRefund = (Number(installmentAmount) || 0) < 0 || /זיכוי/.test(String(documentName || ''));
     const chargedTotal = Math.abs(Number(installmentAmount) || 0);
 
-    // חלוקת הסכום בין הפריטים. אם לכל פריט יש מחיר — מחלקים לפי היחס ביניהם,
-    // כך שהנחה על העסקה מתחלקת נכון. אם אין — הסכום כולו נרשם על הפריט הראשון
-    // והשאר מסומנים, כי עדיף לדעת שהחלוקה לא ודאית מאשר לנחש בשקט.
     let unsplitAmount = false;
     const pricedSum = perItem.reduce((s, it) => s + Math.abs(it.amount || 0), 0);
     if (perItem.length === 1) {
@@ -347,13 +365,6 @@ Deno.serve(async (req) => {
       console.log('⚠️ Items have no individual prices — full amount recorded on the first item');
     }
 
-    // הגנה שנייה — בלעדיה נוצרה ספירה כפולה אמיתית (גל חורב, 14.7: ₪340 במקום ₪170).
-    // הטריגר בסאמיט מוגדר על "יצירת כרטיס", כלומר הוא נורה עוד לפני שנוצר המסמך
-    // (ואז documentName ריק והבדיקה למעלה לא תופסת), ושוב אחריו. אומת מול
-    // סאמיט ב-28.7, וגם בשטח: מאיה קאופמן 23.7 09:42 — שתי שורות, אחת בלי מסמך.
-    //
-    // התנאי מכוון בדיוק לדפוס הזה: המסירה הנוכחית מחזיקה מסמך, וכבר קיימת שורה
-    // עם אותו תאריך ואותו סכום שנרשמה בלי מסמך, ושמזכירה אחד ממוצרי העסקה.
     const amountSignature = chargedTotal ? `(₪${chargedTotal})` : null;
     const itemNames = perItem.map((i) => i.productName).filter(Boolean);
     if (
@@ -378,30 +389,62 @@ Deno.serve(async (req) => {
     let totalDelta = 0;
     let pendingAssignment = false;
     let optionFieldUpdates = {};
+    const courseCatalogUpdates = new Set(); // course.id-ים שכבר עודכן להם summit_catalog בעסקה הזו
 
-    // --- 2. עיבוד כל פריט: איתור הקורס ובניית הרישום ---
+    // --- 2. עיבוד כל פריט: שכבות שיוך + בניית הרישום ---
     for (const it of perItem) {
       const productName = it.productName;
-      const mapping = resolveCourseMapping(productName);
-      const courseName = mapping ? mapping.courseName : productName;
-      const courseOption = mapping ? mapping.option : null;
-      if (mapping) console.log(`🗺️ "${productName}" → "${courseName}"${courseOption ? ` (${courseOption})` : ''}`);
-
       let course = null;
-      if (courseName) {
-        const exact = await base44.asServiceRole.entities.Course.filter({ name: courseName });
-        course = exact?.[0] || null;
-        if (!course) {
-          const allCourses = await base44.asServiceRole.entities.Course.list();
-          const target = normalizeName(courseName);
-          course = (allCourses || []).find((c) => normalizeName(c.name) === target) || null;
-          if (course) console.log(`🔎 Fuzzy-matched "${courseName}" → "${course.name}"`);
+      let optionIdForEntry = null;
+      let mapping = null;
+      let courseOption = null;
+
+      // שכבה 1: SumitProductMap — שיוך מדויק לפי שם מוצר
+      const productMap = await lookupProductMap(base44, productName);
+      if (productMap && productMap.status === 'משויך' && productMap.course_id) {
+        try {
+          course = await base44.asServiceRole.entities.Course.get(productMap.course_id);
+        } catch {
+          course = null;
+        }
+        if (course) {
+          optionIdForEntry = productMap.option_id || null;
+          console.log(`🎯 "${productName}" → "${course.name}" (SumitProductMap)${optionIdForEntry ? ` [option: ${optionIdForEntry}]` : ''}`);
         }
       }
 
-      // מוצר שלא מוכר כבר לא יוצר קורס. עד היום כל שם חדש הוליד קורס, וכך
-      // נולדו "תמיכה בפנטהריי" (16 נרשמים) ו"מקדמה עבור השכרת הסטודיו".
-      // עכשיו: הכסף נרשם, המוצר ממתין לשיוך ידני, ואף קורס לא נוצר בטעות.
+      // שכבה 2: COURSE_MAPPINGS הקשיח — גיבוי לתבניות רג'קס
+      if (!course) {
+        mapping = resolveCourseMapping(productName);
+        const courseName = mapping ? mapping.courseName : productName;
+        courseOption = mapping ? mapping.option : null;
+        if (mapping) console.log(`🗺️ "${productName}" → "${courseName}"${courseOption ? ` (${courseOption})` : ''}`);
+
+        if (courseName) {
+          const exact = await base44.asServiceRole.entities.Course.filter({ name: courseName });
+          course = exact?.[0] || null;
+          if (!course) {
+            const allCourses = await base44.asServiceRole.entities.Course.list();
+            const target = normalizeName(courseName);
+            course = (allCourses || []).find((c) => normalizeName(c.name) === target) || null;
+            if (course) console.log(`🔎 Fuzzy-matched "${courseName}" → "${course.name}"`);
+          }
+        }
+      }
+
+      // כותבים/מעדכנים את שכבת השיוך מהתנועה האמיתית — כך שהמחזור הבא של המוצר
+      // הזה יתפוס בשכבה 1 בלי תלות בתבנית רג'קס.
+      await upsertProductMap(base44, {
+        productName,
+        catalogName,
+        course,
+        optionId: optionIdForEntry,
+        amount: it.share,
+        existingMap: productMap
+      });
+
+      // מוצר שלא מוכר כבר לא יוצר קורס. הכסף נרשם, המוצר ממתין לשיוך ידני בתיבת
+      // הנכנסות, ואף קורס לא נוצר בטעות.
       if (!course) {
         pendingAssignment = true;
         console.log(`⏸️ Unknown product "${productName}" — recorded, waiting for manual assignment`);
@@ -412,6 +455,17 @@ Deno.serve(async (req) => {
         );
         totalDelta += isRefund ? -it.share : it.share;
         continue;
+      }
+
+      // קטלוג הקורס — נכתב פעם אחת לכל קורס ריק, מהמידע האמיתי שמגיע מסאמיט
+      if (catalogName && !course.summit_catalog && !courseCatalogUpdates.has(course.id)) {
+        try {
+          await base44.asServiceRole.entities.Course.update(course.id, { summit_catalog: catalogName });
+          course.summit_catalog = catalogName;
+          courseCatalogUpdates.add(course.id);
+        } catch (catalogErr) {
+          console.error('⚠️ Course.summit_catalog update error (non-fatal):', catalogErr.message);
+        }
       }
 
       const existingEntry = workingCourses.find((c) => c.course_id === course.id);
@@ -434,7 +488,7 @@ Deno.serve(async (req) => {
 
       const catalogTag = catalogName ? ` — קטלוג: ${catalogName}` : '';
       const courseTag = ` — קורס: ${course.name}`;
-      const optionTag = mapping && productName !== courseName ? ` — אפשרות: ${productName}` : '';
+      const optionTag = mapping && productName !== course.name ? ` — אפשרות: ${productName}` : '';
       noteLines.push(
         isRefund
           ? `${isFullCancellation ? 'ביטול הרשמה' : 'זיכוי חלקי'} דרך Summit בתאריך ${billingDate} (₪${it.share})${courseTag}${optionTag}${catalogTag}${documentName ? ` — ${documentName}` : ''}`
@@ -449,6 +503,7 @@ Deno.serve(async (req) => {
         course_name: course.name,
         status: isFullCancellation ? CANCELLED_STATUS : (isRefund ? (existingEntry?.status || registeredStatus) : registeredStatus),
         ...(mapping && !mapping.optionField && courseOption ? { option: courseOption } : {}),
+        ...(optionIdForEntry ? { option_id: optionIdForEntry } : {}),
         registration_date: existingEntry?.registration_date || billingDate,
         payment_number: paymentNumber,
         paid_so_far: Math.max(0, paidBeforeRefund + signedShare),
@@ -463,7 +518,7 @@ Deno.serve(async (req) => {
 
       if (mapping && mapping.optionField && courseOption) optionFieldUpdates[mapping.optionField] = courseOption;
 
-      results.push({ course, isNewRegistration, isFullCancellation });
+      results.push({ course, isNewRegistration, isFullCancellation, optionId: optionIdForEntry });
     }
 
     // --- 3. יצירה/עדכון משתתפ.ת (פעם אחת לכל העסקה) ---
@@ -507,19 +562,22 @@ Deno.serve(async (req) => {
       console.log(`✅ Student created: ${student.id}`);
     }
 
-    // --- 4. לכל קורס בעסקה: מונה, משימת היכרות, רשימת תפוצה ---
+    // --- 4. לכל קורס בעסקה: מונה (כללי + ברמת האפשרות), משימת היכרות, רשימת תפוצה ---
     const closedTaskIds = [];
     for (const r of results) {
       const course = r.course;
 
-      if (r.isNewRegistration) {
-        await base44.asServiceRole.entities.Course.update(course.id, {
-          current_students: (course.current_students || 0) + 1
-        });
-      } else if (r.isFullCancellation) {
-        await base44.asServiceRole.entities.Course.update(course.id, {
-          current_students: Math.max(0, (course.current_students || 0) - 1)
-        });
+      if (r.isNewRegistration || r.isFullCancellation) {
+        const delta = r.isNewRegistration ? 1 : -1;
+        const courseUpdates = { current_students: Math.max(0, (course.current_students || 0) + delta) };
+        if (r.optionId && Array.isArray(course.options) && course.options.length > 0) {
+          courseUpdates.options = course.options.map((o) =>
+            o.option_id === r.optionId
+              ? { ...o, current_students: Math.max(0, (o.current_students || 0) + delta) }
+              : o
+          );
+        }
+        await base44.asServiceRole.entities.Course.update(course.id, courseUpdates);
       }
 
       if (r.isNewRegistration) {

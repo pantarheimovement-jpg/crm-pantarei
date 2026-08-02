@@ -6,6 +6,7 @@ import { useSystemSettings } from '../components/SystemSettingsContext';
 import { GraduationCap, Plus, Search, Edit, Trash2, X, Loader2, Users, Calendar, MapPin, DollarSign, Grid, List, ExternalLink } from 'lucide-react';
 import ExportButtons from '../components/shared/ExportButtons';
 import TeacherLinkManager from '../components/course/TeacherLinkManager';
+import CourseOptionsEditor from '../components/course/CourseOptionsEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -22,6 +23,7 @@ export default function Courses() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [viewMode, setViewMode] = useState('cards');
   const [openPriceAccordion, setOpenPriceAccordion] = useState(null);
+  const [catalogFilter, setCatalogFilter] = useState('all');
   const [formData, setFormData] = useState({
     name: '',
     type: 'קורס קבוע',
@@ -41,7 +43,8 @@ export default function Courses() {
     teacher_email: '',
     dates_text: '',
     payment_link: '',
-    registration_link: ''
+    registration_link: '',
+    options: []
   });
 
   useEffect(() => {
@@ -214,7 +217,8 @@ export default function Courses() {
         teacher_email: '',
         dates_text: '',
         payment_link: '',
-        registration_link: ''
+        registration_link: '',
+        options: []
       });
     }
     setShowModal(true);
@@ -225,9 +229,12 @@ export default function Courses() {
     setEditingCourse(null);
   };
 
+  const catalogOptions = [...new Set(courses.map(c => c.summit_catalog).filter(Boolean))].sort();
+
   const filteredCourses = courses.filter(course =>
-    course.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    course.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    (course.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    course.description?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    (catalogFilter === 'all' || course.summit_catalog === catalogFilter)
   );
 
   const exportHeaders = ['שם הקורס', 'סוג', 'סטטוס', 'לוז', 'מיקום', 'מחיר מוקדם', 'מחיר מאוחר', 'רשומים', 'לידים', 'מקסימום', 'אימייל מורה'];
@@ -327,6 +334,18 @@ export default function Courses() {
                 className="pr-10"
               />
             </div>
+            {catalogOptions.length > 0 && (
+              <select
+                value={catalogFilter}
+                onChange={(e) => setCatalogFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              >
+                <option value="all">כל הקטלוגים</option>
+                {catalogOptions.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            )}
             <div className="flex gap-2">
               <button
                 onClick={() => setViewMode('cards')}
@@ -387,6 +406,11 @@ export default function Courses() {
                     >
                       {course.status}
                     </span>
+                    {course.summit_catalog && (
+                      <span className="inline-block mr-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                        🗂️ {course.summit_catalog}
+                      </span>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -469,6 +493,7 @@ export default function Courses() {
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">סטטוס</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">לוז</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מיקום</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">קטלוג</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">מחיר</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">רשומים</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">לידים</th>
@@ -506,6 +531,7 @@ export default function Courses() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{course.schedule || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{course.location || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{course.summit_catalog || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {course.price_early ? `מוקדם: ₪${course.price_early}` : ''}{course.price_early && course.price_late ? ' | ' : ''}{course.price_late ? `מאוחר: ₪${course.price_late}` : ''}{!course.price_early && !course.price_late ? '-' : ''}
                       </td>
@@ -744,6 +770,18 @@ export default function Courses() {
                   />
                 </div>
               </div>
+
+              {editingCourse?.summit_catalog && (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 flex items-center gap-2 text-sm text-purple-800">
+                  🗂️ קטלוג בסאמיט: <span className="font-bold">{editingCourse.summit_catalog}</span>
+                  <span className="text-xs text-purple-500">(מגיע אוטומטית מסאמיט, לא ניתן לעריכה)</span>
+                </div>
+              )}
+
+              <CourseOptionsEditor
+                options={formData.options || []}
+                onChange={(opts) => setFormData({ ...formData, options: opts })}
+              />
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-2">אימייל מורה (לגישה לדף קורס ייעודי)</label>

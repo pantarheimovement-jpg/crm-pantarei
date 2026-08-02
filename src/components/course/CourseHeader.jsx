@@ -78,6 +78,11 @@ export default function CourseHeader({ course, registeredCount, leadsCount }) {
             {course.description && (
               <p className="text-sm text-[var(--crm-text)] opacity-70 mt-1">{course.description}</p>
             )}
+            {course.summit_catalog && (
+              <span className="inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                🗂️ קטלוג: {course.summit_catalog}
+              </span>
+            )}
           </div>
         </div>
         <span

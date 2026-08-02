@@ -178,6 +178,14 @@ export default function Header() {
                       {language === 'he' ? 'סטטיסטיקות ניוזלטר' : 'Newsletter Analytics'}
                     </Link>
                     <Link
+                      to={createPageUrl('SumitInbox')}
+                      className="flex items-center gap-3 px-4 py-2 text-sm font-medium hover:text-[var(--primary-color)] hover:bg-gray-50 transition-colors duration-200"
+                      onClick={() => setIsDesktopMenuOpen(false)}
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      {language === 'he' ? 'תיבת נכנסות סאמיט' : 'Sumit Inbox'}
+                    </Link>
+                    <Link
                       to={createPageUrl('CRMSettings')}
                       className="flex items-center gap-3 px-4 py-2 text-sm font-medium hover:text-[var(--primary-color)] hover:bg-gray-50 transition-colors duration-200"
                       onClick={() => setIsDesktopMenuOpen(false)}
@@ -298,6 +306,14 @@ export default function Header() {
                 >
                   <BarChart3 className="w-5 h-5 flex-shrink-0" />
                   <span>{language === 'he' ? 'סטטיסטיקות ניוזלטר' : 'Newsletter Analytics'}</span>
+                </Link>
+                <Link
+                  to={createPageUrl('SumitInbox')}
+                  className="flex items-center gap-3 px-3 py-3 text-base font-medium text-[var(--text-color)] hover:text-[var(--primary-color)] hover:bg-gray-50 rounded-lg transition-colors duration-200 active:bg-gray-100"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <DollarSign className="w-5 h-5 flex-shrink-0" />
+                  <span>{language === 'he' ? 'תיבת נכנסות סאמיט' : 'Sumit Inbox'}</span>
                 </Link>
                 <Link
                   to={createPageUrl('CRMSettings')}

@@ -13,10 +13,10 @@ export default function StudentCoursesEditor({ student, onUpdated }) {
   const [loading, setLoading] = useState(true);
   const [editingStatusIdx, setEditingStatusIdx] = useState(null);
 
-  const COURSE_STATUSES = ['ליד חדש', 'במעקב ראשוני', 'היה ביום היכרות', 'לחזור לקראת הרשמה', 'רשום', 'ביטול הרשמה', 'לא רלוונטי'];
+  const COURSE_STATUSES = ['ליד חדש', 'במעקב ראשוני', 'רשומה ליום היכרות', 'היה ביום היכרות', 'לחזור לקראת הרשמה', 'רשום', 'ביטול הרשמה', 'לא רלוונטי'];
 
   // סדר עדיפות סטטוסים לחישוב סטטוס כללי
-  const STATUS_PRIORITY = ['רשום', 'נרשם', 'ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'לא רלוונטי'];
+  const STATUS_PRIORITY = ['רשום', 'נרשם', 'רשומה ליום היכרות', 'ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'לא רלוונטי'];
 
   useEffect(() => {
     base44.entities.Course.list().then(data => {

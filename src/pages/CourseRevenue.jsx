@@ -5,7 +5,7 @@ import { useSystemSettings } from '../components/SystemSettingsContext';
 import ExportButtons from '../components/shared/ExportButtons';
 import PendingAssignmentModal from '../components/revenue/PendingAssignmentModal';
 
-const REGISTERED_STATUSES = new Set(['רשום', 'נרשם']);
+const REGISTERED_STATUSES = new Set(['רשום', 'נרשם', 'רשומה ליום היכרות']);
 
 export default function CourseRevenue() {
   const { designSettings } = useSystemSettings();
@@ -108,19 +108,32 @@ export default function CourseRevenue() {
         return sum;
       }, 0);
 
-      // Expected: sum of total_price, fallback installment_amount × payments_total
-      const expected = registeredEntries.reduce((sum, e) => {
+      // הכנסות צפויות רלוונטי רק לתוכניות שנתיות בהוראת קבע — בקורסים שמשלמים בהם
+      // מראש "צפוי" = "שולם" והמדד מיותר. מחיר לכל רישום: מחיר המסלול שנבחר
+      // (Course.options[] לפי option_id), עם נפילה למחיר הישן total_price, ואז להערכה installment × payments_total.
+      const priceFromOption = (optionId) => {
+        if (!optionId) return null;
+        const opt = (course.options || []).find(o => o.option_id === optionId);
+        return opt && opt.price != null ? parseFloat(opt.price) : null;
+      };
+      const isAnnual = course.is_annual_program === true ||
+        registeredEntries.some(e => (parseFloat(e.payments_total) || 0) > 1);
+
+      const expected = isAnnual ? registeredEntries.reduce((sum, e) => {
+        const fromOption = priceFromOption(e.option_id);
+        if (fromOption !== null) return sum + fromOption;
         if (e.total_price) return sum + parseFloat(e.total_price);
         const inst = parseFloat(e.installment_amount) || 0;
         const total = parseFloat(e.payments_total) || 0;
         return sum + inst * total;
-      }, 0);
+      }, 0) : null;
 
       return {
         course,
         registeredCount: registeredStudents.length,
         paidSoFar,
         expected,
+        isAnnual,
         hasUnknown,
         entries: registeredEntries
       };
@@ -128,7 +141,7 @@ export default function CourseRevenue() {
   }, [courses, students]);
 
   const totalPaid = courseStats.reduce((s, c) => s + c.paidSoFar, 0);
-  const totalExpected = courseStats.reduce((s, c) => s + c.expected, 0);
+  const totalExpected = courseStats.reduce((s, c) => s + (c.expected || 0), 0);
   const totalStudents = courseStats.reduce((s, c) => s + c.registeredCount, 0);
 
   // סה"כ שנגבה בפועל דרך סאמיט לכל משתתפת (amount_paid) — כולל כספים
@@ -205,13 +218,14 @@ export default function CourseRevenue() {
           />
         </div>
 
-        {/* Summary KPIs — שלושה מספרים מתאזנים: נגבה בפועל = משויך + ממתין לשיוך */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Summary KPIs — שלושה מספרים מתאזנים: נגבה בפועל = משויך + ממתין לשיוך, בתוספת הכנסות צפויות לתוכניות שנתיות */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           {[
             { label: 'נגבה בפועל', value: fmt(totalCollected), icon: DollarSign, color: 'var(--crm-accent)' },
             { label: 'משויך לקורסים', value: fmt(matchedTotal), icon: TrendingUp, color: 'var(--crm-primary)' },
             { label: 'ממתין לשיוך', value: fmt(pendingTotal), icon: Clock, color: 'var(--crm-action)', clickable: true },
-          ].map(({ label, value, icon: Icon, color, clickable }) => (
+            { label: 'הכנסות צפויות', sublabel: '(תוכניות בהוראת קבע)', value: fmt(totalExpected), icon: TrendingUp, color: 'var(--crm-accent)' },
+          ].map(({ label, sublabel, value, icon: Icon, color, clickable }) => (
             <div
               key={label}
               onClick={clickable ? () => setShowPending(true) : undefined}
@@ -220,7 +234,10 @@ export default function CourseRevenue() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">{label}</p>
+                  <p className="text-sm font-medium text-[var(--crm-text)] opacity-70">
+                    {label}
+                    {sublabel && <span className="block text-xs opacity-60">{sublabel}</span>}
+                  </p>
                   <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{value}</p>
                   {clickable && <p className="text-xs text-[var(--crm-primary)] mt-1 underline">לצפייה ברשימה</p>}
                 </div>
@@ -284,7 +301,22 @@ export default function CourseRevenue() {
               {filteredStats.map(({ course, registeredCount, paidSoFar, expected, hasUnknown, entries }) => (
                 <React.Fragment key={course.id}>
                   <tr className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-[var(--crm-text)]">{course.name}</td>
+                    <td className="px-4 py-3 font-medium text-[var(--crm-text)]">
+                      {course.name}
+                      <label className="flex items-center gap-1 mt-1 text-xs text-gray-400 cursor-pointer font-normal">
+                        <input
+                          type="checkbox"
+                          checked={course.is_annual_program === true}
+                          onChange={async (e) => {
+                            const checked = e.target.checked;
+                            await base44.entities.Course.update(course.id, { is_annual_program: checked });
+                            setCourses(prev => prev.map(c => c.id === course.id ? { ...c, is_annual_program: checked } : c));
+                          }}
+                          className="w-3 h-3"
+                        />
+                        תוכנית שנתית (הוראת קבע)
+                      </label>
+                    </td>
                     <td className="px-4 py-3 text-center">
                       <span className="px-2 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: 'var(--crm-primary)' }}>
                         {course.status || '—'}

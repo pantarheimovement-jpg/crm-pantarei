@@ -1019,6 +1019,7 @@ export default function Tasks() {
                   <option value="אינסטגרם">אינסטגרם</option>
                   <option value="המלצה">המלצה</option>
                   <option value="אתר">אתר</option>
+                  <option value="יום היכרות">יום היכרות</option>
                   <option value="אחר">אחר</option>
                 </select>
               </div>

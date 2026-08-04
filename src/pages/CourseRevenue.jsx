@@ -4,6 +4,7 @@ import { DollarSign, Search, Download, Users, TrendingUp, ChevronDown, ChevronUp
 import { useSystemSettings } from '../components/SystemSettingsContext';
 import ExportButtons from '../components/shared/ExportButtons';
 import PendingAssignmentModal from '../components/revenue/PendingAssignmentModal';
+import RevenueListModal from '../components/revenue/RevenueListModal';
 
 const REGISTERED_STATUSES = new Set(['רשום', 'נרשם', 'רשומה ליום היכרות']);
 
@@ -16,6 +17,7 @@ export default function CourseRevenue() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [showPending, setShowPending] = useState(false);
+  const [openModal, setOpenModal] = useState(null); // null | 'collected' | 'matched' | 'expected'
 
   useEffect(() => {
     const load = async () => {
@@ -172,6 +174,42 @@ export default function CourseRevenue() {
       .sort((a, b) => b.pendingAmount - a.pendingAmount);
   }, [students]);
 
+  // רשימות לחיצה עבור שלושת הריבועים האחרים — אותו דפוס כמו pendingStudents
+  const collectedList = useMemo(() => {
+    return students
+      .filter(s => (parseFloat(s.amount_paid) || 0) > 0)
+      .map(s => ({ id: s.id, name: s.full_name, sub: s.phone, amount: parseFloat(s.amount_paid) || 0 }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [students]);
+
+  const matchedList = useMemo(() => {
+    const rows = [];
+    courseStats.forEach(({ course, entries }) => {
+      entries.forEach(e => {
+        let amt = 0;
+        if (e.paid_so_far !== null && e.paid_so_far !== undefined && e.paid_so_far !== '') {
+          amt = parseFloat(e.paid_so_far) || 0;
+        } else {
+          const registeredCourseCount = (e.student?.courses || []).filter(c => REGISTERED_STATUSES.has(c.status)).length;
+          if (registeredCourseCount === 1 && e.student?.amount_paid) {
+            amt = parseFloat(e.student.amount_paid) || 0;
+          }
+        }
+        if (amt > 0) {
+          rows.push({ id: `${e.student.id}-${course.id}`, name: e.student.full_name, sub: course.name, amount: amt });
+        }
+      });
+    });
+    return rows.sort((a, b) => b.amount - a.amount);
+  }, [courseStats]);
+
+  const expectedList = useMemo(() => {
+    return courseStats
+      .filter(c => c.isAnnual)
+      .map(c => ({ id: c.course.id, name: c.course.name, sub: `${c.registeredCount} רשומים`, amount: c.expected || 0 }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [courseStats]);
+
   const filteredStats = courseStats.filter(({ course }) => {
     const matchSearch = !search || course.name.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || course.status === statusFilter;
@@ -221,15 +259,15 @@ export default function CourseRevenue() {
         {/* Summary KPIs — שלושה מספרים מתאזנים: נגבה בפועל = משויך + ממתין לשיוך, בתוספת הכנסות צפויות לתוכניות שנתיות */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           {[
-            { label: 'נגבה בפועל', value: fmt(totalCollected), icon: DollarSign, color: 'var(--crm-accent)' },
-            { label: 'משויך לקורסים', value: fmt(matchedTotal), icon: TrendingUp, color: 'var(--crm-primary)' },
-            { label: 'ממתין לשיוך', value: fmt(pendingTotal), icon: Clock, color: 'var(--crm-action)', clickable: true },
-            { label: 'הכנסות צפויות', sublabel: '(תוכניות בהוראת קבע)', value: fmt(totalExpected), icon: TrendingUp, color: 'var(--crm-accent)' },
-          ].map(({ label, sublabel, value, icon: Icon, color, clickable }) => (
+            { label: 'נגבה בפועל', value: fmt(totalCollected), icon: DollarSign, color: 'var(--crm-accent)', onClick: () => setOpenModal('collected') },
+            { label: 'משויך לקורסים', value: fmt(matchedTotal), icon: TrendingUp, color: 'var(--crm-primary)', onClick: () => setOpenModal('matched') },
+            { label: 'ממתין לשיוך', value: fmt(pendingTotal), icon: Clock, color: 'var(--crm-action)', onClick: () => setShowPending(true) },
+            { label: 'הכנסות צפויות', sublabel: '(תוכניות בהוראת קבע)', value: fmt(totalExpected), icon: TrendingUp, color: 'var(--crm-accent)', onClick: () => setOpenModal('expected') },
+          ].map(({ label, sublabel, value, icon: Icon, color, onClick }) => (
             <div
               key={label}
-              onClick={clickable ? () => setShowPending(true) : undefined}
-              className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-6 ${clickable ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+              onClick={onClick}
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-md transition-shadow"
               style={{ borderRadius: 'var(--crm-border-radius)' }}
             >
               <div className="flex items-center justify-between">
@@ -239,7 +277,7 @@ export default function CourseRevenue() {
                     {sublabel && <span className="block text-xs opacity-60">{sublabel}</span>}
                   </p>
                   <p className="text-3xl font-bold text-[var(--crm-text)] mt-2">{value}</p>
-                  {clickable && <p className="text-xs text-[var(--crm-primary)] mt-1 underline">לצפייה ברשימה</p>}
+                  <p className="text-xs text-[var(--crm-primary)] mt-1 underline">לצפייה ברשימה</p>
                 </div>
                 <div className="p-3 rounded-xl" style={{ backgroundColor: color }}>
                   <Icon size={24} className="text-white" />
@@ -251,6 +289,34 @@ export default function CourseRevenue() {
 
         {showPending && (
           <PendingAssignmentModal students={pendingStudents} onClose={() => setShowPending(false)} />
+        )}
+        {openModal === 'collected' && (
+          <RevenueListModal
+            title="נגבה בפועל"
+            rows={collectedList}
+            subHeader="טלפון"
+            amountHeader="סכום שנגבה"
+            onClose={() => setOpenModal(null)}
+          />
+        )}
+        {openModal === 'matched' && (
+          <RevenueListModal
+            title="משויך לקורסים"
+            rows={matchedList}
+            subHeader="קורס"
+            amountHeader="שולם"
+            onClose={() => setOpenModal(null)}
+          />
+        )}
+        {openModal === 'expected' && (
+          <RevenueListModal
+            title="הכנסות צפויות"
+            rows={expectedList}
+            subHeader="רשומים"
+            amountHeader="צפי"
+            emptyMessage="אין תוכניות שנתיות מסומנות"
+            onClose={() => setOpenModal(null)}
+          />
         )}
 
         {/* Filters */}

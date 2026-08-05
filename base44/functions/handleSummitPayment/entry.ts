@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { autoCreateCourseFromProduct } from '../../shared/sumitProducts.ts';
+import { isIntroDayCourse, programForIntroDay } from '../../shared/introDayPrograms.ts';
 
 // =====================================================
 // handleSummitPayment v4
@@ -17,6 +18,8 @@ const OPEN_FOR_REGISTRATION = 'פתוח להרשמה';
 const CANCELLED_STATUS = 'ביטול הרשמה';
 const REFUND_TAG = 'זיכוי';
 const PENDING_TAG = 'ממתין לשיוך לקורס';
+// רישום ליום היכרות אינו הרשמה לתוכנית — הוא הסטטוס שממנו נגזר הליד לתוכנית
+const INTRO_STATUS = 'רשומה ליום היכרות';
 
 function normalizeName(value) {
   return String(value || '')
@@ -164,6 +167,10 @@ function resolveCourseMapping(productName) {
 // סטטוס ראשי: הליד הפתוח החם ביותר; אם אין לידים פתוחים — "רשום"
 function computeMainStatus(courses, fallback) {
   const list = courses || [];
+  // רישום ליום היכרות גובר על הליד שנפתח ממנו — כך הסטטוס הראשי לא נעשה
+  // "ליד חדש" ואוטומציית "שיחת היכרות" (שרצה על ליד חדש) לא נפתחת למי שכבר
+  // הייתה ביום היכרות.
+  if (list.some((c) => c.status === INTRO_STATUS)) return INTRO_STATUS;
   for (const status of OPEN_LEAD_STATUSES) {
     if (list.some((c) => c.status === status)) return status;
   }
@@ -507,10 +514,12 @@ Deno.serve(async (req) => {
       const signedShare = isRefund ? -it.share : it.share;
       totalDelta += signedShare;
 
+      const rowRegisteredStatus = isIntroDayCourse(course) ? INTRO_STATUS : registeredStatus;
+
       const entry = {
         course_id: course.id,
         course_name: course.name,
-        status: isFullCancellation ? CANCELLED_STATUS : (isRefund ? (existingEntry?.status || registeredStatus) : registeredStatus),
+        status: isFullCancellation ? CANCELLED_STATUS : (isRefund ? (existingEntry?.status || rowRegisteredStatus) : rowRegisteredStatus),
         ...(mapping && !mapping.optionField && courseOption ? { option: courseOption } : {}),
         ...(optionIdForEntry ? { option_id: optionIdForEntry } : {}),
         registration_date: existingEntry?.registration_date || billingDate,
@@ -528,6 +537,28 @@ Deno.serve(async (req) => {
       if (mapping && mapping.optionField && courseOption) optionFieldUpdates[mapping.optionField] = courseOption;
 
       results.push({ course, isNewRegistration, isFullCancellation, optionId: optionIdForEntry });
+    }
+
+    // --- 2ב. ההרשמה היא הטריגר: רישום ליום היכרות פותח מיד ליד לתוכנית שהיום
+    // הזה מקדם. בלי קרון ובלי מעבר נוסף. שני כללי בטיחות: השורה נוצרת *בלי כסף*
+    // (אין paid_so_far/installment_amount ואין נגיעה ב-amount_paid), ואם כבר יש
+    // שורה לתוכנית — לא נוצרת שנייה. משימת "שיחת היכרות" לא נפתחת: הסטטוס
+    // הראשי נשאר "רשומה ליום היכרות" (ראו computeMainStatus), והאוטומציה
+    // createIntroductionTask רצה רק על יצירת משתתפת בסטטוס "ליד חדש".
+    const introLeads = [];
+    for (const r of results) {
+      if (!r.isNewRegistration || !isIntroDayCourse(r.course)) continue;
+      const program = programForIntroDay(r.course);
+      if (!program) continue;
+      if (workingCourses.some((c) => c.course_id === program.program_id)) continue;
+      workingCourses.push({
+        course_id: program.program_id,
+        course_name: program.program_name,
+        status: 'ליד חדש',
+        registration_date: billingDate
+      });
+      introLeads.push(program.program_name);
+      console.log(`🌱 Intro-day lead opened for program "${program.program_name}"`);
     }
 
     // --- 3. יצירה/עדכון משתתפ.ת (פעם אחת לכל העסקה) ---
@@ -670,6 +701,7 @@ Deno.serve(async (req) => {
       pending_assignment: pendingAssignment,
       amount_not_split: unsplitAmount,
       is_refund: isRefund,
+      intro_day_leads: introLeads,
       intro_tasks_closed: closedTaskIds
     });
 

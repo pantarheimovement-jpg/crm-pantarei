@@ -1,7 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import PendingAssignRow from './PendingAssignRow';
-import { assignPendingPayment } from './assignPending';
+import { assignPendingPayment, revertPendingPayment } from './assignPending';
 
 export default function PendingAssignmentModal({ students, courses, onAssigned, onClose }) {
   const fmt = (n) => n ? `₪${Math.round(n).toLocaleString('he-IL')}` : '—';
@@ -9,13 +9,19 @@ export default function PendingAssignmentModal({ students, courses, onAssigned, 
 
   const handleAssign = async (row, courseId, amount) => {
     const course = courses.find(c => c.id === courseId);
-    const updated = await assignPendingPayment({
+    const res = await assignPendingPayment({
       studentId: row.id,
       courseId,
       courseName: course?.name || '',
       amount
     });
-    onAssigned(updated);
+    onAssigned({ id: row.id, ...res.updated });
+    return res;
+  };
+
+  const handleRevert = async (undo) => {
+    const prev = await revertPendingPayment(undo);
+    onAssigned({ id: undo.studentId, ...prev });
   };
 
   return (
@@ -44,7 +50,7 @@ export default function PendingAssignmentModal({ students, courses, onAssigned, 
             </thead>
             <tbody>
               {students.map(s => (
-                <PendingAssignRow key={s.id} row={s} courses={courses} onAssign={handleAssign} />
+                <PendingAssignRow key={s.id} row={s} courses={courses} onAssign={handleAssign} onRevert={handleRevert} />
               ))}
             </tbody>
           </table>

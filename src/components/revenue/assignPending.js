@@ -48,5 +48,34 @@ export async function assignPendingPayment({ studentId, courseId, courseName, am
     });
   }
 
-  return { ...student, ...payload };
+  return {
+    updated: { ...student, ...payload },
+    // תצלום מצב לפני השיוך — מאפשר "בטל" מדויק אם נלחץ בטעות
+    undo: {
+      studentId,
+      courseId,
+      incremented: becameRegistered,
+      prev: {
+        courses: student.courses || [],
+        status: student.status,
+        is_customer: student.is_customer,
+        course_id: student.course_id,
+        course_name: student.course_name
+      }
+    }
+  };
+}
+
+// מחזיר את המשתתפת בדיוק למצב שלפני השיוך
+export async function revertPendingPayment(undo) {
+  await base44.entities.Student.update(undo.studentId, undo.prev);
+
+  if (undo.incremented) {
+    const course = await base44.entities.Course.get(undo.courseId);
+    await base44.entities.Course.update(undo.courseId, {
+      current_students: Math.max(0, (course.current_students || 0) - 1)
+    });
+  }
+
+  return undo.prev;
 }

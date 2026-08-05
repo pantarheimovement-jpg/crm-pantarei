@@ -1,23 +1,60 @@
 import React, { useState } from 'react';
-import { Loader2, Check } from 'lucide-react';
+import { Loader2, Check, Undo2 } from 'lucide-react';
 
-export default function PendingAssignRow({ row, courses, onAssign }) {
+export default function PendingAssignRow({ row, courses, onAssign, onRevert }) {
   const [courseId, setCourseId] = useState(row.courseIds[0] || '');
   const [amount, setAmount] = useState(String(row.pendingAmount));
   const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(null); // { courseName, amount, undo }
 
   const fmt = (n) => `₪${Math.round(n).toLocaleString('he-IL')}`;
   const numeric = parseFloat(amount) || 0;
-  const valid = courseId && numeric >= 1 && numeric <= row.pendingAmount + 0.01;
+
+  // הסבר בשפה אנושית למה אי אפשר ללחוץ — במקום כפתור דהוי בלי סיבה
+  let blockedReason = '';
+  if (!courseId) blockedReason = 'צריך לבחור קורס';
+  else if (numeric < 1) blockedReason = 'צריך להזין סכום';
+  else if (numeric > row.pendingAmount + 0.01) blockedReason = `יש לה רק ${fmt(row.pendingAmount)} שלא שויכו`;
 
   const handle = async () => {
     setSaving(true);
     try {
-      await onAssign(row, courseId, numeric);
+      const res = await onAssign(row, courseId, numeric);
+      setDone({ courseName: courses.find(c => c.id === courseId)?.name || '', amount: numeric, undo: res.undo });
     } finally {
       setSaving(false);
     }
   };
+
+  const handleUndo = async () => {
+    setSaving(true);
+    try {
+      await onRevert(done.undo);
+      setDone(null);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <tr className="border-b bg-green-50">
+        <td className="p-2 font-medium whitespace-nowrap">{row.name}</td>
+        <td className="p-2 text-center text-green-700" colSpan={3}>
+          שויך {fmt(done.amount)} ל"{done.courseName}"
+        </td>
+        <td className="p-2 text-center">
+          <button
+            onClick={handleUndo}
+            disabled={saving}
+            className="px-3 py-1 rounded-full text-xs border border-gray-300 text-gray-600 flex items-center gap-1 mx-auto"
+          >
+            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Undo2 className="w-3 h-3" />בטל</>}
+          </button>
+        </td>
+      </tr>
+    );
+  }
 
   // הקורסים שהמשתתפת כבר רשומה אליהם מופיעים ראשונים — הבחירה הנפוצה
   const own = courses.filter(c => row.courseIds.includes(c.id));
@@ -58,12 +95,13 @@ export default function PendingAssignRow({ row, courses, onAssign }) {
       <td className="p-2 text-center">
         <button
           onClick={handle}
-          disabled={!valid || saving}
+          disabled={!!blockedReason || saving}
           className="px-3 py-1 rounded-full text-xs text-white disabled:opacity-40"
           style={{ backgroundColor: 'var(--crm-primary)' }}
         >
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <span className="flex items-center gap-1"><Check className="w-3 h-3" />שייך</span>}
         </button>
+        {blockedReason && <span className="block text-[11px] text-gray-400 mt-1">{blockedReason}</span>}
       </td>
     </tr>
   );

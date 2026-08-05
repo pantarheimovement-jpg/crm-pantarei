@@ -167,6 +167,7 @@ export default function CourseRevenue() {
           name: s.full_name,
           phone: s.phone,
           courses: registeredEntries.map(c => c.course_name),
+          courseIds: registeredEntries.map(c => c.course_id),
           pendingAmount
         };
       })
@@ -288,7 +289,12 @@ export default function CourseRevenue() {
         </div>
 
         {showPending && (
-          <PendingAssignmentModal students={pendingStudents} onClose={() => setShowPending(false)} />
+          <PendingAssignmentModal
+            students={pendingStudents}
+            courses={courses}
+            onAssigned={(updated) => setStudents(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s))}
+            onClose={() => setShowPending(false)}
+          />
         )}
         {openModal === 'collected' && (
           <RevenueListModal

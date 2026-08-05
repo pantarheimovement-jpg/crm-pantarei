@@ -783,18 +783,13 @@ export default function Students() {
                     >
                       {student.status}
                     </span>
-                    {student.is_customer && (() => {
-                      const openCourse = getOpenCourse(student);
-                      return openCourse ? (
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-300">
-                          לקוחה • ליד פתוח בקורס {openCourse.course_name}
-                        </span>
-                      ) : (
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-300">
-                          לקוחה
-                        </span>
-                      );
-                    })()}
+                    {/* תג "לקוחה" בלבד. הבאנר הכתום "ליד פתוח בקורס" הוסר (5.8) —
+                        ליד פתוח במקביל להרשמה הוא מצב תקין ולא חריגה שדורשת אזהרה. */}
+                    {student.is_customer && (
+                      <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-300">
+                        לקוחה
+                      </span>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button

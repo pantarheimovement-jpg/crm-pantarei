@@ -79,7 +79,9 @@ export default function CourseView() {
       }
 
       if (isLinked) {
-        if (courseStatus === 'נרשם' || courseStatus === 'רשום') {
+        // "רשומה ליום היכרות" היא רשומה על האירוע לכל דבר — היא שילמה ומגיעה.
+        // עד 5.8 היא הופיעה תחת "לידים משויכים" ולכן ימי ההיכרות נראו ריקים.
+        if (courseStatus === 'נרשם' || courseStatus === 'רשום' || courseStatus === 'רשומה ליום היכרות') {
           registered.push({ ...student, courseStatus });
         } else if (courseStatus !== 'לא רלוונטי') {
           leadStudentsList.push({ ...student, courseStatus });

@@ -27,9 +27,12 @@ export function isNoAutoCourseProduct(productName, catalogName) {
   return NO_AUTO_COURSE_KEYWORDS.some((k) => haystack.includes(normalizeProductText(k)));
 }
 
-// סוג המיקל נגזר מהשם — יום היכרות נשאר יום היכרות ולא הופך לקורס רגיל
-export function inferCourseKind(productName) {
-  return /היכרות/.test(String(productName || '')) ? 'יום היכרות' : 'קורס';
+// סוג המיקל נגזר מהשם או מהקטלוג — יום היכרות נשאר יום היכרות ולא הופך לקורס
+// רגיל. הקטלוג חשוב: מוצר בקטלוג "ימי היכרות נענע" הוא יום היכרות גם אם שמו
+// לא מכיל את המילה, ורק כך נרשמות נשארות לידים ולא הופכות ללקוחות (05.08.2026).
+export function inferCourseKind(productName, catalogName) {
+  const haystack = `${productName || ''} ${catalogName || ''}`;
+  return /היכרות/.test(haystack) ? 'יום היכרות' : 'קורס';
 }
 
 // פותח קורס חדש ממוצר סאמיט שלא זוהה. מחזיר את הקורס, או null אם המוצר
@@ -42,7 +45,7 @@ export async function autoCreateCourseFromProduct(base44, { productName, catalog
     const created = await base44.asServiceRole.entities.Course.create({
       name: productName,
       type: 'קורס קבוע',
-      kind: inferCourseKind(productName),
+      kind: inferCourseKind(productName, catalogName),
       status: 'פתוח להרשמה',
       current_students: 0,
       ...(catalogName ? { summit_catalog: catalogName } : {}),

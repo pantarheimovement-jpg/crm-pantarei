@@ -107,8 +107,31 @@
       "allowed_operations": [
         "read"
       ]
+    },
+    {
+      "entity_name": "SumitProductMap",
+      "allowed_operations": [
+        "read"
+      ]
     }
   ],
+  "context_files": [],
+  "app_user_connector_configs": [],
+  "selected_skill_names": [],
+  "selected_workspace_skill_ids": [],
+  "model": "automatic",
   "whatsapp_greeting": "\u05e9\u05dc\u05d5\u05dd! \u05d0\u05e0\u05d9 \u05e1\u05d5\u05db\u05df \u05d4-AI \u05e9\u05dc Pantarhei CRM \ud83d\udc9c \u05d0\u05e0\u05d9 \u05db\u05d0\u05df \u05db\u05d3\u05d9 \u05dc\u05e2\u05d6\u05d5\u05e8 \u05dc\u05da \u05dc\u05e0\u05d4\u05dc \u05d0\u05ea \u05d4\u05e0\u05ea\u05d5\u05e0\u05d9\u05dd \u05e9\u05dc\u05da, \u05dc\u05e2\u05e0\u05d5\u05ea \u05e2\u05dc \u05e9\u05d0\u05dc\u05d5\u05ea, \u05d5\u05dc\u05d4\u05e1\u05d1\u05d9\u05e8 \u05e2\u05dc \u05d4\u05de\u05e2\u05e8\u05db\u05ea. \u05de\u05d4 \u05ea\u05e8\u05e6\u05d9 \u05dc\u05e2\u05e9\u05d5\u05ea?",
+  "telegram_greeting": null,
+  "line_greeting": null,
+  "memory_config": {
+    "enabled": true,
+    "scope": "both",
+    "include_other_conversation_context": false,
+    "instructions": null
+  },
+  "voice_config": {
+    "voice_id": null
+  },
+  "allow_anonymous_access": false,
   "name": "task_manager"
 }

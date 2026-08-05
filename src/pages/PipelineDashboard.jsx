@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../components/SystemSettingsContext';
+import IntroConversionPanel from '../components/dashboard/IntroConversionPanel';
 import { Button } from '@/components/ui/button';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import {
@@ -558,6 +559,9 @@ export default function PipelineDashboard() {
           </div>
 
         </div>
+
+        {/* המרה מימי היכרות → תוכניות */}
+        <IntroConversionPanel />
 
         {/* טבלת קורסים + משימות */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

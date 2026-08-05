@@ -42,9 +42,11 @@ export default async function (req) {
     if (!mapRecord) return Response.json({ error: 'Product map record not found' }, { status: 404 });
     const productName = mapRecord.summit_product;
 
-    // מוצרים שאינם "קורס" (תרומה/השכרה/אירוע/בדיקה/יום היכרות) — רק מסמנים
-    // את המוצר, בלי לרשום לקורס וללא תיקון רטרואקטיבי. שיוך פשוט וזול.
-    if (kind !== 'קורס') {
+    // "יום היכרות" מתנהג בדיוק כמו קורס — ימי ההיכרות מנוהלים כקורסים והכסף
+    // שלהם נספר בהכנסות, ולכן הוא חייב קורס ותיקון רטרואקטיבי. רק מוצרים
+    // שאינם קורס באמת (תרומה/השכרה/אירוע/בדיקה/להתעלם) מקבלים שיוך פשוט.
+    const isCourseKind = kind === 'קורס' || kind === 'יום היכרות';
+    if (!isCourseKind) {
       if (mode === 'preview') {
         return Response.json({ affectedCount: 0, affectedTotal: 0, students: [] });
       }
@@ -55,7 +57,7 @@ export default async function (req) {
       return Response.json({ applied: true, affectedCount: 0, affectedTotal: 0 });
     }
 
-    if (!courseId) return Response.json({ error: 'courseId is required for kind="קורס"' }, { status: 400 });
+    if (!courseId) return Response.json({ error: `courseId is required for kind="${kind}"` }, { status: 400 });
     const course = await base44.asServiceRole.entities.Course.get(courseId);
     if (!course) return Response.json({ error: 'Course not found' }, { status: 404 });
 
@@ -93,18 +95,22 @@ export default async function (req) {
 
     // --- apply ---
     const today = new Date().toISOString().split('T')[0];
+    // רשומי יום היכרות נשארים מסומנים כ"רשומה ליום היכרות" — סטטוס שנספר
+    // בהכנסות אך משמר אותם כליד בפייפליין לקראת התוכנית השנתית.
+    const targetStatus = kind === 'יום היכרות' ? 'רשומה ליום היכרות' : 'רשום';
+    const REGISTERED = ['רשום', 'נרשם', 'רשומה ליום היכרות'];
     let newRegistrations = 0;
 
     for (const a of affected) {
       const s = a.student;
       const courses = [...(s.courses || [])];
       const idx = courses.findIndex((c) => c.course_id === courseId);
-      const wasRegistered = idx >= 0 && ['רשום', 'נרשם'].includes(courses[idx].status);
+      const wasRegistered = idx >= 0 && REGISTERED.includes(courses[idx].status);
 
       if (idx >= 0) {
         courses[idx] = {
           ...courses[idx],
-          status: 'רשום',
+          status: wasRegistered ? courses[idx].status : targetStatus,
           option_id: finalOptionId || courses[idx].option_id,
           paid_so_far: Math.max(0, (parseFloat(courses[idx].paid_so_far) || 0) + a.amount)
         };
@@ -112,7 +118,7 @@ export default async function (req) {
         courses.push({
           course_id: courseId,
           course_name: course.name,
-          status: 'רשום',
+          status: targetStatus,
           option_id: finalOptionId || undefined,
           registration_date: today,
           paid_so_far: a.amount
@@ -142,7 +148,7 @@ export default async function (req) {
       course_id: courseId,
       course_name: course.name,
       option_id: finalOptionId || undefined,
-      kind: 'קורס',
+      kind,
       status: 'משויך'
     });
 

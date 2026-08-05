@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { autoCreateCourseFromProduct } from '../../shared/sumitProducts.ts';
 
 // =====================================================
 // handleSummitPayment v4
@@ -432,6 +433,14 @@ Deno.serve(async (req) => {
         }
       }
 
+      // שכבה 3: פתיחת קורס אוטומטית. מוצר שלא זוהה פותח קורס לפי שמו והקטלוג
+      // שלו, כדי שהכסף ישויך מיד. חריגים (בדיקות/השכרה/תרומה וכו') לא נפתחים
+      // ונשארים בתיבת הנכנסות לשיוך בקליק.
+      if (!course && productName) {
+        course = await autoCreateCourseFromProduct(base44, { productName, catalogName, amount: it.share });
+        if (course) console.log(`🆕 Auto-created course "${course.name}" from unknown product`);
+      }
+
       // כותבים/מעדכנים את שכבת השיוך מהתנועה האמיתית — כך שהמחזור הבא של המוצר
       // הזה יתפוס בשכבה 1 בלי תלות בתבנית רג'קס.
       await upsertProductMap(base44, {
@@ -443,8 +452,8 @@ Deno.serve(async (req) => {
         existingMap: productMap
       });
 
-      // מוצר שלא מוכר כבר לא יוצר קורס. הכסף נרשם, המוצר ממתין לשיוך ידני בתיבת
-      // הנכנסות, ואף קורס לא נוצר בטעות.
+      // הגענו לכאן רק אם המוצר הוא חריג מוגדר (או חסר שם) — הכסף נרשם והמוצר
+      // ממתין לשיוך ידני בתיבת הנכנסות.
       if (!course) {
         pendingAssignment = true;
         console.log(`⏸️ Unknown product "${productName}" — recorded, waiting for manual assignment`);

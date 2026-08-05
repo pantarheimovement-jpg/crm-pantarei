@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 const KIND_OPTIONS = ['קורס', 'יום היכרות', 'אירוע', 'תרומה', 'השכרה', 'בדיקה', 'להתעלם'];
+// יום היכרות מנוהל כקורס — הוא דורש בחירת קורס ומקבל תיקון רטרואקטיבי
+const COURSE_KINDS = ['קורס', 'יום היכרות'];
 
 function AssignModal({ item, courses, onClose, onDone }) {
   const [kind, setKind] = useState('קורס');
@@ -18,6 +20,7 @@ function AssignModal({ item, courses, onClose, onDone }) {
   const [applying, setApplying] = useState(false);
 
   const selectedCourse = courses.find(c => c.id === courseId);
+  const needsCourse = COURSE_KINDS.includes(kind);
 
   const runPreview = async () => {
     setLoading(true);
@@ -27,9 +30,9 @@ function AssignModal({ item, courses, onClose, onDone }) {
         mapId: item.id,
         mode: 'preview',
         kind,
-        courseId: kind === 'קורס' ? courseId : undefined,
-        optionId: kind === 'קורס' && optionMode === 'existing' ? optionId : undefined,
-        newOption: kind === 'קורס' && optionMode === 'new' ? { name: newOptionName, price: parseFloat(newOptionPrice) || 0 } : undefined
+        courseId: needsCourse ? courseId : undefined,
+        optionId: needsCourse && optionMode === 'existing' ? optionId : undefined,
+        newOption: needsCourse && optionMode === 'new' ? { name: newOptionName, price: parseFloat(newOptionPrice) || 0 } : undefined
       });
       setPreview(res.data);
     } catch (e) {
@@ -46,9 +49,9 @@ function AssignModal({ item, courses, onClose, onDone }) {
         mapId: item.id,
         mode: 'apply',
         kind,
-        courseId: kind === 'קורס' ? courseId : undefined,
-        optionId: kind === 'קורס' && optionMode === 'existing' ? optionId : undefined,
-        newOption: kind === 'קורס' && optionMode === 'new' ? { name: newOptionName, price: parseFloat(newOptionPrice) || 0 } : undefined
+        courseId: needsCourse ? courseId : undefined,
+        optionId: needsCourse && optionMode === 'existing' ? optionId : undefined,
+        newOption: needsCourse && optionMode === 'new' ? { name: newOptionName, price: parseFloat(newOptionPrice) || 0 } : undefined
       });
       onDone();
     } catch (e) {
@@ -58,7 +61,7 @@ function AssignModal({ item, courses, onClose, onDone }) {
     }
   };
 
-  const canPreview = kind !== 'קורס' || (courseId && (optionMode === 'none' || (optionMode === 'existing' && optionId) || (optionMode === 'new' && newOptionName)));
+  const canPreview = !needsCourse || (courseId && (optionMode === 'none' || (optionMode === 'existing' && optionId) || (optionMode === 'new' && newOptionName)));
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -76,7 +79,7 @@ function AssignModal({ item, courses, onClose, onDone }) {
             </select>
           </div>
 
-          {kind === 'קורס' && (
+          {needsCourse && (
             <>
               <div>
                 <label className="block text-sm font-medium mb-1">קורס *</label>

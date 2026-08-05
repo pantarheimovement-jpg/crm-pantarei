@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { autoCreateCourseFromProduct } from '../../shared/sumitProducts.ts';
 
 // שלב 2 — מיפוי מסמכים מסאמיט (טריגר "יצירת מסמך" בתיקיית ההכנסות).
 // סוגר את הפער שקבלות ידניות (העברה בנקאית / מזומן) לא נקלטו בו:
@@ -11,7 +12,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 // מוצר שלא תואם קורס קיים לא יוצר קורס — תגית "ממתין לשיוך לקורס".
 const MANUAL_PAYMENT_TYPES = { 2: 'מזומן', 3: 'העברה בנקאית' };
 const PENDING_TAG = 'ממתין לשיוך לקורס';
-const VERSION = 'v3-2026-07-30';
+const REGISTERED_STATUSES = ['רשום', 'נרשם', 'רשומה ליום היכרות'];
+const VERSION = 'v4-2026-08-05';
 
 function normalizeName(s) {
   return String(s || '').replace(/["״'׳]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -105,24 +107,40 @@ Deno.serve(async (req) => {
                 total: Number(it.TotalPrice ?? 0)
               }));
               const noteLines = [];
-              const newCourseEntries = [];
+              // מצב הרישומים כפי שהם ייכתבו בסוף — שורה קיימת מתעדכנת ולא מדולגת,
+              // וכל שורה נושאת paid_so_far כדי שהכסף ייספר בדוח ההכנסות.
+              const workingCourses = [...(student?.courses || [])];
               let pendingAssignment = false;
               let totalDelta = 0;
 
               for (const it of items) {
                 const target = normalizeName(it.name);
-                const course = (allCourses || []).find((c) => normalizeName(c.name) === target) || null;
+                let course = (allCourses || []).find((c) => normalizeName(c.name) === target) || null;
+                // מוצר שלא זוהה פותח קורס אוטומטית, למעט חריגים מוגדרים
+                if (!course && !isRefund && it.total > 0) {
+                  course = await autoCreateCourseFromProduct(base44, { productName: it.name, catalogName: null, amount: it.total });
+                }
                 totalDelta += it.total;
-                const kind = isRefund || it.total < 0 ? 'זיכוי' : 'תשלום 1';
+                const kind = isRefund || it.total < 0 ? 'זיכוי' : 'תשלום';
                 if (course) {
                   noteLines.push(`${kind} דרך Summit בתאריך ${billingDate} (₪${it.total}) — קורס: ${course.name} — ${docMarker} — קבלה ידנית (${payLabel})`);
-                  const already = (student?.courses || []).some((c) => c.course_id === course.id) ||
-                    newCourseEntries.some((c) => c.course_id === course.id);
-                  if (!already && !isRefund && it.total > 0) {
-                    newCourseEntries.push({
+                  const idx = workingCourses.findIndex((c) => c.course_id === course.id);
+                  const paidBefore = Number(workingCourses[idx]?.paid_so_far) || 0;
+                  const nextPaid = Math.max(0, paidBefore + it.total);
+                  if (idx >= 0) {
+                    const isRegistered = REGISTERED_STATUSES.includes(workingCourses[idx].status);
+                    workingCourses[idx] = {
+                      ...workingCourses[idx],
+                      status: isRegistered ? workingCourses[idx].status : 'רשום',
+                      paid_so_far: nextPaid,
+                      ...(it.total > 0 && { installment_amount: it.total }),
+                      registration_date: workingCourses[idx].registration_date || billingDate
+                    };
+                  } else if (!isRefund && it.total > 0) {
+                    workingCourses.push({
                       course_id: course.id, course_name: course.name, registration_date: billingDate,
-                      installment_amount: it.total, payment_number: 1, payments_total: null,
-                      total_price: null, status: 'רשום', option: null
+                      installment_amount: it.total, payment_number: 1, paid_so_far: nextPaid,
+                      status: 'רשום'
                     });
                   }
                 } else {
@@ -130,6 +148,7 @@ Deno.serve(async (req) => {
                   noteLines.push(`${kind} דרך Summit בתאריך ${billingDate} (₪${it.total}) — מוצר: ${it.name} — ⏸️ ${PENDING_TAG} — ${docMarker} — קבלה ידנית (${payLabel})`);
                 }
               }
+              const primaryEntry = workingCourses[workingCourses.length - 1] || null;
 
               const noteBlock = noteLines.join('\n');
               if (student) {
@@ -137,7 +156,7 @@ Deno.serve(async (req) => {
                 await base44.asServiceRole.entities.Student.update(student.id, {
                   notes: student.notes ? `${student.notes}\n${noteBlock}` : noteBlock,
                   amount_paid: (Number(student.amount_paid) || 0) + totalDelta,
-                  courses: [...(student.courses || []), ...newCourseEntries],
+                  courses: workingCourses,
                   is_customer: true,
                   tags
                 });
@@ -149,9 +168,9 @@ Deno.serve(async (req) => {
                   email: customerEmail, phone: customerPhone || 'לא זמין',
                   status: 'רשום', is_customer: true, lead_source: 'אחר', marketing_consent: false,
                   amount_paid: totalDelta, registration_date: billingDate,
-                  course_id: newCourseEntries[0]?.course_id || null,
-                  course_name: newCourseEntries[0]?.course_name || null,
-                  courses: newCourseEntries,
+                  course_id: primaryEntry?.course_id || null,
+                  course_name: primaryEntry?.course_name || null,
+                  courses: workingCourses,
                   tags: pendingAssignment ? [PENDING_TAG] : [],
                   notes: noteBlock
                 });

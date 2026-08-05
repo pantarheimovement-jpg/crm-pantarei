@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import PendingAssignRow from './PendingAssignRow';
 import { assignPendingPayment, revertPendingPayment } from './assignPending';
 
-export default function PendingAssignmentModal({ students, courses, onAssigned, onClose }) {
+export default function PendingAssignmentModal({ students, courses, bucketCourseId, onAssigned, onClose }) {
   const fmt = (n) => n ? `₪${Math.round(n).toLocaleString('he-IL')}` : '—';
   const total = students.reduce((s, x) => s + x.pendingAmount, 0);
 
@@ -50,7 +50,7 @@ export default function PendingAssignmentModal({ students, courses, onAssigned, 
             </thead>
             <tbody>
               {students.map(s => (
-                <PendingAssignRow key={s.id} row={s} courses={courses} onAssign={handleAssign} onRevert={handleRevert} />
+                <PendingAssignRow key={s.id} row={s} courses={courses} bucketCourseId={bucketCourseId} onAssign={handleAssign} onRevert={handleRevert} />
               ))}
             </tbody>
           </table>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Loader2, Check, Undo2 } from 'lucide-react';
 
-export default function PendingAssignRow({ row, courses, onAssign, onRevert }) {
+export default function PendingAssignRow({ row, courses, bucketCourseId, onAssign, onRevert }) {
   const [courseId, setCourseId] = useState(row.courseIds[0] || '');
   const [amount, setAmount] = useState(String(row.pendingAmount));
   const [saving, setSaving] = useState(false);
@@ -65,6 +65,16 @@ export default function PendingAssignRow({ row, courses, onAssign, onRevert }) {
       <td className="p-2 font-medium whitespace-nowrap">
         {row.name}
         <span className="block text-xs text-gray-400 font-normal">{row.phone || '—'}</span>
+        {row.isNonCourse && (
+          <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-[11px] font-normal">
+            כנראה לא קורס
+          </span>
+        )}
+        {row.hints?.length > 0 && (
+          <span className="block text-[11px] text-gray-500 font-normal mt-1 max-w-[220px] whitespace-normal">
+            שילמה על: {row.hints.join(' · ')}
+          </span>
+        )}
       </td>
       <td className="p-2 text-center text-orange-700 font-semibold whitespace-nowrap">{fmt(row.pendingAmount)}</td>
       <td className="p-2">
@@ -83,6 +93,14 @@ export default function PendingAssignRow({ row, courses, onAssign, onRevert }) {
             {rest.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </optgroup>
         </select>
+        {bucketCourseId && courseId !== bucketCourseId && (
+          <button
+            onClick={() => setCourseId(bucketCourseId)}
+            className="block mt-1 text-[11px] text-orange-700 underline"
+          >
+            זה לא קורס → לדלי ההשכרות/תרומות
+          </button>
+        )}
       </td>
       <td className="p-2">
         <input

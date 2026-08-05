@@ -5,6 +5,7 @@ import { useSystemSettings } from '../components/SystemSettingsContext';
 import ExportButtons from '../components/shared/ExportButtons';
 import PendingAssignmentModal from '../components/revenue/PendingAssignmentModal';
 import RevenueListModal from '../components/revenue/RevenueListModal';
+import { extractProductHints, looksNonCourse, NON_COURSE_BUCKET_NAME } from '../components/revenue/pendingHints';
 
 const REGISTERED_STATUSES = new Set(['רשום', 'נרשם', 'רשומה ליום היכרות']);
 
@@ -162,10 +163,13 @@ export default function CourseRevenue() {
         const registeredEntries = (s.courses || []).filter(c => REGISTERED_STATUSES.has(c.status));
         const matchedForStudent = registeredEntries.reduce((sum, c) => sum + (parseFloat(c.paid_so_far) || 0), 0);
         const pendingAmount = Math.round(((parseFloat(s.amount_paid) || 0) - matchedForStudent) * 100) / 100;
+        const hints = extractProductHints(s.notes);
         return {
           id: s.id,
           name: s.full_name,
           phone: s.phone,
+          hints,
+          isNonCourse: looksNonCourse(hints, s.notes),
           courses: registeredEntries.map(c => c.course_name),
           courseIds: registeredEntries.map(c => c.course_id),
           pendingAmount
@@ -292,6 +296,7 @@ export default function CourseRevenue() {
           <PendingAssignmentModal
             students={pendingStudents}
             courses={courses}
+            bucketCourseId={courses.find(c => c.name === NON_COURSE_BUCKET_NAME)?.id}
             onAssigned={(updated) => setStudents(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s))}
             onClose={() => setShowPending(false)}
           />

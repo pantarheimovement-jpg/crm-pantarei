@@ -5,6 +5,7 @@ import { useSystemSettings } from '../components/SystemSettingsContext';
 import ExportButtons from '../components/shared/ExportButtons';
 import PendingAssignmentModal from '../components/revenue/PendingAssignmentModal';
 import RevenueListModal from '../components/revenue/RevenueListModal';
+import RentalsSection from '../components/revenue/RentalsSection';
 import { extractProductHints, looksNonCourse, NON_COURSE_BUCKET_NAME } from '../components/revenue/pendingHints';
 
 const REGISTERED_STATUSES = new Set(['רשום', 'נרשם', 'רשומה ליום היכרות']);
@@ -215,7 +216,40 @@ export default function CourseRevenue() {
       .sort((a, b) => b.amount - a.amount);
   }, [courseStats]);
 
+  // סקשן השכרות — קורסים שסומנו kind === 'השכרה'. אותה לוגיקת סכום כמו matchedList:
+  // paid_so_far, ונפילה ל-amount_paid כשלמשתתפת רישום רשום יחיד. תצוגה בלבד — הכספים
+  // האלה כבר נספרים ב"משויך לקורסים", זו קטגוריזציה ולא כסף נוסף.
+  const rentalRows = useMemo(() => {
+    const rows = [];
+    courseStats
+      .filter(({ course }) => course.kind === 'השכרה')
+      .forEach(({ course, entries }) => {
+        entries.forEach(e => {
+          let amt = 0;
+          if (e.paid_so_far !== null && e.paid_so_far !== undefined && e.paid_so_far !== '') {
+            amt = parseFloat(e.paid_so_far) || 0;
+          } else {
+            const registeredCourseCount = (e.student?.courses || []).filter(c => REGISTERED_STATUSES.has(c.status)).length;
+            if (registeredCourseCount === 1 && e.student?.amount_paid) {
+              amt = parseFloat(e.student.amount_paid) || 0;
+            }
+          }
+          if (amt > 0) {
+            rows.push({
+              id: `${e.student.id}-${course.id}`,
+              name: e.student.full_name,
+              date: e.registration_date || null,
+              amount: amt,
+              context: course.name
+            });
+          }
+        });
+      });
+    return rows.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }, [courseStats]);
+
   const filteredStats = courseStats.filter(({ course }) => {
+    if (course.kind === 'השכרה') return false; // מוצגים בסקשן ההשכרות
     const matchSearch = !search || course.name.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || course.status === statusFilter;
     return matchSearch && matchStatus;
@@ -329,6 +363,8 @@ export default function CourseRevenue() {
             onClose={() => setOpenModal(null)}
           />
         )}
+
+        <RentalsSection rows={rentalRows} />
 
         {/* Filters */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-4" style={{ borderRadius: 'var(--crm-border-radius)' }}>

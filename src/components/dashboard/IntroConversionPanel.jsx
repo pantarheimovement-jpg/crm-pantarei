@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Loader2, TrendingUp } from 'lucide-react';
+import { Loader2, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import IntroConversionRow from './IntroConversionRow';
 
 // אותו מיפוי שמשמש את צד השרת (base44/shared/introDayPrograms.ts) — יום היכרות
@@ -19,6 +19,7 @@ const isIntroDay = (c) => c?.kind === 'יום היכרות' || /יום היכר�
 export default function IntroConversionPanel() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -76,15 +77,22 @@ export default function IntroConversionPanel() {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8 overflow-hidden" style={{ borderRadius: 'var(--crm-border-radius)' }}>
-      <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`w-full p-6 flex items-center justify-between text-right ${open ? 'border-b border-gray-50' : ''}`}
+      >
         <div>
           <h2 className="font-bold text-lg text-[var(--crm-text)]">המרה מימי היכרות</h2>
           <p className="text-xs text-gray-400 mt-0.5">מי שהייתה ביום היכרות של התוכנית (כל התאריכים) — וכמה נרשמו בפועל</p>
         </div>
-        <TrendingUp size={20} className="text-gray-400" />
-      </div>
+        <div className="flex items-center gap-2">
+          <TrendingUp size={20} className="text-gray-400" />
+          {open ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+        </div>
+      </button>
 
-      {loading ? (
+      {!open ? null : loading ? (
         <div className="p-8 flex justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-[var(--crm-primary)]" />
         </div>

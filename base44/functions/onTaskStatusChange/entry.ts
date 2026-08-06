@@ -2,7 +2,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { normalizePhone972, queueFollowup1, missingCourseLinks, notifyMissingCourseLinks } from '../../shared/waFollowups.ts';
 
 const OPEN_FOR_REGISTRATION = 'פתוח להרשמה';
-const TARGET_REGISTRATION_STATUSES = ['תיאום שיחה', 'לחזור לקראת הרשמה'];
+// 6.8.2026: הוסר 'תיאום שיחה' — תבנית ההרשמה followup_1 נשלחת אך ורק בסטטוס
+// 'לחזור לקראת הרשמה' (החלטת עינת). עדכון סטטוס המשתתפת ב'תיאום שיחה' נשאר.
+const TARGET_REGISTRATION_STATUSES = ['לחזור לקראת הרשמה'];
 
 function getEntryDate(entry) {
   const value = entry?.registration_date || entry?.lead_entry_date || '';

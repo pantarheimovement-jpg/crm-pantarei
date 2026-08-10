@@ -97,7 +97,7 @@ export default function Header() {
     },
     {
       key: 'revenue',
-      label: 'הכנסות',
+      label: 'הכנסות 🌿',
       labelEn: 'Revenue',
       path: 'CourseRevenue',
       icon: DollarSign

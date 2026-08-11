@@ -451,6 +451,7 @@ export default function UserGuide() {
               <StatusBadge name="תיאום שיחה" color="#3498DB" description="נקבעה שיחה עם הלקוחה, עדיין לא הושלמה. → הלקוח עובר אוטומטית ל״במעקב ראשוני״." />
               <StatusBadge name="הושלם" color="#6D436D" description="השיחה/משימה טופלה בהצלחה." />
               <StatusBadge name="לחזור לקראת הרשמה" color="#9B59B6" description="הליד מעוניין אך ממתין לפתיחת הרשמה לקורס. אם הקורס כבר פתוח להרשמה ונוסח מתאים שמור בהגדרות — יכולה להישלח גם הודעת וואטסאפ אוטומטית. אם הקורס עדיין לא פתוח — המערכת ממתינה לפתיחת ההרשמה." />
+              <StatusBadge name="לחזור בעצמי" color="#5B8DB8" description="דגל אישי של המתאמת — היא מסמנת לעצמה לחזור ללקוחה. לא מפעיל שום אוטומציה, לא נשלחת הודעה ולא משתנה סטטוס המשתתפת." />
               <StatusBadge name="לא רלוונטי" color="#BDC3C7" description="לא רלוונטי יותר. → משנה אוטומטית את סטטוס הקורס הספציפי של השיחה ל״לא רלוונטי״. הסטטוס הכללי מחושב מחדש לפי סדר עדיפות." />
               <StatusBadge name="אבוד" color="#7F8C8D" description="הליד אבד, לא הצלחנו ליצור קשר. → משנה אוטומטית את סטטוס הקורס הספציפי של השיחה ל״לא רלוונטי״. הסטטוס הכללי מחושב מחדש." />
               <div className="mt-3 p-3 bg-red-50 rounded-lg text-sm">
@@ -475,7 +476,7 @@ export default function UserGuide() {
                 </div>
                 <div className="flex items-start gap-2">
                   <ManualBadge>ידני</ManualBadge>
-                  <span className="text-sm">שינוי סטטוס שיחה ל״ניסיון לשיחה״, ״הושלם״, ״לחזור לקראת הרשמה״ — צריך לעדכן ידנית</span>
+                  <span className="text-sm">שינוי סטטוס שיחה ל״ניסיון לשיחה״, ״הושלם״, ״לחזור לקראת הרשמה״, ״לחזור בעצמי״ — צריך לעדכן ידנית</span>
                 </div>
               </div>
             </div>

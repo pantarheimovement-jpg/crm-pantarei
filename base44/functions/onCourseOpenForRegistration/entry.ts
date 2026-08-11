@@ -97,9 +97,14 @@ Deno.serve(async (req) => {
       return Response.json({ status: 'success', message: 'No relevant students found', course: courseName });
     }
 
+    // מתג השבתה (11.8.2026): AutomationSettings.registration_followups_enabled.
+    // כבוי → יצירת המשימות ומייל ההתראה נשמרים, אבל followup_1 לא נכנסת לתור.
+    const autoSettings = (await base44.asServiceRole.entities.AutomationSettings.list().catch(() => []))?.[0] || {};
+    const followupsEnabled = autoSettings.registration_followups_enabled !== false;
+
     // בדיקת שלמות פרטי הקורס לתבנית followup_1 — פעם אחת, לפני הלולאה
     const missing = missingCourseLinks(course);
-    if (missing.length > 0) {
+    if (followupsEnabled && missing.length > 0) {
       console.log(`⚠️ Course is missing followup_1 fields: ${missing.map((m) => m.key).join(', ')} — templates will NOT be queued`);
       await notifyMissingCourseLinks(base44, course, missing);
     }
@@ -125,7 +130,9 @@ Deno.serve(async (req) => {
       createdTasks.push(newTask.id);
       console.log(`✅ Created task for ${student.full_name}`);
 
-      if (missing.length === 0) {
+      if (!followupsEnabled) {
+        whatsappResults.push({ student_id: student.id, student_name: student.full_name, queued: false, reason: 'registration_followups_disabled' });
+      } else if (missing.length === 0) {
         const result = await queueFollowup1(base44, student, course);
         whatsappResults.push({ student_id: student.id, student_name: student.full_name, ...result });
         console.log(`WhatsApp queue result for ${student.full_name}:`, JSON.stringify(result));
@@ -149,7 +156,7 @@ Deno.serve(async (req) => {
           ${studentList}
         </div>
         <p>נוצרו שיחות בדיקה להרשמה עבור כל אחד מהם.</p>
-        <p>${missing.length === 0 ? 'הודעות וואטסאפ (תבנית מאושרת) נכנסו לתור השליחה.' : '⚠️ הודעות וואטסאפ לא נשלחו — חסרים פרטים בקורס (נשלח מייל נפרד).'}</p>
+        <p>${!followupsEnabled ? 'ℹ️ הודעות ההרשמה האוטומטיות (followup_1) מושבתות כרגע בהגדרות — לא נשלחו הודעות וואטסאפ.' : (missing.length === 0 ? 'הודעות וואטסאפ (תבנית מאושרת) נכנסו לתור השליחה.' : '⚠️ הודעות וואטסאפ לא נשלחו — חסרים פרטים בקורס (נשלח מייל נפרד).')}</p>
         <p style="color: #666; font-size: 12px; margin-top: 20px;">סטודיו פנטהריי CRM</p>
       </div>`
     });

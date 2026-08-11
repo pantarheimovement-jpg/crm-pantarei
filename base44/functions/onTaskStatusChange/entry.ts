@@ -210,12 +210,20 @@ Deno.serve(async (req) => {
     let registrationStatusWhatsapp = null;
 
     if (TARGET_REGISTRATION_STATUSES.includes(newStatus)) {
-      const student = await base44.asServiceRole.entities.Student.get(studentId);
-      registrationStatusWhatsapp = await queueRegistrationTemplate(base44, {
-        student,
-        task: data
-      });
-      console.log('Registration template queue result:', JSON.stringify(registrationStatusWhatsapp));
+      // מתג השבתה (11.8.2026): AutomationSettings.registration_followups_enabled.
+      // ברירת מחדל פעיל — מדלגים רק כשהערך מפורשות false.
+      const autoSettings = (await base44.asServiceRole.entities.AutomationSettings.list().catch(() => []))?.[0] || {};
+      if (autoSettings.registration_followups_enabled === false) {
+        registrationStatusWhatsapp = { queued: false, reason: 'registration_followups_disabled' };
+        console.log('followup_1 skipped — registration_followups_enabled=false');
+      } else {
+        const student = await base44.asServiceRole.entities.Student.get(studentId);
+        registrationStatusWhatsapp = await queueRegistrationTemplate(base44, {
+          student,
+          task: data
+        });
+        console.log('Registration template queue result:', JSON.stringify(registrationStatusWhatsapp));
+      }
     }
 
     let newStudentStatus = null;

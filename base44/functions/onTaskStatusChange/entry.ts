@@ -4,7 +4,11 @@ import { normalizePhone972, queueFollowup1, missingCourseLinks, notifyMissingCou
 const OPEN_FOR_REGISTRATION = 'פתוח להרשמה';
 // 6.8.2026: הוסר 'תיאום שיחה' — תבנית ההרשמה followup_1 נשלחת אך ורק בסטטוס
 // 'לחזור לקראת הרשמה' (החלטת עינת). עדכון סטטוס המשתתפת ב'תיאום שיחה' נשאר.
-const TARGET_REGISTRATION_STATUSES = ['לחזור לקראת הרשמה'];
+// 11.8.2026: followup_1 הושבתה לבקשת עינת — הרשימה רוקנה כדי שהתבנית
+// לא תישלח בשינוי סטטוס ל'לחזור לקראת הרשמה'. שאר הלוגיקה
+// (חותמת status_changed_date, עדכוני סטטוס משתתפת) נשמרת כרגיל.
+// להחזרה: להחזיר 'לחזור לקראת הרשמה' לרשימה.
+const TARGET_REGISTRATION_STATUSES = [];
 
 function getEntryDate(entry) {
   const value = entry?.registration_date || entry?.lead_entry_date || '';

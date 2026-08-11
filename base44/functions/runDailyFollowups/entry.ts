@@ -32,13 +32,17 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   try {
-    const [generalArr, tasks, courses] = await Promise.all([
+    const [generalArr, autoArr, tasks, courses] = await Promise.all([
       base44.asServiceRole.entities.GeneralSettings.list().catch(() => []),
+      base44.asServiceRole.entities.AutomationSettings.list().catch(() => []),
       base44.asServiceRole.entities.Task.filter({ status: TARGET_TASK_STATUS }, 'created_date', 500),
       base44.asServiceRole.entities.Course.list('-created_date', 200)
     ]);
 
     const followupDays = Number(generalArr?.[0]?.auto_followup_days) || 3;
+    // מתג השבתה (11.8.2026): AutomationSettings.registration_followups_enabled.
+    // כבוי → followup_3days מדולג. תזכורת week_before לא מושפעת.
+    const followup3daysEnabled = autoArr?.[0]?.registration_followups_enabled !== false;
 
     // טעינת כל המשתתפים בעימוד
     let students = [];
@@ -100,9 +104,9 @@ Deno.serve(async (req) => {
     }
 
     // -----------------------------------------
-    // 2. followup_3days
+    // 2. followup_3days — מדולג כשהמתג כבוי (week_before למעלה לא מושפע)
     // -----------------------------------------
-    for (const task of tasks) {
+    if (followup3daysEnabled) for (const task of tasks) {
       if (!task.status_changed_date) continue; // אין backfill — מדלגים על רשומות היסטוריות
       if (task.followup_3days_sent_at) continue; // כבר נשלח
       const ageDays = (now - new Date(task.status_changed_date).getTime()) / DAY_MS;

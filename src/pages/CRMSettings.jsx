@@ -976,6 +976,34 @@ export default function CRMSettings() {
                   setAutomationSettings={setAutomationSettings}
                 />
 
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">🔔 הודעות תזכורת הרשמה אוטומטיות</h3>
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-5 space-y-4">
+                    <p className="text-sm text-gray-700">
+                      שתי הודעות וואטסאפ (תבניות מאושרות) שנשלחות ללידים בסטטוס <strong>“לחזור לקראת הרשמה”</strong>:
+                      הודעת ההרשמה המיידית (followup_1) — כשמשנים סטטוס או כשקורס נפתח להרשמה, ומעקב אחרי 3 ימים (followup_3days).
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={automationSettings.registration_followups_enabled !== false}
+                        onChange={(e) => setAutomationSettings({...automationSettings, registration_followups_enabled: e.target.checked})}
+                        className="w-5 h-5 text-purple-600"
+                      />
+                      <label className="text-sm font-medium text-gray-700">הפעל הודעות תזכורת הרשמה אוטומטיות (מיידית + מעקב 3 ימים)</label>
+                    </div>
+                    {automationSettings.registration_followups_enabled === false && (
+                      <div className="flex items-center gap-2 text-orange-600 text-sm">
+                        <span>⚠️</span>
+                        <span>הודעות ההרשמה האוטומטיות מושבתות כרגע — לא יישלחו followup_1 ו-followup_3days</span>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      💡 המתג לא משפיע על תזכורת “שבוע לפני תחילת הקורס” (week_before) — היא ממשיכה להישלח כרגיל.
+                    </p>
+                  </div>
+                </div>
+
                 <SesConfigChecker />
 
                 <div>

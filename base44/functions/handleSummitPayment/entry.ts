@@ -167,14 +167,15 @@ function resolveCourseMapping(productName) {
 // סטטוס ראשי: הליד הפתוח החם ביותר; אם אין לידים פתוחים — "רשום"
 function computeMainStatus(courses, fallback) {
   const list = courses || [];
-  // רישום ליום היכרות גובר על הליד שנפתח ממנו — כך הסטטוס הראשי לא נעשה
-  // "ליד חדש" ואוטומציית "שיחת היכרות" (שרצה על ליד חדש) לא נפתחת למי שכבר
-  // הייתה ביום היכרות.
+  // "רשום" גובר: לקוחה ששילמה על קורס כלשהו מוצגת "רשום" בסטטוס הראשי, גם אם
+  // נותר לה ליד פתוח לקורס אחר (החלטת עינת 19.08 — עקבי עם handleElementorLead).
+  if (list.some((c) => REGISTERED_STATUSES.includes(c.status) || c.status === 'הסתיים')) return 'רשום';
+  // רישום ליום היכרות — כשאין הרשמה מלאה — גובר על הליד שנפתח ממנו, כך שאוטומציית
+  // "שיחת היכרות" (שרצה על "ליד חדש") לא נפתחת למי שכבר נרשמה ליום היכרות.
   if (list.some((c) => c.status === INTRO_STATUS)) return INTRO_STATUS;
   for (const status of OPEN_LEAD_STATUSES) {
     if (list.some((c) => c.status === status)) return status;
   }
-  if (list.some((c) => REGISTERED_STATUSES.includes(c.status) || c.status === 'הסתיים')) return 'רשום';
   if (list.length && list.every((c) => c.status === 'לא רלוונטי')) return 'לא רלוונטי';
   return fallback || 'רשום';
 }

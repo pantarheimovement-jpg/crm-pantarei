@@ -165,12 +165,15 @@ Deno.serve(async (req) => {
               const noteBlock = noteLines.join('\n');
               if (student) {
                 const tags = [...new Set([...(student.tags || []), ...(pendingAssignment ? [PENDING_TAG] : [])])];
+                const nextAmountPaid = (Number(student.amount_paid) || 0) + totalDelta;
+                // is_customer נכבה כשלא נותר תשלום נטו ואין רישום פעיל — למשל זיכוי מלא ידני.
+                const stillCustomer = nextAmountPaid > 0 || workingCourses.some((c) => c.status === 'רשום' || c.status === 'נרשם' || c.status === INTRO_STATUS || c.status === 'הסתיים');
                 await base44.asServiceRole.entities.Student.update(student.id, {
                   notes: student.notes ? `${student.notes}\n${noteBlock}` : noteBlock,
-                  amount_paid: (Number(student.amount_paid) || 0) + totalDelta,
+                  amount_paid: nextAmountPaid,
                   courses: workingCourses,
                   status: computeMainStatus(workingCourses, student.status),
-                  is_customer: true,
+                  is_customer: stillCustomer,
                   tags
                 });
                 decision = 'processed-existing';

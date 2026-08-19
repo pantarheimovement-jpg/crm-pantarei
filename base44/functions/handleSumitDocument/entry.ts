@@ -13,7 +13,19 @@ import { autoCreateCourseFromProduct } from '../../shared/sumitProducts.ts';
 const MANUAL_PAYMENT_TYPES = { 2: 'מזומן', 3: 'העברה בנקאית' };
 const PENDING_TAG = 'ממתין לשיוך לקורס';
 const REGISTERED_STATUSES = ['רשום', 'נרשם', 'רשומה ליום היכרות'];
+const OPEN_LEAD_STATUSES = ['ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'תיאום שיחה'];
+const INTRO_STATUS = 'רשומה ליום היכרות';
 const VERSION = 'v4-2026-08-05';
+
+// סטטוס ראשי עקבי עם handleSummitPayment: "רשום" גובר, אז יום היכרות, אז הליד הפתוח.
+// סוגר את הפער שבו קבלה ידנית עדכנה שורת קורס ל"רשום" אבל השאירה את הסטטוס הראשי "ליד חדש".
+function computeMainStatus(courses, current) {
+  const list = courses || [];
+  if (list.some((c) => c.status === 'רשום' || c.status === 'נרשם' || c.status === 'הסתיים')) return 'רשום';
+  if (list.some((c) => c.status === INTRO_STATUS)) return INTRO_STATUS;
+  for (const s of OPEN_LEAD_STATUSES) if (list.some((c) => c.status === s)) return s;
+  return current || 'רשום';
+}
 
 function normalizeName(s) {
   return String(s || '').replace(/["״'׳]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -157,6 +169,7 @@ Deno.serve(async (req) => {
                   notes: student.notes ? `${student.notes}\n${noteBlock}` : noteBlock,
                   amount_paid: (Number(student.amount_paid) || 0) + totalDelta,
                   courses: workingCourses,
+                  status: computeMainStatus(workingCourses, student.status),
                   is_customer: true,
                   tags
                 });

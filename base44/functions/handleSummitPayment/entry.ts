@@ -565,13 +565,15 @@ Deno.serve(async (req) => {
     // --- 3. יצירה/עדכון משתתפ.ת (פעם אחת לכל העסקה) ---
     const mainStatus = computeMainStatus(workingCourses, registeredStatus);
     const amountPaid = Math.max(0, (existingStudent?.amount_paid || 0) + totalDelta);
+    // is_customer נכבה כשלא נותר תשלום נטו ואין רישום פעיל — למשל זיכוי מלא של הקורס היחיד.
+    const stillCustomer = amountPaid > 0 || workingCourses.some((c) => REGISTERED_STATUSES.includes(c.status) || c.status === INTRO_STATUS || c.status === 'הסתיים');
     const primary = results[0]?.course || null;
     const noteText = noteLines.join('\n');
 
     const studentData = {
       full_name: customerName,
       status: mainStatus,
-      is_customer: true,
+      is_customer: stillCustomer,
       registration_date: billingDate,
       course_id: primary?.id,
       course_name: primary?.name,
@@ -695,7 +697,7 @@ Deno.serve(async (req) => {
       student_id: student.id,
       student_name: student.full_name,
       status: student.status,
-      is_customer: true,
+      is_customer: stillCustomer,
       catalog: catalogName || null,
       items: perItem.map((i) => i.productName),
       courses: results.map((r) => r.course.name),

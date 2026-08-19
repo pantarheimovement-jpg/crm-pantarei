@@ -289,17 +289,20 @@ Deno.serve(async (req) => {
         updateData.courses = updatedCourses;
 
         // חישוב סטטוס ראשי (מודל דו-ממדי):
-        // הליד הפתוח החם ביותר גובר; אם אין לידים פתוחים — "רשום" (אם לקוחה)
+        // "רשום" גובר — לקוחה רשומה נשארת "רשום" גם אם נותר לה ליד פתוח לקורס אחר
+        // (החלטת עינת 19.08 — עקבי עם computeMainStatus ב-handleSummitPayment ו-handleElementorLead)
         const OPEN_LEAD_STATUSES = ['ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'תיאום שיחה'];
         const REGISTERED_SET = ['רשום', 'נרשם'];
 
-        let bestStatus = null;
-        for (const status of OPEN_LEAD_STATUSES) {
-          if (updatedCourses.some((c) => c.status === status)) { bestStatus = status; break; }
-        }
         const hasRegistered = updatedCourses.some((c) => REGISTERED_SET.includes(c.status) || c.status === 'הסתיים');
-        if (!bestStatus) {
-          bestStatus = hasRegistered ? 'רשום' : newStudentStatus;
+        let bestStatus = null;
+        if (hasRegistered) {
+          bestStatus = 'רשום';
+        } else {
+          for (const status of OPEN_LEAD_STATUSES) {
+            if (updatedCourses.some((c) => c.status === status)) { bestStatus = status; break; }
+          }
+          if (!bestStatus) bestStatus = newStudentStatus;
         }
 
         updateData.status = bestStatus;

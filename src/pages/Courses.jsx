@@ -95,9 +95,9 @@ export default function Courses() {
           }
 
           if (isLinked) {
-            if (courseStatus === 'נרשם' || courseStatus === 'רשום') {
+            if (courseStatus === 'נרשם' || courseStatus === 'רשום' || courseStatus === 'רשומה ליום היכרות') {
               registeredCount++;
-            } else {
+            } else if (courseStatus !== 'לא רלוונטי') {
               leadsCount++;
             }
           }

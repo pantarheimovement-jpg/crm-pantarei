@@ -71,7 +71,7 @@ export default function Courses() {
     try {
       const [coursesData, studentsData] = await Promise.all([
         base44.entities.Course.list('-created_date'),
-        base44.entities.Student.list()
+        base44.entities.Student.list('-created_date', 2000)
       ]);
       
       // חישוב דינמי של מספר המשתתפים הרשומים + לידים בכל קורס

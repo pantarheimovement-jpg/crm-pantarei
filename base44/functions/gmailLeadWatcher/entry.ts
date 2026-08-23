@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     console.log(`📦 Config: hours_back=${hoursBack}, dry_run=${dryRun}`);
 
     // Get Gmail access token
-    const { accessToken } = await base44.connectors.getConnection("gmail");
+    const { accessToken } = await base44.asServiceRole.connectors.getConnection("gmail");
 
     if (!accessToken) {
       console.error('❌ No Gmail access token');
@@ -97,13 +97,37 @@ Deno.serve(async (req) => {
 
         if (!isLeadEmail) {
           console.log(`⏭️ Email ${msg.id}: Not a lead form email`);
+          if (!dryRun) await markEmailProcessed(accessToken, msg.id);
           continue;
         }
 
         // =============================================
-        // STEP 3: Use AI to extract lead data from email
+        // STEP 3a: חילוץ זול ללא AI + בדיקת כפילות לפני AI
+        // הנתיב העיקרי הוא הוובהוק, ולכן רוב המיילים כאן כבר קיימים ב-CRM.
+        // אין שום סיבה לשרוף קריאת AI לפני שבדקנו את זה.
         // =============================================
-        const extractionResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
+        const quick = quickExtract(emailBody);
+        if (quick.email || quick.phone) {
+          const preExisting = await findExistingStudent(base44, quick.email, quick.phone, null);
+          if (preExisting) {
+            console.log(`⏭️ (לפני AI) הליד כבר קיים ב-CRM: ${preExisting.full_name}`);
+            skippedCount++;
+            if (!dryRun) await markEmailProcessed(accessToken, msg.id);
+            continue;
+          }
+        }
+
+        // אם החילוץ הפשוט הספיק — מדלגים על ה-AI לגמרי
+        let quickData = null;
+        if (quick.full_name && (quick.email || quick.phone)) {
+          quickData = quick;
+          console.log('✅ חולץ ללא AI:', JSON.stringify(quick));
+        }
+
+        // =============================================
+        // STEP 3b: AI רק כגיבוי, כשהחילוץ הפשוט נכשל
+        // =============================================
+        const extractionResult = quickData || await base44.asServiceRole.integrations.Core.InvokeLLM({
           prompt: `אתה מנתח מיילים של טפסי לידים מאתר. חלץ את פרטי הליד מהמייל הבא.
 חשוב: חלץ רק שדות שבאמת מופיעים בטקסט. אם שדה לא מופיע, החזר null.
 
@@ -143,6 +167,7 @@ ${emailBody}
 
         if (!hasLeadData) {
           console.log(`⏭️ Email ${msg.id}: No usable lead data found`);
+          if (!dryRun) await markEmailProcessed(accessToken, msg.id);
           continue;
         }
 
@@ -153,6 +178,7 @@ ${emailBody}
 
         if (!fullName && !leadData.email && !leadData.phone) {
           console.log(`⏭️ Email ${msg.id}: No identifiable lead info extracted`);
+          if (!dryRun) await markEmailProcessed(accessToken, msg.id);
           continue;
         }
 
@@ -452,6 +478,40 @@ function getPhoneVariants(phone) {
   }
 
   return [...variants];
+}
+
+// חילוץ פשוט מטופס האתר — פורמט קבוע, לא צריך AI בשבילו
+function quickExtract(body) {
+  const text = String(body || '').replace(/\u00a0/g, ' ');
+  const emailMatch = text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+  const phoneMatch = digitsOnly(text).match(/(?:972|0)5\d{8}/);
+  const nameMatch =
+    text.match(/שם\s*(?:פרטי|מלא)?\s*[:\-]\s*([^\n\r|]{2,60})/) ||
+    text.match(/\bname\s*[:\-]\s*([^\n\r|]{2,60})/i);
+  return {
+    full_name: nameMatch ? nameMatch[1].trim() : '',
+    first_name: nameMatch ? nameMatch[1].trim().split(/\s+/)[0] : '',
+    email: emailMatch ? emailMatch[0].toLowerCase() : '',
+    phone: phoneMatch ? phoneMatch[0] : '',
+    course_name: '',
+    message: ''
+  };
+}
+
+async function findExistingStudent(base44, email, phone, fullName) {
+  if (email) {
+    const byEmail = await base44.asServiceRole.entities.Student.filter({ email: email.toLowerCase().trim() });
+    if (byEmail && byEmail.length > 0) return byEmail[0];
+  }
+  if (phone) {
+    const byPhone = await findStudentByPhone(base44, phone);
+    if (byPhone) return byPhone;
+  }
+  if (fullName) {
+    const byName = await base44.asServiceRole.entities.Student.filter({ full_name: fullName });
+    if (byName && byName.length > 0) return byName[0];
+  }
+  return null;
 }
 
 async function markEmailProcessed(accessToken, messageId) {

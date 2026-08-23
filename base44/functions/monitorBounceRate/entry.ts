@@ -1,6 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const BATCH_ID = 'newsletter_1782654398108';
 const ALERT_TO = 'pantarhei.movement@gmail.com';
 const BOUNCE_THRESHOLD = 0.03;
 const MIN_SENT = 100;
@@ -23,6 +22,11 @@ async function countAll(base44, entity, filterQuery) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    // הקמפיין האחרון בפועל — לא מזהה מקובע שנשאר מיוני
+    const latest = await base44.asServiceRole.entities.NewsletterQueue.list('-created_date', 1);
+    const BATCH_ID = latest && latest[0] ? latest[0].batch_id : null;
+    if (!BATCH_ID) return Response.json({ success: true, message: 'no campaigns yet' });
+
     const newBounces = await countAll(base44, 'Subscribers', { subscribed: true, bounce_count: { $gte: 1 } });
     const sent = await countAll(base44, 'NewsletterQueue', { batch_id: BATCH_ID, status: 'sent' });
     const rate = sent > 0 ? newBounces / sent : 0;
@@ -37,7 +41,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return Response.json({ success: true, sent, newBounces, rate_percent: Number(ratePct), alerted: over });
+    return Response.json({ success: true, batch_id: BATCH_ID, sent, newBounces, rate_percent: Number(ratePct), alerted: over });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

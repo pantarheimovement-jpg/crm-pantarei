@@ -231,11 +231,18 @@ export default function Courses() {
 
   const catalogOptions = [...new Set(courses.map(c => c.summit_catalog).filter(Boolean))].sort();
 
+  const isHebrewName = (name) => /^[\u0590-\u05FF]/.test((name || '').trim());
+
   const filteredCourses = courses.filter(course =>
     (course.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     course.description?.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (catalogFilter === 'all' || course.summit_catalog === catalogFilter)
-  );
+  ).sort((a, b) => {
+    const aHe = isHebrewName(a.name);
+    const bHe = isHebrewName(b.name);
+    if (aHe !== bHe) return aHe ? -1 : 1;
+    return (a.name || '').localeCompare(b.name || '', 'he');
+  });
 
   const exportHeaders = ['שם הקורס', 'סוג', 'סטטוס', 'לוז', 'מיקום', 'מחיר מוקדם', 'מחיר מאוחר', 'רשומים', 'לידים', 'מקסימום', 'אימייל מורה'];
   const exportRows = filteredCourses.map(c => [

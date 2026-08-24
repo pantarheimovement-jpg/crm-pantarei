@@ -177,6 +177,8 @@ function computeMainStatus(courses, fallback) {
     if (list.some((c) => c.status === status)) return status;
   }
   if (list.length && list.every((c) => c.status === 'לא רלוונטי')) return 'לא רלוונטי';
+  // כל הקורסים בוטלו (או בוטלו/לא רלוונטי) — הסטטוס הראשי משקף את הביטול ולא "רשום"
+  if (list.length && list.every((c) => c.status === CANCELLED_STATUS || c.status === 'לא רלוונטי')) return CANCELLED_STATUS;
   return fallback || 'רשום';
 }
 

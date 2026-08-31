@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Receipt, XCircle } from 'lucide-react';
 import { parseSummitEvents } from './parseSummitEvents';
+import RevenueAccordion from './RevenueAccordion';
 
 const fmt = (n) => `₪${Math.round(n).toLocaleString('he-IL')}`;
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('he-IL') : '—';
@@ -29,11 +30,7 @@ export default function CreditsAndCancellationsSection({ students }) {
   return (
     <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* זיכויים כספיים */}
-      <div className="bg-white shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
-        <div className="flex items-center gap-2 mb-1">
-          <Receipt className="w-5 h-5 text-[var(--crm-accent)]" />
-          <h2 className="text-xl font-bold text-[var(--crm-text)]" style={{ fontFamily: 'var(--font-headings)' }}>זיכויים כספיים</h2>
-        </div>
+      <RevenueAccordion icon={Receipt} title="זיכויים כספיים" count={credits.length} summary={fmt(creditsTotal)}>
         <p className="text-xs text-gray-500 mb-3">{credits.length} זיכויים · סה"כ {fmt(creditsTotal)} · לפי מסמכי זיכוי מסאמיט</p>
         {credits.length === 0 ? (
           <p className="text-sm text-gray-400 py-4 text-center">אין זיכויים רשומים</p>
@@ -61,14 +58,10 @@ export default function CreditsAndCancellationsSection({ students }) {
             </tbody>
           </table>
         )}
-      </div>
+      </RevenueAccordion>
 
       {/* ביטולי הרשמה */}
-      <div className="bg-white shadow-sm border border-gray-100 p-6" style={{ borderRadius: 'var(--crm-border-radius)' }}>
-        <div className="flex items-center gap-2 mb-1">
-          <XCircle className="w-5 h-5 text-red-400" />
-          <h2 className="text-xl font-bold text-[var(--crm-text)]" style={{ fontFamily: 'var(--font-headings)' }}>ביטולי הרשמה</h2>
-        </div>
+      <RevenueAccordion icon={XCircle} iconColor="#f87171" title="ביטולי הרשמה" count={cancellations.length}>
         <p className="text-xs text-gray-500 mb-3">{cancellations.length} משתתפות בסטטוס ביטול הרשמה</p>
         {cancellations.length === 0 ? (
           <p className="text-sm text-gray-400 py-4 text-center">אין ביטולי הרשמה</p>
@@ -92,7 +85,7 @@ export default function CreditsAndCancellationsSection({ students }) {
             </tbody>
           </table>
         )}
-      </div>
+      </RevenueAccordion>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import RevenueListModal from '../components/revenue/RevenueListModal';
 import RentalsSection from '../components/revenue/RentalsSection';
 import MonthlyRevenueSummary from '../components/revenue/MonthlyRevenueSummary';
 import CreditsAndCancellationsSection from '../components/revenue/CreditsAndCancellationsSection';
+import RevenueAccordion from '../components/revenue/RevenueAccordion';
 import { extractProductHints, looksNonCourse, NON_COURSE_BUCKET_NAME } from '../components/revenue/pendingHints';
 
 const REGISTERED_STATUSES = new Set(['רשום', 'נרשם', 'רשומה ליום היכרות']);
@@ -382,140 +383,21 @@ export default function CourseRevenue() {
 
         <RentalsSection rows={rentalRows} />
 
+        <RevenueAccordion
+          icon={TrendingUp}
+          iconColor="var(--crm-primary)"
+          title="הכנסות לפי קורס"
+          count={filteredStats.length}
+          defaultOpen
+        >
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-4" style={{ borderRadius: 'var(--crm-border-radius)' }}>
-          <div className="flex-1 min-w-[200px] relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="חיפוש לפי שם קורס..."
-              className="w-full pr-10 px-4 py-2 border border-gray-300 rounded-lg"
-            />
-          </div>
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg"
-          >
-            <option value="all">כל הסטטוסים</option>
-            <option value="פתוח להרשמה">פתוח להרשמה</option>
-            <option value="מלא">מלא</option>
-            <option value="בתהליך">בתהליך</option>
-            <option value="הסתיים">הסתיים</option>
-            <option value="לא פתוח להרשמה">לא פתוח להרשמה</option>
-          </select>
-        </div>
-
-        {/* מקרא קצר — כל מספר על המסך הוא כסף אמיתי מסאמיט. אין ניחושים. */}
-        <div className="mb-3 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 leading-relaxed">
-          כל סכום שמופיע כאן הוא כסף שנגבה בפועל דרך סאמיט.
-          המסמן <span className="font-bold">—</span> מציין שהסכום עדיין לא נמשך מסאמיט (לרוב תשלומים שקדמו לחיבור) — יש להשלים ידנית.
-        </div>
-
-        {/* Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderRadius: 'var(--crm-border-radius)' }}>
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">שם קורס</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">סטטוס</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">רשומים</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">שולם עד כה</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">הכנסות צפויות</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">פירוט</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredStats.map(({ course, registeredCount, paidSoFar, expected, isAnnual, forecastCount, hasUnknown, entries }) => (
-                <React.Fragment key={course.id}>
-                  <tr className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-[var(--crm-text)]">
-                      {course.name}
-                      <label className="flex items-center gap-1 mt-1 text-xs text-gray-400 cursor-pointer font-normal">
-                        <input
-                          type="checkbox"
-                          checked={course.is_annual_program === true}
-                          onChange={async (e) => {
-                            const checked = e.target.checked;
-                            await base44.entities.Course.update(course.id, { is_annual_program: checked });
-                            setCourses(prev => prev.map(c => c.id === course.id ? { ...c, is_annual_program: checked } : c));
-                          }}
-                          className="w-3 h-3"
-                        />
-                        תוכנית שנתית (הוראת קבע)
-                      </label>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="px-2 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: 'var(--crm-primary)' }}>
-                        {course.status || '—'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center font-bold text-[var(--crm-primary)]">{registeredCount}</td>
-                    <td className="px-4 py-3 text-center text-green-700 font-semibold">
-                      {paidSoFar > 0 ? fmt(paidSoFar) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-center text-[var(--crm-text)]">
-                      {fmt(expected)}
-                      {isAnnual && forecastCount > 0 && (
-                        <span className="block text-xs text-gray-400">{forecastCount} רשומים לתחזית</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {registeredCount > 0 && (
-                        <button
-                          onClick={() => setExpandedCourse(expandedCourse === course.id ? null : course.id)}
-                          className="flex items-center gap-1 mx-auto text-sm text-[var(--crm-primary)] hover:underline"
-                        >
-                          {expandedCourse === course.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          צפייה בנרשמים
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                  {expandedCourse === course.id && (
-                    <tr>
-                      <td colSpan={6} className="bg-gray-50 px-4 py-4">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-                            <thead className="bg-gray-100">
-                              <tr>
-                                <th className="px-3 py-2 text-right font-medium text-gray-600">שם</th>
-                                <th className="px-3 py-2 text-right font-medium text-gray-600">סטטוס</th>
-                                <th className="px-3 py-2 text-center font-medium text-gray-600">תשלום חודשי</th>
-                                <th className="px-3 py-2 text-center font-medium text-gray-600">מספר תשלום</th>
-                                <th className="px-3 py-2 text-center font-medium text-gray-600">שולם</th>
-                                <th className="px-3 py-2 text-center font-medium text-gray-600">מחיר מלא</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 bg-white">
-                              {entries.map((e, i) => {
-                                const paid = parseFloat(e.paid_so_far) || 0;
-                                return (
-                                  <tr key={i} className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 font-medium">{e.student.full_name}</td>
-                                    <td className="px-3 py-2 text-gray-600">{e.status}</td>
-                                    <td className="px-3 py-2 text-center">{e.installment_amount ? `₪${e.installment_amount}` : '—'}</td>
-                                    <td className="px-3 py-2 text-center">{e.payment_number || '—'}</td>
-                                    <td className="px-3 py-2 text-center text-green-700 font-semibold">{paid ? fmt(paid) : '—'}</td>
-                                    <td className="px-3 py-2 text-center">{e.total_price ? fmt(e.total_price) : '—'}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-4 border border-gray-100" style={{ borderRadius: 'var(--crm-border-radius)' }}>
+...
           {filteredStats.length === 0 && (
             <div className="text-center py-12 text-gray-400">לא נמצאו קורסים</div>
           )}
         </div>
+        </RevenueAccordion>
 
         <CreditsAndCancellationsSection students={students} />
       </div>

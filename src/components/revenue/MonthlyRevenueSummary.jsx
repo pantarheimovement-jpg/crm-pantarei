@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Calendar } from 'lucide-react';
 import { parseSummitEvents } from './parseSummitEvents';
+import RevenueAccordion from './RevenueAccordion';
 
 const MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 const fmt = (n) => `₪${Math.round(n).toLocaleString('he-IL')}`;
@@ -35,14 +36,14 @@ export default function MonthlyRevenueSummary({ students, totalCollected }) {
   const maxNet = Math.max(...monthlyNet, 1);
 
   return (
-    <div className="bg-white shadow-sm border border-gray-100 p-6 mb-8" style={{ borderRadius: 'var(--crm-border-radius)' }}>
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-[var(--crm-primary)]" />
-          <h2 className="text-xl font-bold text-[var(--crm-text)]" style={{ fontFamily: 'var(--font-headings)' }}>
-            נגבה בפועל (מסאמיט, לפי תאריך חיוב)
-          </h2>
-        </div>
+    <RevenueAccordion
+      icon={Calendar}
+      iconColor="var(--crm-primary)"
+      title="נגבה בפועל (מסאמיט, לפי תאריך חיוב)"
+      summary={fmt(yearNet)}
+      className="mb-8"
+    >
+      <div className="flex items-center justify-end flex-wrap gap-3 mb-4">
         <div className="flex gap-2">
           <select value={month} onChange={e => setMonth(Number(e.target.value))} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
             {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
@@ -84,6 +85,6 @@ export default function MonthlyRevenueSummary({ students, totalCollected }) {
           הפרש: {fmt(gap)} שנגבה לפני חיבור סאמיט (ללא תאריך חיוב) — לא משויך לחודש.
         </p>
       )}
-    </div>
+    </RevenueAccordion>
   );
 }

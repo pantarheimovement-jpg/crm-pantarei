@@ -6,9 +6,14 @@ import ExportButtons from '../components/shared/ExportButtons';
 import PendingAssignmentModal from '../components/revenue/PendingAssignmentModal';
 import RevenueListModal from '../components/revenue/RevenueListModal';
 import RentalsSection from '../components/revenue/RentalsSection';
+import MonthlyRevenueSummary from '../components/revenue/MonthlyRevenueSummary';
+import CreditsAndCancellationsSection from '../components/revenue/CreditsAndCancellationsSection';
 import { extractProductHints, looksNonCourse, NON_COURSE_BUCKET_NAME } from '../components/revenue/pendingHints';
 
 const REGISTERED_STATUSES = new Set(['רשום', 'נרשם', 'רשומה ליום היכרות']);
+// תחזית בלבד: "נוצרה הוראת קבע" = רשומה שטרם חויבה. נכנסת ל"הכנסות צפויות"
+// אך לעולם לא ל-REGISTERED_STATUSES ולא לכסף בפועל (נגבה/משויך).
+const FORECAST_STATUSES = new Set([...REGISTERED_STATUSES, 'נוצרה הוראת קבע']);
 
 export default function CourseRevenue() {
   const { designSettings } = useSystemSettings();
@@ -56,8 +61,13 @@ export default function CourseRevenue() {
       // Find all course entries across all students matching this course and registered status
       const registeredEntries = [];
       const registeredStudents = [];
+      // רשומות לתחזית — כולל "נוצרה הוראת קבע" (טרם חויבה). תצוגה בלבד.
+      const forecastEntries = [];
 
       students.forEach(student => {
+        (student.courses || [])
+          .filter(c => c.course_id === course.id && FORECAST_STATUSES.has(c.status))
+          .forEach(e => forecastEntries.push({ ...e, student }));
         const entries = (student.courses || []).filter(
           c => c.course_id === course.id && REGISTERED_STATUSES.has(c.status)
         );
@@ -70,7 +80,7 @@ export default function CourseRevenue() {
           REGISTERED_STATUSES.has(student.status)
         ) {
           // fallback: old flat structure
-          registeredEntries.push({
+          const flatEntry = {
             course_id: course.id,
             course_name: course.name,
             status: student.status,
@@ -79,7 +89,9 @@ export default function CourseRevenue() {
             payment_number: student.payment_number,
             payments_total: null,
             student
-          });
+          };
+          registeredEntries.push(flatEntry);
+          forecastEntries.push(flatEntry);
           registeredStudents.push(student);
         }
       });
@@ -121,9 +133,10 @@ export default function CourseRevenue() {
         return opt && opt.price != null ? parseFloat(opt.price) : null;
       };
       const isAnnual = course.is_annual_program === true ||
-        registeredEntries.some(e => (parseFloat(e.payments_total) || 0) > 1);
+        forecastEntries.some(e => (parseFloat(e.payments_total) || 0) > 1);
 
-      const expected = isAnnual ? registeredEntries.reduce((sum, e) => {
+      // התחזית רצה על forecastEntries — כולל "נוצרה הוראת קבע" שטרם חויבה
+      const expected = isAnnual ? forecastEntries.reduce((sum, e) => {
         const fromOption = priceFromOption(e.option_id);
         if (fromOption !== null) return sum + fromOption;
         if (e.total_price) return sum + parseFloat(e.total_price);
@@ -139,6 +152,7 @@ export default function CourseRevenue() {
         expected,
         isAnnual,
         hasUnknown,
+        forecastCount: forecastEntries.length,
         entries: registeredEntries
       };
     });
@@ -295,6 +309,8 @@ export default function CourseRevenue() {
           />
         </div>
 
+        <MonthlyRevenueSummary students={students} totalCollected={totalCollected} />
+
         {/* Summary KPIs — שלושה מספרים מתאזנים: נגבה בפועל = משויך + ממתין לשיוך, בתוספת הכנסות צפויות לתוכניות שנתיות */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           {[
@@ -411,7 +427,7 @@ export default function CourseRevenue() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredStats.map(({ course, registeredCount, paidSoFar, expected, hasUnknown, entries }) => (
+              {filteredStats.map(({ course, registeredCount, paidSoFar, expected, isAnnual, forecastCount, hasUnknown, entries }) => (
                 <React.Fragment key={course.id}>
                   <tr className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-[var(--crm-text)]">
@@ -439,7 +455,12 @@ export default function CourseRevenue() {
                     <td className="px-4 py-3 text-center text-green-700 font-semibold">
                       {paidSoFar > 0 ? fmt(paidSoFar) : '—'}
                     </td>
-                    <td className="px-4 py-3 text-center text-[var(--crm-text)]">{fmt(expected)}</td>
+                    <td className="px-4 py-3 text-center text-[var(--crm-text)]">
+                      {fmt(expected)}
+                      {isAnnual && forecastCount > 0 && (
+                        <span className="block text-xs text-gray-400">{forecastCount} רשומים לתחזית</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-center">
                       {registeredCount > 0 && (
                         <button
@@ -495,6 +516,8 @@ export default function CourseRevenue() {
             <div className="text-center py-12 text-gray-400">לא נמצאו קורסים</div>
           )}
         </div>
+
+        <CreditsAndCancellationsSection students={students} />
       </div>
     </div>
   );

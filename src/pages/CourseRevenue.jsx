@@ -324,7 +324,7 @@ export default function CourseRevenue() {
         {/* Summary KPIs — שלושה מספרים מתאזנים: נגבה בפועל = משויך + ממתין לשיוך, בתוספת הכנסות צפויות לתוכניות שנתיות */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           {[
-            { label: 'נגבה בפועל', value: fmt(totalCollected), icon: DollarSign, color: 'var(--crm-accent)', onClick: () => setOpenModal('collected') },
+            { label: 'נגבה בפועל', sublabel: '(סה"כ מצטבר — כל המקורות, כל הזמן)', value: fmt(totalCollected), icon: DollarSign, color: 'var(--crm-accent)', onClick: () => setOpenModal('collected') },
             { label: 'משויך לקורסים', value: fmt(matchedTotal), icon: TrendingUp, color: 'var(--crm-primary)', onClick: () => setOpenModal('matched') },
             { label: 'ממתין לשיוך', value: fmt(pendingTotal), icon: Clock, color: 'var(--crm-action)', onClick: () => setShowPending(true) },
             { label: 'הכנסות צפויות', sublabel: '(תוכניות בהוראת קבע)', value: fmt(totalExpected), icon: TrendingUp, color: 'var(--crm-accent)', onClick: () => setOpenModal('expected') },

@@ -1,7 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
-export default function RevenueListModal({ title, rows, subHeader, amountHeader, onClose, emptyMessage }) {
+export default function RevenueListModal({ title, rows, subHeader, amountHeader, onClose, emptyMessage, extraSection }) {
   const fmt = (n) => n ? `₪${Math.round(n).toLocaleString('he-IL')}` : '—';
   const total = rows.reduce((s, x) => s + (x.amount || 0), 0);
 
@@ -33,6 +33,25 @@ export default function RevenueListModal({ title, rows, subHeader, amountHeader,
               ))}
             </tbody>
           </table>
+        )}
+        {extraSection && extraSection.rows.length > 0 && (
+          <div className="mt-5 border-t-2 border-dashed border-purple-200 pt-4">
+            <h5 className="font-bold text-[var(--crm-accent)] mb-2">
+              💜 {extraSection.title} — {fmt(extraSection.rows.reduce((s, x) => s + (x.amount || 0), 0))}
+            </h5>
+            <table className="w-full text-sm">
+              <tbody>
+                {extraSection.rows.map((r, i) => (
+                  <tr key={r.id || i} className="border-b bg-purple-50/40">
+                    <td className="p-2 font-medium">{r.name}</td>
+                    <td className="p-2 text-gray-600 text-xs">{r.sub || '—'}</td>
+                    <td className="p-2 text-center text-green-700 font-semibold">{fmt(r.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-xs text-gray-500 mt-1">תרומה/תמיכה חודשית — נספרת בסך ההכנסות הצפויות אך אינה תוכנית לימוד.</p>
+          </div>
         )}
       </div>
     </div>

@@ -224,11 +224,20 @@ export default function CourseRevenue() {
     return rows.sort((a, b) => b.amount - a.amount);
   }, [courseStats]);
 
+  // "תמיכה בפנטהריי" = תרומה חודשית, לא תוכנית לימוד — מוצגת ברובריקה נפרדת
+  // בפירוט ההכנסות הצפויות (אך עדיין נספרת בסך הכולל של ה-KPI).
+  const isSupportCourse = (name) => (name || '').includes('תמיכה בפנטהריי');
   const expectedList = useMemo(() => {
     return courseStats
-      .filter(c => c.isAnnual)
+      .filter(c => c.isAnnual && !isSupportCourse(c.course.name))
       .map(c => ({ id: c.course.id, name: c.course.name, sub: `${c.registeredCount} רשומים`, amount: c.expected || 0 }))
       .sort((a, b) => b.amount - a.amount);
+  }, [courseStats]);
+
+  const supportExpectedList = useMemo(() => {
+    return courseStats
+      .filter(c => c.isAnnual && isSupportCourse(c.course.name))
+      .map(c => ({ id: c.course.id, name: c.course.name, sub: `${c.registeredCount} תומכות`, amount: c.expected || 0 }));
   }, [courseStats]);
 
   // סקשן השכרות — קורסים שסומנו kind === 'השכרה'. אותה לוגיקת סכום כמו matchedList:
@@ -377,6 +386,7 @@ export default function CourseRevenue() {
             subHeader="רשומים"
             amountHeader="צפי"
             emptyMessage="אין תוכניות שנתיות מסומנות"
+            extraSection={{ title: 'תרומות / תמיכה בפנטהריי', rows: supportExpectedList }}
             onClose={() => setOpenModal(null)}
           />
         )}

@@ -713,6 +713,29 @@ export default function UserGuide() {
         <FAQItem
           icon={Copy}
           color="#9B59B6"
+          question="איך משכפלים ניוזלטר שלם כדי לערוך אותו מחדש?"
+          answer={
+            <div>
+              <p>בהגדרות CRM → לשונית <strong>״תבניות מייל״</strong> יש כפתור <strong>״שכפל תבנית״</strong> — כך לא צריך לבנות ניוזלטר מאפס בכל פעם:</p>
+              <ol className="list-decimal list-inside mt-2 space-y-1">
+                <li>בחרי מהרשימה את התבנית שרוצה לשכפל (הניוזלטר של הפעם הקודמת)</li>
+                <li>לחצי על <strong>״שכפל תבנית״</strong> (מופיע ליד ״תבנית חדשה״)</li>
+                <li>נוצר עותק מלא — לוגו, כותרת, ברכה, כל בלוקי התוכן, פרטי קשר ורשתות חברתיות</li>
+                <li>השם יהיה <strong>״[שם התבנית] — עותק״</strong>. שני אותו למשהו מזהה (למשל ״ניוזלטר ספטמבר״)</li>
+                <li>ערכי מה שצריך ולחצי <strong>״שמור תבנית״</strong></li>
+              </ol>
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+                ✅ <strong>המקור מוגן:</strong> השמירה יוצרת תבנית <strong>חדשה</strong> ולא דורסת את התבנית שממנה שוכפלה. אחרי השמירה שתיהן יופיעו ברשימה, ותוכלי לבחור את החדשה בדף הניוזלטר תחת ״תבנית מהירה״.
+              </div>
+              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+                💡 השכפול לוקח את מה שמוצג על המסך באותו רגע — אם עשית שינויים ולא שמרת, הם ייכנסו לעותק.
+              </div>
+            </div>
+          }
+        />
+        <FAQItem
+          icon={Copy}
+          color="#9B59B6"
           question="איך משכפלים בלוקים בתבנית Anti-Spam?"
           answer={
             <div>

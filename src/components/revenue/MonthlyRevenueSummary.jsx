@@ -37,7 +37,7 @@ export default function MonthlyRevenueSummary({ students, totalCollected }) {
     <RevenueAccordion
       icon={Calendar}
       iconColor="var(--crm-primary)"
-      title={`גבייה חודשית בסאמיט — שנת ${year}`}
+      title={`גבייה של שנת ${year} בלבד (מסאמיט)`}
       summary={fmt(yearNet)}
       className="mb-8"
     >

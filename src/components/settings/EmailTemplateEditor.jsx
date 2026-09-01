@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../SystemSettingsContext';
-import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown } from 'lucide-react';
+import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 
 // A "block" can be: text, image, video, button
 const DEFAULT_BLOCK = () => ({ id: Date.now() + Math.random(), type: 'text', title: '', content: '', button_text: '', button_url: '', image_url: '', video_url: '', video_thumbnail_url: '' });
@@ -467,6 +467,20 @@ export default function EmailTemplateEditor() {
     setSections({ ...sections, blocks: newBlocks });
   };
 
+  // שכפול — עותק חדש שטרם נשמר. הדגל creatingNew מבטיח שהשמירה תיצור רשומה
+  // חדשה ולא תדרוס את המקור. לכל בלוק מזהה חדש כדי שהעריכה תהיה עצמאית.
+  const duplicateTemplate = () => {
+    setCreatingNew(true);
+    creatingNewRef.current = true;
+    setSelectedId(null);
+    selectedIdRef.current = null;
+    setTemplateName(`${templateName || 'תבנית'} — עותק`);
+    setSections({
+      ...sections,
+      blocks: (sections.blocks || []).map(b => ({ ...b, id: Date.now() + Math.random() }))
+    });
+  };
+
   const startNew = () => {
     setCreatingNew(true);
     creatingNewRef.current = true;
@@ -497,6 +511,11 @@ export default function EmailTemplateEditor() {
         <button onClick={startNew} className="px-4 py-2 bg-[#6D436D] text-white rounded-full font-semibold flex items-center gap-2 hover:bg-[#5a365a]">
           <Plus className="w-4 h-4" /> תבנית חדשה
         </button>
+        {selectedId && !creatingNew && (
+          <button onClick={duplicateTemplate} className="px-4 py-2 border-2 border-[#6D436D] text-[#6D436D] rounded-full font-semibold flex items-center gap-2 hover:bg-[#6D436D]/10">
+            <Copy className="w-4 h-4" /> שכפל תבנית
+          </button>
+        )}
         {selectedId && !creatingNew && (
           <button onClick={() => handleDelete(selectedId)} className="px-4 py-2 border border-red-400 text-red-600 rounded-full hover:bg-red-50 flex items-center gap-2">
             <Trash2 className="w-4 h-4" /> מחק תבנית

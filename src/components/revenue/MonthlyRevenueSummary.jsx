@@ -80,11 +80,11 @@ export default function MonthlyRevenueSummary({ students, totalCollected }) {
         ))}
       </div>
 
-      {gap > 0 && (
-        <p className="mt-4 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-          הפרש: {fmt(gap)} שנגבה לפני חיבור סאמיט (ללא תאריך חיוב) — לא משויך לחודש.
-        </p>
-      )}
+      <p className="mt-4 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 leading-relaxed">
+        💡 טבלה זו מציגה את שנת {year} בלבד, נטו (בניכוי זיכויים), ורק תשלומים עם תאריך חיוב מסאמיט.
+        לעומת זאת הכרטיס "נגבה בפועל" ({fmt(totalCollected)}) הוא הסכום המצטבר מכל הזמנים ומכל מקורות התשלום
+        (כולל קבלות ידניות והיסטוריות) — ולכן גבוה יותר. זהו הבדל מתוכנן, לא פער.
+      </p>
     </RevenueAccordion>
   );
 }

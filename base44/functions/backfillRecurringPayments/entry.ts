@@ -95,6 +95,7 @@ Deno.serve(async (req) => {
       const itemName = it.Item?.Name || it.Description || null;
       const unit = it.UnitPrice ?? it.Item?.Price ?? null;
       const count = monthsInclusive(it.Date_Start, it.Date_Last);
+      const isTest = /בדיקת מערכת/.test(itemName || '');
       const row: any = {
         sumitCustomerId: cid, customer: name, email, phone,
         item: itemName, unitPrice: unit,
@@ -107,6 +108,7 @@ Deno.serve(async (req) => {
         studentId: student?.id || null,
       };
 
+      if (isTest) { row.included = false; row.skipReason = 'test record excluded'; results.push(row); continue; }
       if (!row.included) { row.skipReason = !count ? 'no-date-last (continuous/unknown)' : `status ${row.statusName} excluded`; results.push(row); continue; }
       if (!student) { row.skipReason = 'no CRM student match'; results.push(row); continue; }
 
@@ -125,7 +127,11 @@ Deno.serve(async (req) => {
       row.willSetInstallment = unit;
       row.expectedContribution = count * (unit || 0);
 
-      work.courses[idx] = { ...work.courses[idx], payments_total: count, ...(unit ? { installment_amount: unit } : {}) };
+      // לא דורסים installment_amount קיים (הערך מה-CRM מגיע מחיוב אמיתי, כולל הנחות). ממלאים רק אם חסר.
+      const hasInstallment = work.courses[idx].installment_amount != null && work.courses[idx].installment_amount !== '';
+      work.courses[idx] = { ...work.courses[idx], payments_total: count, ...(!hasInstallment && unit ? { installment_amount: unit } : {}) };
+      row.installmentKept = hasInstallment;
+      row.expectedContribution = count * (Number(work.courses[idx].installment_amount) || 0);
       updates.set(student.id, work);
       results.push(row);
     }

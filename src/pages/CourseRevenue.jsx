@@ -146,6 +146,8 @@ export default function CourseRevenue() {
         return sum + inst * total;
       }, 0) : null;
 
+      // מחזורי-השנה (cohort) המיוצגים בקורס הזה — להבחנה בין מחזור נוכחי לקודם.
+      const cohorts = [...new Set(forecastEntries.map(e => e.cohort).filter(Boolean))].sort().reverse();
       return {
         course,
         registeredCount: registeredStudents.length,
@@ -154,7 +156,8 @@ export default function CourseRevenue() {
         isAnnual,
         hasUnknown,
         forecastCount: forecastEntries.length,
-        entries: registeredEntries
+        entries: registeredEntries,
+        cohorts
       };
     });
   }, [courses, students]);

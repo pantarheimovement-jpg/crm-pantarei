@@ -520,6 +520,7 @@ export default function CourseRevenue() {
                                 <th className="px-3 py-2 text-center font-medium text-gray-600">מספר תשלום</th>
                                 <th className="px-3 py-2 text-center font-medium text-gray-600">שולם</th>
                                 <th className="px-3 py-2 text-center font-medium text-gray-600">מחיר מלא</th>
+                                <th className="px-3 py-2 text-center font-medium text-gray-600">מחזור</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
@@ -533,6 +534,7 @@ export default function CourseRevenue() {
                                     <td className="px-3 py-2 text-center">{e.payment_number || '—'}</td>
                                     <td className="px-3 py-2 text-center text-green-700 font-semibold">{paid ? fmt(paid) : '—'}</td>
                                     <td className="px-3 py-2 text-center">{e.total_price ? fmt(e.total_price) : '—'}</td>
+                                    <td className="px-3 py-2 text-center text-gray-600">{e.cohort || '—'}</td>
                                   </tr>
                                 );
                               })}

@@ -10,6 +10,34 @@ const PRICING_TOOL_KEY = Deno.env.get('PRICING_TOOL_KEY') ||
 const REGISTERED_STATUSES = new Set(['רשום', 'נרשם', 'רשומה ליום היכרות']);
 const FORECAST_STATUS = 'נוצרה הוראת קבע';
 
+// הכנסת סאמיט חודשית — מפרסר שורות ההערה כמו parseSummitEvents.js (Phase A).
+// עוגן: "בתאריך YYYY-MM-DD" + "(₪<סכום>)". זיכוי/ביטול גובר על "תשלום".
+function sumitMonthlyNet(students) {
+  const monthly = {}; // 'YYYY-MM' -> { payments, credits }
+  for (const s of students || []) {
+    for (const rawLine of (s.notes || '').split('\n')) {
+      const line = rawLine.trim();
+      const dm = line.match(/בתאריך (\d{4})-(\d{2})-\d{2}/);
+      const am = line.match(/\(₪\s*(-?[\d.,]+)\)/);
+      if (!dm || !am) continue;
+      const amount = parseFloat(am[1].replace(/,/g, ''));
+      if (isNaN(amount)) continue;
+      const isCredit = /זיכוי|ביטול הרשמה/.test(line);
+      const isPayment = /^תשלום/.test(line);
+      if (!isCredit && !isPayment) continue;
+      const ym = `${dm[1]}-${dm[2]}`;
+      const bucket = (monthly[ym] ||= { payments: 0, credits: 0 });
+      if (isCredit) bucket.credits += Math.abs(amount);
+      else bucket.payments += amount;
+    }
+  }
+  const net = {};
+  for (const [ym, b] of Object.entries(monthly)) {
+    net[ym] = Math.round(b.payments - b.credits);
+  }
+  return net;
+}
+
 Deno.serve(async (req) => {
   try {
     let key = new URL(req.url).searchParams.get('key');
@@ -74,6 +102,7 @@ Deno.serve(async (req) => {
       generated_at: new Date().toISOString(),
       students_scanned: students.length,
       courses: result,
+      monthly_income: sumitMonthlyNet(students), // סליקת סאמיט נטו לפי חודש חיוב
     });
   } catch (e) {
     console.error('pricingToolData error:', e);

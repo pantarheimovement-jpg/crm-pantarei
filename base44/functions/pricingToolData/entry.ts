@@ -107,6 +107,7 @@ Deno.serve(async (req) => {
       generated_at: new Date().toISOString(),
       students_scanned: students.length,
       courses: result,
+      schema_version: 2, // כולל priced_sum/priced_count למחיר ממוצע בפועל
       monthly_income: sumitMonthlyNet(students), // סליקת סאמיט נטו לפי חודש חיוב
     });
   } catch (e) {

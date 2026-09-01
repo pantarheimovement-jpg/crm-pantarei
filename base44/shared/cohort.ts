@@ -25,12 +25,22 @@ export function cohortFromDate(dateStr: string | null | undefined): string | nul
   return `${startYear}-${startYear + 1}`;
 }
 
+/** הו"ק שאינה תוכנית לימוד — תמיכה/תרומה חודשית. לא משויכת לשנת לימוד. */
+export function isNonProgramItem(name: string | null | undefined): boolean {
+  return /תמיכה בפנטהריי|תרומה/.test(String(name || ''));
+}
+
 /**
  * הקוהורטה של הוראת קבע. מקור עיקרי: תאריך החיוב הראשון בפועל.
  * נפילה: Date_Start (הו"ק שטרם חויבה).
- * מסמן needsReview כשהגזירה אינה חד-משמעית — ואז מכריעים ידנית:
- *   · תאריך ביולי — צמוד לגבול החתך
- *   · תאריך ההתחלה והחיוב הראשון נופלים לקוהורטות שונות
+ *
+ * יולי — החודש הגובל: הכרעת עינת (01.09) לפי קיום חיוב בפועל.
+ *   · יש חיוב ביולי → ההו"ק כבר רצה, כלומר שייכת לשנה המסתיימת (2025-2026)
+ *   · אין חיוב, רק תאריך פתיחה ביולי → החיוב הראשון יהיה בספטמבר, כלומר
+ *     ההרשמה היא לשנה הבאה (2026-2027)
+ *
+ * needsReview נשמר למקרה היחיד שנותר לא חד-משמעי: תאריך הפתיחה והחיוב
+ * הראשון נופלים לשנות לימוד שונות.
  */
 export function resolveCohort(firstChargeDate: string | null, dateStart: string | null): {
   cohort: string | null;
@@ -46,7 +56,10 @@ export function resolveCohort(firstChargeDate: string | null, dateStart: string 
   const ym = ymFromString(basis)!;
 
   if (ym.m === 7) {
-    return { cohort, source, needsReview: true, reviewReason: `התאריך (${basis}) ביולי — צמוד לגבול שנת הלימוד` };
+    // אין חיוב → החיוב הראשון יהיה בספטמבר → השנה הבאה
+    if (!firstChargeDate) return { cohort: `${ym.y}-${ym.y + 1}`, source, needsReview: false, reviewReason: null };
+    // יש חיוב ביולי → ההו"ק שייכת לשנה המסתיימת (cohortFromDate כבר מחזיר אותה)
+    return { cohort, source, needsReview: false, reviewReason: null };
   }
   if (firstChargeDate && dateStart) {
     const startCohort = cohortFromDate(dateStart);

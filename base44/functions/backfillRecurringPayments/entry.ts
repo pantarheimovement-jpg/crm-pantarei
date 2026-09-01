@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
-import { resolveCohort, monthsInclusive } from '../../shared/cohort.ts';
+import { resolveCohort, monthsInclusive, isNonProgramItem } from '../../shared/cohort.ts';
 
 // Backfill של payments_total (מספר תשלומי הו"ק) מסאמיט → CRM.
 // מקור האמת: /billing/recurring/listforcustomer/ — Date_Start..Date_Last => מספר תשלומים.
@@ -129,7 +129,10 @@ Deno.serve(async (req) => {
       const unit = it.UnitPrice ?? it.Item?.Price ?? null;
       const count = monthsInclusive(it.Date_Start, it.Date_Last);
       const firstCharge = firstChargeByItem.get(it.ID) || null;
-      const coh = resolveCohort(firstCharge, (it.Date_Start || '').slice(0, 10) || null);
+      // תמיכה/תרומה חודשית אינה תוכנית לימוד — לא מקבלת שנת לימוד כלל
+      const coh = isNonProgramItem(itemName)
+        ? { cohort: null, source: null as any, needsReview: false, reviewReason: 'הוראת קבע לתמיכה — לא משויכת לשנת לימוד' }
+        : resolveCohort(firstCharge, (it.Date_Start || '').slice(0, 10) || null);
       const isTest = /בדיקת מערכת/.test(itemName || '');
       const row: any = {
         sumitCustomerId: cid, customer: name, email, phone,
@@ -184,7 +187,7 @@ Deno.serve(async (req) => {
           course_id: resolved.course.id,
           course_name: resolved.course.name,
           status: 'נוצרה הוראת קבע',
-          cohort: coh.cohort,
+          ...(coh.cohort ? { cohort: coh.cohort } : {}),
           registration_date: (it.Date_Start || '').slice(0, 10) || null,
           installment_amount: unit,
           payments_total: count,

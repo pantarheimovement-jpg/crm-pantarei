@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { resolveCohort, monthsInclusive } from '../../shared/cohort.ts';
 
 // Backfill של payments_total (מספר תשלומי הו"ק) מסאמיט → CRM.
 // מקור האמת: /billing/recurring/listforcustomer/ — Date_Start..Date_Last => מספר תשלומים.
@@ -26,18 +27,17 @@ function phoneVariants(phone: string) {
   if (d.startsWith('0')) v.add('972' + d.slice(1));
   return [...v];
 }
-function monthsInclusive(a: string, b: string): number | null {
-  if (!a || !b) return null;
-  const d1 = new Date(a), d2 = new Date(b);
-  if (isNaN(+d1) || isNaN(+d2)) return null;
-  return (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1;
-}
+// monthsInclusive + גזירת הקוהורטה מגיעים מ-shared/cohort.ts — גזירה מהמחרוזת,
+// בלתי-תלויה באזור-זמן. מספר התשלומים הוא קירוב ±1 (ראו הערה שם).
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const url = new URL(req.url);
   if (url.searchParams.get('key') !== 'backfill-2026-09-01') return Response.json({ error: 'unauthorized' }, { status: 401 });
   const write = url.searchParams.get('mode') === 'write' && url.searchParams.get('confirm') === 'backfill-2026-09-01';
+  // sync=1 — מרחיב את הפונקציה מ"מילוי payments_total" ל"סנכרון": הו"ק פעילה/ממתינה
+  // שאין לה רשומת קורס תואמת ב-CRM (למשל משתתפת שעלתה שנה) יוצרת רשומה חדשה.
+  const sync = url.searchParams.get('sync') === '1';
   const includeStatuses = new Set((url.searchParams.get('statuses') || '0,12').split(',').map(Number));
 
   const SUMIT_API_KEY = Deno.env.get('SUMIT_API_KEY');
@@ -52,7 +52,21 @@ Deno.serve(async (req) => {
   const payJson = await sumit('/billing/payments/list/', { Date_From: '2024-01-01T00:00:00', Date_To: '2027-12-31T23:59:59', Paging: { StartIndex: 0, PageSize: 1000 } });
   const payments = payJson?.Data?.Payments || [];
   const custIds = new Set<number>();
-  for (const p of payments) if ((p.RecurringCustomerItemIDs || []).length) custIds.add(p.CustomerID);
+  // תאריך החיוב הראשון בפועל לכל פריט הו"ק — הבסיס לגזירת שנת הלימוד.
+  // (Date_Start הוא מועד פתיחת ההו"ק, שקודם לחיוב הראשון ולעיתים בשנה אחרת.)
+  const firstChargeByItem = new Map<number, string>();
+  for (const p of payments) {
+    const recIds = p.RecurringCustomerItemIDs || [];
+    if (!recIds.length) continue;
+    custIds.add(p.CustomerID);
+    if (p.ValidPayment === false) continue;
+    const day = String(p.Date || '').slice(0, 10);
+    if (!day) continue;
+    for (const rid of recIds) {
+      const prev = firstChargeByItem.get(rid);
+      if (!prev || day < prev) firstChargeByItem.set(rid, day);
+    }
+  }
 
   // 2. טוען את כל הסטודנטים פעם אחת (לצורך התאמה)
   let allStudents: any[] = [], skip = 0;
@@ -70,6 +84,25 @@ Deno.serve(async (req) => {
     if (s.email) byEmail.set(String(s.email).trim().toLowerCase(), s);
     for (const v of phoneVariants(s.phone)) byPhone.set(v, s);
     if (s.full_name) byName.set(normalizeName(s.full_name), s);
+  }
+
+  // קטלוג הקורסים ושכבת השיוך — לזיהוי הקורס בעת יצירת רשומה חדשה.
+  // SumitProductMap הוא העוגן העיקרי (אותה שכבה שטריגר התשלום מתחזק), התאמת שם היא נפילה.
+  const allCourses = sync ? (await base44.asServiceRole.entities.Course.list()) || [] : [];
+  const allMaps = sync ? (await base44.asServiceRole.entities.SumitProductMap.list()) || [] : [];
+  const mapByProduct = new Map<string, any>();
+  for (const m of allMaps) if (m.summit_product) mapByProduct.set(normalizeName(m.summit_product), m);
+
+  function resolveCourseForProduct(productName: string) {
+    const norm = normalizeName(productName);
+    const mapped = mapByProduct.get(norm);
+    if (mapped?.status === 'משויך' && mapped.course_id) {
+      const c = allCourses.find((x: any) => x.id === mapped.course_id);
+      if (c) return { course: c, via: 'SumitProductMap', optionId: mapped.option_id || null };
+    }
+    const exact = allCourses.find((c: any) => normalizeName(c.name) === norm);
+    if (exact) return { course: exact, via: 'name-match', optionId: null };
+    return null;
   }
 
   const results: any[] = [];
@@ -95,6 +128,8 @@ Deno.serve(async (req) => {
       const itemName = it.Item?.Name || it.Description || null;
       const unit = it.UnitPrice ?? it.Item?.Price ?? null;
       const count = monthsInclusive(it.Date_Start, it.Date_Last);
+      const firstCharge = firstChargeByItem.get(it.ID) || null;
+      const coh = resolveCohort(firstCharge, (it.Date_Start || '').slice(0, 10) || null);
       const isTest = /בדיקת מערכת/.test(itemName || '');
       const row: any = {
         sumitCustomerId: cid, customer: name, email, phone,
@@ -102,7 +137,13 @@ Deno.serve(async (req) => {
         status, statusName: STATUS_NAME[status] || String(status),
         dateStart: (it.Date_Start || '').slice(0, 10) || null,
         dateLast: (it.Date_Last || '').slice(0, 10) || null,
+        firstChargeDate: firstCharge,
+        cohort: coh.cohort,
+        cohortSource: coh.source,
+        needsReview: coh.needsReview,
+        reviewReason: coh.reviewReason,
         computedPayments: count,
+        computedPaymentsNote: 'קירוב ±1 — נגזר מטווח התאריכים, סאמיט לא מחזיר את מספר המחזורים',
         included: includeStatuses.has(status) && !!count,
         studentMatched: student ? student.full_name : null,
         studentId: student?.id || null,
@@ -115,9 +156,53 @@ Deno.serve(async (req) => {
       // מציאת שורת הקורס התואמת
       const work = updates.get(student.id) || { student, courses: [...(student.courses || [])] };
       const target = normalizeName(itemName);
-      let idx = work.courses.findIndex((c: any) => normalizeName(c.course_name) === target);
-      if (idx < 0) idx = work.courses.findIndex((c: any) => normalizeName(c.course_name).includes(target) || target.includes(normalizeName(c.course_name)));
-      if (idx < 0) { row.skipReason = 'no matching course entry in CRM'; row.crmCourses = work.courses.map((c: any) => c.course_name); results.push(row); continue; }
+      // עוגן: שם הקורס + קוהורטה. רשומה עם אותה קוהורטה גוברת; רשומה ותיקה ללא
+      // קוהורטה נחשבת תואמת (ומקבלת אותה כעת) — כך שהרצות חוזרות לא מייצרות כפילות.
+      const nameHit = (c: any) => normalizeName(c.course_name) === target ||
+        normalizeName(c.course_name).includes(target) || target.includes(normalizeName(c.course_name));
+      let idx = work.courses.findIndex((c: any) => nameHit(c) && c.cohort && c.cohort === coh.cohort);
+      if (idx < 0) idx = work.courses.findIndex((c: any) => nameHit(c) && !c.cohort);
+
+      if (idx < 0) {
+        // אין רשומה תואמת — כאן נכנס הסנכרון: משתתפת שעלתה שנה, או הו"ק שטרם חויבה.
+        row.crmCourses = work.courses.map((c: any) => c.course_name);
+        const resolved = sync ? resolveCourseForProduct(itemName) : null;
+        if (!resolved) {
+          row.skipReason = sync ? 'no CRM course matches this Sumit product — manual assignment needed' : 'no matching course entry in CRM';
+          results.push(row);
+          continue;
+        }
+        if (coh.needsReview) {
+          row.skipReason = `cohort needs manual review — ${coh.reviewReason}`;
+          row.wouldCreate = { course: resolved.course.name, cohort: coh.cohort };
+          results.push(row);
+          continue;
+        }
+        // status "נוצרה הוראת קבע": נספר בתחזית אך לא ככסף שנגבה ולא כ"רשום".
+        // paid_so_far=0 — הכסף של הקורס הקודם נשאר עליו ואינו זז.
+        const created = {
+          course_id: resolved.course.id,
+          course_name: resolved.course.name,
+          status: 'נוצרה הוראת קבע',
+          cohort: coh.cohort,
+          registration_date: (it.Date_Start || '').slice(0, 10) || null,
+          installment_amount: unit,
+          payments_total: count,
+          paid_so_far: 0,
+          ...(resolved.optionId ? { option_id: resolved.optionId } : {})
+        };
+        work.courses.push(created);
+        updates.set(student.id, work);
+        row.action = 'CREATE';
+        row.createdVia = resolved.via;
+        row.crmCourse = resolved.course.name;
+        row.willSetPaymentsTotal = count;
+        row.willSetInstallment = unit;
+        row.expectedContribution = count * (unit || 0);
+        results.push(row);
+        continue;
+      }
+      row.action = 'UPDATE';
 
       row.crmCourse = work.courses[idx].course_name;
       row.crmStatus = work.courses[idx].status;
@@ -129,7 +214,11 @@ Deno.serve(async (req) => {
 
       // לא דורסים installment_amount קיים (הערך מה-CRM מגיע מחיוב אמיתי, כולל הנחות). ממלאים רק אם חסר.
       const hasInstallment = work.courses[idx].installment_amount != null && work.courses[idx].installment_amount !== '';
-      work.courses[idx] = { ...work.courses[idx], payments_total: count, ...(!hasInstallment && unit ? { installment_amount: unit } : {}) };
+      // מילוי הקוהורטה גם על הרשומות הקיימות — כך הנתונים ההיסטוריים מפולחים מיד.
+      // לא נכתבת קוהורטה שדורשת הכרעה ידנית.
+      const cohortPatch = (coh.cohort && !coh.needsReview && !work.courses[idx].cohort) ? { cohort: coh.cohort } : {};
+      row.willSetCohort = cohortPatch.cohort || null;
+      work.courses[idx] = { ...work.courses[idx], payments_total: count, ...cohortPatch, ...(!hasInstallment && unit ? { installment_amount: unit } : {}) };
       row.installmentKept = hasInstallment;
       row.expectedContribution = count * (Number(work.courses[idx].installment_amount) || 0);
       updates.set(student.id, work);
@@ -148,7 +237,11 @@ Deno.serve(async (req) => {
   const included = results.filter(r => r.included && r.studentId && r.willSetPaymentsTotal);
   const summary = {
     mode: write ? 'WRITE' : 'DRY-RUN',
+    sync: sync,
     includeStatuses: [...includeStatuses],
+    willCreate: results.filter(r => r.action === 'CREATE').length,
+    willUpdate: results.filter(r => r.action === 'UPDATE').length,
+    needsManualReview: results.filter(r => r.needsReview && r.included).length,
     sumitRecurringCustomers: custIds.size,
     totalRecurringItems: results.length,
     matchedAndWillWrite: included.length,

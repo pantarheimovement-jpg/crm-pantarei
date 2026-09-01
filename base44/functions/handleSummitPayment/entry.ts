@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { autoCreateCourseFromProduct } from '../../shared/sumitProducts.ts';
 import { isIntroDayCourse, programForIntroDay } from '../../shared/introDayPrograms.ts';
+import { cohortFromDate } from '../../shared/cohort.ts';
 
 // =====================================================
 // handleSummitPayment v4
@@ -487,7 +488,16 @@ Deno.serve(async (req) => {
         }
       }
 
-      const existingEntry = workingCourses.find((c) => c.course_id === course.id);
+      // שם הקורס הוא תווית מתגלגלת ("נענע שנה ב'" הוא אנשים אחרים כל שנה), ולכן
+      // העוגן הוא course_id + cohort: החיוב מתיישב על רשומת המחזור הנוכחי.
+      // רשומה ותיקה ללא קוהורטה נחשבת תואמת (ומקבלת אותה כעת), כדי לא לשבור
+      // רשומות היסטוריות ולא ליצור כפילות. כך גם רשומה שנוצרה מסנכרון ההו"ק
+      // ("נוצרה הוראת קבע") מתעדכנת ל"רשום" ולא נכפלת.
+      const chargeCohort = cohortFromDate(billingDate);
+      const matchesEntry = (c) => c.course_id === course.id &&
+        (!c.cohort || !chargeCohort || c.cohort === chargeCohort);
+      const existingEntry = workingCourses.find((c) => c.course_id === course.id && c.cohort && c.cohort === chargeCohort)
+        || workingCourses.find(matchesEntry);
 
       let paymentNumber;
       if (isRefund) {
@@ -526,6 +536,7 @@ Deno.serve(async (req) => {
         ...(mapping && !mapping.optionField && courseOption ? { option: courseOption } : {}),
         ...(optionIdForEntry ? { option_id: optionIdForEntry } : {}),
         registration_date: existingEntry?.registration_date || billingDate,
+        ...(existingEntry?.cohort || chargeCohort ? { cohort: existingEntry?.cohort || chargeCohort } : {}),
         payment_number: paymentNumber,
         paid_so_far: Math.max(0, paidBeforeRefund + signedShare),
         ...(paymentsTotal && { payments_total: paymentsTotal }),
@@ -533,7 +544,7 @@ Deno.serve(async (req) => {
         ...(totalAmount && perItem.length === 1 ? { total_price: totalAmount } : {})
       };
 
-      const idx = workingCourses.findIndex((c) => c.course_id === course.id);
+      const idx = existingEntry ? workingCourses.indexOf(existingEntry) : -1;
       if (idx >= 0) workingCourses[idx] = { ...workingCourses[idx], ...entry };
       else workingCourses.push(entry);
 

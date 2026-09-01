@@ -448,7 +448,7 @@ export default function CourseRevenue() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredStats.map(({ course, registeredCount, paidSoFar, expected, isAnnual, forecastCount, hasUnknown, entries }) => (
+              {filteredStats.map(({ course, registeredCount, paidSoFar, expected, isAnnual, forecastCount, hasUnknown, entries, cohorts }) => (
                 <React.Fragment key={course.id}>
                   <tr className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-[var(--crm-text)]">
@@ -466,6 +466,19 @@ export default function CourseRevenue() {
                         />
                         תוכנית שנתית (הוראת קבע)
                       </label>
+                      {cohorts && cohorts.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {cohorts.map(c => (
+                            <span
+                              key={c}
+                              className="px-2 py-0.5 rounded-full text-[11px] font-semibold"
+                              style={{ backgroundColor: 'var(--crm-action)', color: 'var(--crm-text)' }}
+                            >
+                              מחזור {c}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className="px-2 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: 'var(--crm-primary)' }}>

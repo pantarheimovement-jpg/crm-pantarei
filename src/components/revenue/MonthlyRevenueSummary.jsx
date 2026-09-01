@@ -31,8 +31,6 @@ export default function MonthlyRevenueSummary({ students, totalCollected }) {
   }, [events, year]);
 
   const yearNet = monthlyNet.reduce((a, b) => a + b, 0);
-  const paymentsTotal = events.reduce((s, e) => s + (e.type === 'payment' ? e.amount : 0), 0);
-  const gap = Math.max(0, (totalCollected || 0) - paymentsTotal);
   const maxNet = Math.max(...monthlyNet, 1);
 
   return (

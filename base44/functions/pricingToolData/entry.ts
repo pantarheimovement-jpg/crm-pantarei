@@ -61,6 +61,7 @@ Deno.serve(async (req) => {
 
     const result = courses.map((course) => {
       let registered = 0, forecast = 0, collected = 0, expected = 0;
+      let pricedSum = 0, pricedCount = 0; // למחיר הממוצע האמיתי (רק רשומות עם מחיר ידוע)
       for (const s of students) {
         const entries = (s.courses || []).filter((c) => c.course_id === course.id);
         if (!entries.length) continue;
@@ -82,7 +83,9 @@ Deno.serve(async (req) => {
             const optPrice = num(opt?.price);
             const tp = num(e.total_price);
             const inst = num(e.installment_amount) * num(e.payments_total);
-            expected += optPrice || tp || inst || 0;
+            const entryExpected = optPrice || tp || inst || 0;
+            expected += entryExpected;
+            if (entryExpected > 0) { pricedSum += entryExpected; pricedCount++; }
           }
         }
       }
@@ -95,6 +98,8 @@ Deno.serve(async (req) => {
         forecast_count: forecast,
         collected: Math.round(collected),
         expected: Math.round(expected),
+        priced_sum: Math.round(pricedSum),
+        priced_count: pricedCount,
       };
     }).filter((c) => c.registered_count || c.forecast_count || c.collected);
 

@@ -1,4 +1,5 @@
-// PROBE — קריאה בלבד. בודק Billing_Balance / Billing_Pending / Quantity / Description על פריטי הו"ק.
+// PROBE — קריאה בלבד. שופך פרטי מסמך מלאים (getdetails) כדי לראות אם מספר התשלומים שם.
+// מנקה שדות אשראי רגישים (טוקן/ת"ז/ספרות) אך שומר שדות כמו Count/Payments/Duration.
 Deno.serve(async (req) => {
   const SUMIT_API_KEY = Deno.env.get('SUMIT_API_KEY');
   const SUMIT_COMPANY_ID = Deno.env.get('SUMIT_COMPANY_ID');
@@ -9,32 +10,39 @@ Deno.serve(async (req) => {
   async function call(path: string, body: Record<string, unknown>) {
     const res = await fetch(`https://api.sumit.co.il${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ Credentials: credentials, ...body }) });
     const t = await res.text(); let j: any = null; try { j = JSON.parse(t); } catch (_) {}
-    return { http: res.status, json: j };
+    return { http: res.status, json: j, snippet: j ? null : t.slice(0, 120) };
   }
-  const first = (v: any) => Array.isArray(v) ? v[0] : v;
-  const payRes = await call('/billing/payments/list/', { Date_From: '2024-01-01T00:00:00', Date_To: '2026-12-31T23:59:59', Paging: { StartIndex: 0, PageSize: 1000 } });
-  const payments = payRes.json?.Data?.Payments || [];
-  const ids = new Set<number>();
-  for (const p of payments) for (const rid of (p.RecurringCustomerItemIDs || [])) ids.add(rid);
-  const rows: unknown[] = [];
-  let rawSample: unknown = null;
-  let idx = 0;
-  for (const id of ids) {
-    const r = await call('/crm/data/getentity/', { EntityID: id });
-    const ent = r.json?.Data?.Entity;
-    if (!ent) continue;
-    if (idx++ === 0) rawSample = ent; // דגימה גולמית מלאה של הראשון
-    rows.push({
-      customer: first(ent.Billing_Customers)?.Name || null,
-      item: first(ent.Billing_Item)?.Name || null,
-      price: first(ent.Billing_Price),
-      total: first(ent.Billing_Total),
-      balance: first(ent.Billing_Balance),
-      pending: first(ent.Billing_Pending),
-      quantity: first(ent.Billing_Quantity),
-      description: first(ent.Billing_Description),
-      durationMonths: first(ent.Billing_DurationMonths),
+  function scrub(o: any): any {
+    if (Array.isArray(o)) return o.map(scrub);
+    if (o && typeof o === 'object') {
+      const out: any = {};
+      for (const [k, v] of Object.entries(o)) {
+        if (/token|cvv|track2|citizen|cardmask|lastdigits|number$|_number/i.test(k)) continue;
+        out[k] = scrub(v);
+      }
+      return out;
+    }
+    return o;
+  }
+  const docsParam = url.searchParams.get('docs') || '40418,40414,40415';
+  const docNums = docsParam.split(',').map(Number);
+  const out: unknown[] = [];
+  for (const num of docNums) {
+    let d = null; let usedType = null;
+    for (const t of [1, 6, 3, 2]) {
+      const r = await call('/accounting/documents/getdetails/', { DocumentNumber: num, DocumentType: t });
+      if (r.json?.Data) { d = r.json.Data; usedType = t; break; }
+    }
+    if (!d) { out.push({ num, missing: true }); continue; }
+    out.push({
+      num, usedType,
+      customer: d.Document?.Customer?.Name || null,
+      date: d.Document?.Date?.slice(0, 10) || null,
+      total: d.Document?.TotalPrice ?? null,
+      documentKeys: d.Document ? Object.keys(d.Document) : null,
+      payments: scrub(d.Payments || []),   // ← המבנה המלא של אמצעי התשלום (מחפשים מספר תשלומים)
+      items: (d.Items || []).map((it: any) => ({ name: it.Item?.Name || it.Description, total: it.TotalPrice, qty: it.Quantity })),
     });
   }
-  return Response.json({ count: rows.length, rawSample, rows });
+  return Response.json({ docs: out });
 });

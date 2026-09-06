@@ -1,0 +1,37 @@
+{
+  "name": "Course Open For Registration",
+  "description": "When a course status changes to '\u05e4\u05ea\u05d5\u05d7 \u05dc\u05d4\u05e8\u05e9\u05de\u05d4', create follow-up tasks and notify admin for students who were waiting",
+  "trigger": {
+    "condition": "${ ((.trigger.changed_fields | index(\"status\") != null) and (.trigger.data.status == \"\\u05e4\\u05ea\\u05d5\\u05d7 \\u05dc\\u05d4\\u05e8\\u05e9\\u05de\\u05d4\")) }",
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update"
+      ],
+      "entity_name": "Course"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "course_open_for_registration",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "onCourseOpenForRegistration",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "onCourseOpenForRegistration"
+  }
+}

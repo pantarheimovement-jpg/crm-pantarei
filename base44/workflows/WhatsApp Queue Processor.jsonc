@@ -1,0 +1,44 @@
+{
+  "name": "WhatsApp Queue Processor",
+  "description": "\u05e9\u05d5\u05dc\u05d7 \u05d4\u05d5\u05d3\u05e2\u05ea \u05d5\u05d5\u05d0\u05d8\u05e1\u05d0\u05e4 \u05d0\u05d7\u05ea \u05de\u05d4\u05ea\u05d5\u05e8 \u05db\u05dc 5 \u05d3\u05e7\u05d5\u05ea, \u05d1\u05db\u05e4\u05d5\u05e3 \u05dc\u05d7\u05dc\u05d5\u05df 09:00\u201320:00 \u05d5\u05e2\u05d3 60 \u05d4\u05d5\u05d3\u05e2\u05d5\u05ea \u05d1\u05d9\u05d5\u05dd",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 5,
+      "interval_unit": "minutes",
+      "interval_anchor": "2026-01-11T19:04:59.419000",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "whatsapp_queue_processor",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processWhatsappQueue",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "processWhatsappQueue"
+  }
+}

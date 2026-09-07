@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { autoCreateCourseFromProduct } from '../../shared/sumitProducts.ts';
+import { notifyUnclearRefund } from '../../shared/refundAlert.ts';
 
 // שלב 2 — מיפוי מסמכים מסאמיט (טריגר "יצירת מסמך" בתיקיית ההכנסות).
 // סוגר את הפער שקבלות ידניות (העברה בנקאית / מזומן) לא נקלטו בו:
@@ -13,6 +14,10 @@ import { autoCreateCourseFromProduct } from '../../shared/sumitProducts.ts';
 const MANUAL_PAYMENT_TYPES = { 2: 'מזומן', 3: 'העברה בנקאית' };
 const PENDING_TAG = 'ממתין לשיוך לקורס';
 const REGISTERED_STATUSES = ['רשום', 'נרשם', 'רשומה ליום היכרות'];
+const CANCELLED_STATUS = 'ביטלה הרשמה';
+const UNCLEAR_REFUND_TAG = 'זיכוי לבדיקה';
+// זיכוי של 85% ומעלה ממה ששולם על הקורס = ביטול הרשמה. היתרה נשארת דמי ביטול.
+const CANCELLATION_RATIO = 0.85;
 const OPEN_LEAD_STATUSES = ['ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'תיאום שיחה'];
 const INTRO_STATUS = 'רשומה ליום היכרות';
 const VERSION = 'v4-2026-08-05';
@@ -24,6 +29,7 @@ function computeMainStatus(courses, current) {
   if (list.some((c) => c.status === 'רשום' || c.status === 'נרשם' || c.status === 'הסתיים')) return 'רשום';
   if (list.some((c) => c.status === INTRO_STATUS)) return INTRO_STATUS;
   for (const s of OPEN_LEAD_STATUSES) if (list.some((c) => c.status === s)) return s;
+  if (list.length && list.every((c) => c.status === CANCELLED_STATUS || c.status === 'לא רלוונטי')) return CANCELLED_STATUS;
   return current || 'רשום';
 }
 
@@ -123,6 +129,7 @@ Deno.serve(async (req) => {
               // וכל שורה נושאת paid_so_far כדי שהכסף ייספר בדוח ההכנסות.
               const workingCourses = [...(student?.courses || [])];
               let pendingAssignment = false;
+              let unclearRefund = false;
               let totalDelta = 0;
 
               for (const it of items) {
@@ -132,23 +139,32 @@ Deno.serve(async (req) => {
                 if (!course && !isRefund && it.total > 0) {
                   course = await autoCreateCourseFromProduct(base44, { productName: it.name, catalogName: null, amount: it.total });
                 }
-                totalDelta += it.total;
-                const kind = isRefund || it.total < 0 ? 'זיכוי' : 'תשלום';
+                // בזיכוי הסכום שמגיע מסאמיט חיובי — הסימן נקבע מסוג המסמך
+                const isCreditLine = isRefund || it.total < 0;
+                const signed = isCreditLine ? -Math.abs(it.total) : it.total;
+                totalDelta += signed;
+                const kind = isCreditLine ? 'זיכוי' : 'תשלום';
                 if (course) {
-                  noteLines.push(`${kind} דרך Summit בתאריך ${billingDate} (₪${it.total}) — קורס: ${course.name} — ${docMarker} — קבלה ידנית (${payLabel})`);
                   const idx = workingCourses.findIndex((c) => c.course_id === course.id);
                   const paidBefore = Number(workingCourses[idx]?.paid_so_far) || 0;
-                  const nextPaid = Math.max(0, paidBefore + it.total);
+                  const nextPaid = Math.max(0, paidBefore + signed);
+                  const isCancellation = isCreditLine && paidBefore > 0 && Math.abs(it.total) >= paidBefore * CANCELLATION_RATIO;
+                  if (isCreditLine && !isCancellation) unclearRefund = true;
+                  noteLines.push(
+                    isCreditLine
+                      ? `${isCancellation ? `ביטלה הרשמה — דמי ביטול שנשארו: ₪${nextPaid}` : 'זיכוי חלקי — ❓ לבדיקה'} דרך Summit בתאריך ${billingDate} (₪${Math.abs(it.total)}) — קורס: ${course.name} — ${docMarker} — קבלה ידנית (${payLabel})`
+                      : `תשלום דרך Summit בתאריך ${billingDate} (₪${it.total}) — קורס: ${course.name} — ${docMarker} — קבלה ידנית (${payLabel})`
+                  );
                   if (idx >= 0) {
                     const isRegistered = REGISTERED_STATUSES.includes(workingCourses[idx].status);
                     workingCourses[idx] = {
                       ...workingCourses[idx],
-                      status: isRegistered ? workingCourses[idx].status : 'רשום',
+                      status: isCancellation ? CANCELLED_STATUS : (isRegistered ? workingCourses[idx].status : 'רשום'),
                       paid_so_far: nextPaid,
-                      ...(it.total > 0 && { installment_amount: it.total }),
+                      ...(isCreditLine ? { installment_amount: nextPaid } : (it.total > 0 ? { installment_amount: it.total } : {})),
                       registration_date: workingCourses[idx].registration_date || billingDate
                     };
-                  } else if (!isRefund && it.total > 0) {
+                  } else if (!isCreditLine && it.total > 0) {
                     workingCourses.push({
                       course_id: course.id, course_name: course.name, registration_date: billingDate,
                       installment_amount: it.total, payment_number: 1, paid_so_far: nextPaid,
@@ -164,7 +180,11 @@ Deno.serve(async (req) => {
 
               const noteBlock = noteLines.join('\n');
               if (student) {
-                const tags = [...new Set([...(student.tags || []), ...(pendingAssignment ? [PENDING_TAG] : [])])];
+                const tags = [...new Set([
+                  ...(student.tags || []),
+                  ...(pendingAssignment ? [PENDING_TAG] : []),
+                  ...(unclearRefund ? [UNCLEAR_REFUND_TAG] : [])
+                ])];
                 const nextAmountPaid = (Number(student.amount_paid) || 0) + totalDelta;
                 // is_customer נכבה כשלא נותר תשלום נטו ואין רישום פעיל — למשל זיכוי מלא ידני.
                 const stillCustomer = nextAmountPaid > 0 || workingCourses.some((c) => c.status === 'רשום' || c.status === 'נרשם' || c.status === INTRO_STATUS || c.status === 'הסתיים');
@@ -178,6 +198,9 @@ Deno.serve(async (req) => {
                 });
                 decision = 'processed-existing';
                 detail.student_id = student.id;
+                if (unclearRefund) {
+                  await notifyUnclearRefund(base44, { studentName: student.full_name, studentId: student.id, lines: noteLines });
+                }
               } else {
                 const created = await base44.asServiceRole.entities.Student.create({
                   full_name: customerName || `לקוח סאמיט ${docNumber}`,

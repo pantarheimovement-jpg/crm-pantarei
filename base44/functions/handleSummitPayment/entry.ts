@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { autoCreateCourseFromProduct } from '../../shared/sumitProducts.ts';
 import { isIntroDayCourse, programForIntroDay } from '../../shared/introDayPrograms.ts';
 import { cohortFromDate, isNonProgramItem } from '../../shared/cohort.ts';
+import { notifyUnclearRefund } from '../../shared/refundAlert.ts';
 
 // =====================================================
 // handleSummitPayment v4
@@ -16,8 +17,13 @@ import { cohortFromDate, isNonProgramItem } from '../../shared/cohort.ts';
 const OPEN_LEAD_STATUSES = ['ליד חדש', 'חדש', 'לחזור לקראת הרשמה', 'במעקב ראשוני', 'היה ביום היכרות', 'הודעה מוואטסאפ לבדיקה', 'תיאום שיחה'];
 const REGISTERED_STATUSES = ['רשום', 'נרשם'];
 const OPEN_FOR_REGISTRATION = 'פתוח להרשמה';
-const CANCELLED_STATUS = 'ביטול הרשמה';
+const CANCELLED_STATUS = 'ביטלה הרשמה';
 const REFUND_TAG = 'זיכוי';
+// זיכוי שאינו ביטול מלא — לא מנחשים. הרישום נשאר כמו שהוא ומסומן לבדיקה ידנית.
+const UNCLEAR_REFUND_TAG = 'זיכוי לבדיקה';
+// זיכוי של 85% ומעלה מהסכום ששולם על הקורס = ביטול הרשמה. היתרה (דמי ביטול)
+// נשארת רשומה על הקורס — היא כן תשלום ששייך לו.
+const CANCELLATION_RATIO = 0.85;
 const PENDING_TAG = 'ממתין לשיוך לקורס';
 // רישום ליום היכרות אינו הרשמה לתוכנית — הוא הסטטוס שממנו נגזר הליד לתוכנית
 const INTRO_STATUS = 'רשומה ליום היכרות';
@@ -400,6 +406,7 @@ Deno.serve(async (req) => {
     const results = [];
     let totalDelta = 0;
     let pendingAssignment = false;
+    let unclearRefund = false;
     let optionFieldUpdates = {};
     const courseCatalogUpdates = new Set(); // course.id-ים שכבר עודכן להם summit_catalog בעסקה הזו
 
@@ -515,14 +522,17 @@ Deno.serve(async (req) => {
       const isRecurringCharge = !isRefund && Boolean(existingEntry && REGISTERED_STATUSES.includes(existingEntry.status));
       const isNewRegistration = !isRefund && !isRecurringCharge;
       const paidBeforeRefund = Number(existingEntry?.paid_so_far) || 0;
-      const isFullCancellation = isRefund && paidBeforeRefund > 0 && it.share >= paidBeforeRefund;
+      const isFullCancellation = isRefund && paidBeforeRefund > 0 && it.share >= paidBeforeRefund * CANCELLATION_RATIO;
+      const isUnclearRefund = isRefund && !isFullCancellation;
 
       const catalogTag = catalogName ? ` — קטלוג: ${catalogName}` : '';
       const courseTag = ` — קורס: ${course.name}`;
       const optionTag = mapping && productName !== course.name ? ` — אפשרות: ${productName}` : '';
+      if (isUnclearRefund) unclearRefund = true;
+      const remainingAfterRefund = Math.max(0, paidBeforeRefund - it.share);
       noteLines.push(
         isRefund
-          ? `${isFullCancellation ? 'ביטול הרשמה' : 'זיכוי חלקי'} דרך Summit בתאריך ${billingDate} (₪${it.share})${courseTag}${optionTag}${catalogTag}${documentName ? ` — ${documentName}` : ''}`
+          ? `${isFullCancellation ? `ביטלה הרשמה — דמי ביטול שנשארו: ₪${remainingAfterRefund}` : 'זיכוי חלקי — ❓ לבדיקה'} דרך Summit בתאריך ${billingDate} (₪${it.share})${courseTag}${optionTag}${catalogTag}${documentName ? ` — ${documentName}` : ''}`
           : `תשלום ${paymentNumber}${paymentsTotal ? `/${paymentsTotal}` : ''} דרך Summit בתאריך ${billingDate} (₪${it.share})${courseTag}${optionTag}${catalogTag}${documentName ? ` — ${documentName}` : ''}${unsplitAmount ? ' — ⚠️ הסכום לא פוצל בין הפריטים' : ''}`
       );
 
@@ -541,8 +551,12 @@ Deno.serve(async (req) => {
         ...(existingEntry?.cohort || chargeCohort ? { cohort: existingEntry?.cohort || chargeCohort } : {}),
         payment_number: paymentNumber,
         paid_so_far: Math.max(0, paidBeforeRefund + signedShare),
-        ...(paymentsTotal && { payments_total: paymentsTotal }),
-        ...(it.share && { installment_amount: it.share }),
+        ...(paymentsTotal && !isRefund && { payments_total: paymentsTotal }),
+        // בזיכוי, installment_amount משקף את מה שנשאר על הקורס (דמי הביטול)
+        // ולא את סכום הזיכוי עצמו
+        ...(isRefund
+          ? { installment_amount: remainingAfterRefund }
+          : (it.share ? { installment_amount: it.share } : {})),
         ...(totalAmount && perItem.length === 1 ? { total_price: totalAmount } : {})
       };
 
@@ -602,6 +616,7 @@ Deno.serve(async (req) => {
 
     const tags = [...(existingStudent?.tags || [])];
     if (isRefund && !tags.includes(REFUND_TAG)) tags.push(REFUND_TAG);
+    if (unclearRefund && !tags.includes(UNCLEAR_REFUND_TAG)) tags.push(UNCLEAR_REFUND_TAG);
     if (pendingAssignment && !tags.includes(PENDING_TAG)) tags.push(PENDING_TAG);
     if (tags.length !== (existingStudent?.tags || []).length) studentData.tags = tags;
 
@@ -618,6 +633,14 @@ Deno.serve(async (req) => {
       if (!studentData.phone) studentData.phone = 'לא זמין';
       student = await base44.asServiceRole.entities.Student.create(studentData);
       console.log(`✅ Student created: ${student.id}`);
+    }
+
+    if (unclearRefund) {
+      await notifyUnclearRefund(base44, {
+        studentName: student.full_name,
+        studentId: student.id,
+        lines: noteLines
+      });
     }
 
     // --- 4. לכל קורס בעסקה: מונה (כללי + ברמת האפשרות), משימת היכרות, רשימת תפוצה ---

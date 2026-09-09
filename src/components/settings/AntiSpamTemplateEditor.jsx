@@ -322,6 +322,14 @@ export default function AntiSpamTemplateEditor() {
     setSections({ ...ANTI_SPAM_DEFAULT_SECTIONS });
   };
 
+  // שכפול — עותק חדש של התבנית הנבחרת שטרם נשמר. creatingNew מבטיח שהשמירה תיצור רשומה חדשה
+  const duplicateTemplate = () => {
+    setCreatingNew(true);
+    setSelectedId(null);
+    setTemplateName(`${templateName} (עותק)`);
+    setSections(JSON.parse(JSON.stringify(sections)));
+  };
+
   const handleSendTest = async () => {
     if (!testEmail.trim()) { alert('אנא הכניסי כתובת מייל'); return; }
     setSendingTest(true);
@@ -370,6 +378,11 @@ export default function AntiSpamTemplateEditor() {
         <button onClick={startNew} className="px-4 py-2 bg-[#6D436D] text-white rounded-full font-semibold flex items-center gap-2 hover:bg-[#5a365a]">
           <Plus className="w-4 h-4" /> תבנית חדשה
         </button>
+        {selectedId && !creatingNew && (
+          <button onClick={duplicateTemplate} className="px-4 py-2 border-2 border-[#6D436D] text-[#6D436D] rounded-full font-semibold flex items-center gap-2 hover:bg-[#6D436D]/10">
+            <Copy className="w-4 h-4" /> שכפל תבנית
+          </button>
+        )}
         {selectedId && !creatingNew && (
           <button onClick={() => handleDelete(selectedId)} className="px-4 py-2 border border-red-400 text-red-600 rounded-full hover:bg-red-50 flex items-center gap-2">
             <Trash2 className="w-4 h-4" /> מחק

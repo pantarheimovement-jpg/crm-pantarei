@@ -8,11 +8,14 @@ import AttendanceManager from '../components/course/AttendanceManager';
 import NanaSummerBreakdown from '../components/course/NanaSummerBreakdown';
 import CollapsibleSection from '../components/course/CollapsibleSection';
 import CourseOptionsBreakdown from '../components/course/CourseOptionsBreakdown';
+import CreditsList from '../components/course/CreditsList';
 
 export default function CourseView() {
   const { courseId } = useParams();
   const [course, setCourse] = useState(null);
   const [registeredStudents, setRegisteredStudents] = useState([]);
+  const [creditStudents, setCreditStudents] = useState([]);
+  const [allCourses, setAllCourses] = useState([]);
   const [leadStudents, setLeadStudents] = useState([]);
   const [leadsCount, setLeadsCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -56,14 +59,20 @@ export default function CourseView() {
     }
 
     setCourse(courseData);
+    setAllCourses(allCourses);
 
     // Load ALL students (single large fetch)
     const allStudents = await base44.entities.Student.list('-created_date', 2000);
     let registered = [];
     let leadStudentsList = [];
     let leads = 0;
+    const credits = [];
 
     (allStudents || []).forEach(student => {
+      if (courseData.kind === 'זיכוי') {
+        if ((student.courses || []).some(c => c.course_id === courseId)) credits.push(student);
+        return;
+      }
       let isLinked = false;
       let courseStatus = null;
 
@@ -90,6 +99,7 @@ export default function CourseView() {
       }
     });
 
+    setCreditStudents(credits);
     setRegisteredStudents(registered);
     setLeadStudents(leadStudentsList);
     setLeadsCount(leads);
@@ -175,6 +185,18 @@ export default function CourseView() {
           אין לך הרשאה לצפות בקורס זה. 
           אם את מורה בקורס, בקשי מהאדמין לשייך את כתובת המייל שלך לקורס.
         </p>
+      </div>
+    );
+  }
+
+  if (course?.kind === 'זיכוי') {
+    const open = creditStudents.filter(s => (s.courses || []).find(c => c.course_id === courseId)?.status !== 'נוצל');
+    return (
+      <div className="min-h-screen bg-[var(--crm-bg)] p-4 md:p-8">
+        <div className="max-w-5xl mx-auto">
+          <CourseHeader course={course} registeredCount={open.length} leadsCount={0} />
+          <CreditsList course={course} students={creditStudents} allCourses={allCourses} onChanged={checkAccessAndLoad} />
+        </div>
       </div>
     );
   }

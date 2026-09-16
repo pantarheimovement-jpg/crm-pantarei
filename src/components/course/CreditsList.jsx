@@ -30,7 +30,7 @@ export default function CreditsList({ course, students, allCourses, onChanged })
     onChanged();
   };
 
-  const useCredit = async (student, target) => {
+  const applyCredit = async (student, target) => {
     const amount = entryOf(student).paid_so_far || 0;
     const today = new Date().toISOString().slice(0, 10);
     const usedFor = `${target.name} (${new Date().toLocaleDateString('he-IL')})`;
@@ -118,7 +118,7 @@ export default function CreditsList({ course, students, allCourses, onChanged })
           student={useFor}
           amount={entryOf(useFor).paid_so_far || 0}
           courses={targets}
-          onConfirm={(target) => useCredit(useFor, target)}
+          onConfirm={(target) => applyCredit(useFor, target)}
           onClose={() => setUseFor(null)}
         />
       )}

@@ -11,6 +11,7 @@ import CourseView from './pages/CourseView';
 import CourseRevenue from './pages/CourseRevenue';
 import NewsletterAnalytics from './pages/NewsletterAnalytics';
 import SumitInbox from './pages/SumitInbox';
+import OAuthConsent from './pages/OAuthConsent';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -95,7 +96,10 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <NavigationTracker />
-          <AuthenticatedApp />
+          <Routes>
+            <Route path="/oauth/consent" element={<OAuthConsent />} />
+            <Route path="*" element={<AuthenticatedApp />} />
+          </Routes>
         </Router>
         <Toaster />
       </QueryClientProvider>

@@ -1,0 +1,34 @@
+{
+  "auth": "oauth",
+  "tools": {
+    "excluded_agents": ["task_manager"],
+    "entity_overrides": {
+      "Course": { "operations": ["read"] },
+      "Student": { "operations": ["read"] },
+      "LeadStatuses": { "operations": ["read"] },
+      "CourseStatuses": { "operations": ["read"] },
+      "TaskStatuses": { "operations": ["read"] },
+      "LeadSources": { "operations": ["read"] },
+      "Subscribers": { "operations": ["read"] },
+      "WhatsappQueue": { "operations": ["read"] },
+      "Task": { "operations": ["read"] },
+      "Interaction": { "operations": ["read"] },
+      "NewsletterLogs": { "operations": ["read"] },
+      "NewsletterQueue": { "operations": ["read"] },
+      "EmailTemplate": { "operations": ["read"] },
+      "DesignSettings": { "operations": ["read"] },
+      "EmailEvents": { "operations": ["read"] },
+      "AutomationSettings": { "operations": ["read"] },
+      "GeneralSettings": { "operations": ["read"] },
+      "SystemTexts": { "operations": ["read"] },
+      "Automation": { "operations": ["read"] },
+      "SumitWebhookCapture": { "operations": ["read"] },
+      "Event": { "operations": ["read"] },
+      "Attendance": { "operations": ["read"] },
+      "SumitProductMap": { "operations": ["read"] },
+      "Opportunity": { "operations": ["read"] },
+      "Contact": { "operations": ["read"] },
+      "WhatsappKnownContacts": { "operations": ["read"] }
+    }
+  }
+}

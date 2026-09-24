@@ -511,6 +511,9 @@ export default function Students() {
     return digits;
   };
 
+  // סטטוסים שנחשבים "רשומים" בסינון התצוגה בלבד (לא משפיע על מונים/קבוצות)
+  const REGISTERED_FILTER_STATUSES = ['נרשם', 'רשום', 'רשומה ליום היכרות'];
+
   // חיפוש וסינון משתתפים
   const filteredStudents = students.filter(student => {
     const term = (searchTerm || '').trim().toLowerCase();
@@ -556,14 +559,15 @@ export default function Students() {
         // כשיש גם סינון קורס — לבדוק את הסטטוס הספציפי לקורס הזה
         const courseEntry = (student.courses || []).find(c => c.course_id === courseFilter);
         if (courseEntry) {
-          matchesStatus = courseEntry.status === 'נרשם' || courseEntry.status === 'רשום';
+          matchesStatus = REGISTERED_FILTER_STATUSES.includes(courseEntry.status);
         } else if (student.course_id === courseFilter) {
-          matchesStatus = student.status === 'נרשם' || student.status === 'רשום';
+          matchesStatus = REGISTERED_FILTER_STATUSES.includes(student.status);
         } else {
           matchesStatus = false;
         }
       } else {
-        matchesStatus = student.status === 'נרשם' || student.status === 'רשום';
+        matchesStatus = REGISTERED_FILTER_STATUSES.includes(student.status) ||
+          (student.courses || []).some(c => c.status === 'רשומה ליום היכרות');
       }
     } else if (statusFilter !== 'all') {
       matchesStatus = student.status === statusFilter;

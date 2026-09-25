@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useSystemSettings } from '../SystemSettingsContext';
+import InlineLinkButton from './InlineLinkButton';
 import { Loader2, Plus, Trash2, Eye, Save, Image as ImageIcon, X, Video, MousePointer, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 
 // A "block" can be: text, image, video, button
@@ -17,6 +18,16 @@ function getAutoThumbnail(videoUrl) {
   if (vimeoMatch) return `https://vumbnail.com/${vimeoMatch[1]}.jpg`;
   return '';
 }
+
+// [טקסט](קישור) → קישור לחיץ במייל (אותו עיצוב כמו בתבנית האנטי-ספאם)
+const renderInlineLinks = (text) =>
+  (text || '').replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" style="color:#6D436D;font-weight:bold;text-decoration:underline;">$1</a>');
+
+// הפוך: קישור ב-HTML → [טקסט](קישור), כדי שלא יאבד בטעינה מתוך HTML
+const htmlToEditableText = (html) =>
+  (html || '').replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<a[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+    .replace(/<[^>]+>/g, '');
 
 const DEFAULT_SECTIONS = {
   logo_url: '',
@@ -81,7 +92,7 @@ function buildHtmlFromSections(s, generalSettings) {
       html += `<h2 style="font-family:'Rubik',Arial,sans-serif;font-size:26px;font-weight:700;color:${PRIMARY};margin:20px 0 10px;text-align:center;">${block.title}</h2>`;
     }
     if (block.content) {
-      html += `<p style="margin:0 0 15px;font-size:15px;line-height:1.7;">${block.content.replace(/\n/g, '<br>')}</p>`;
+      html += `<p style="margin:0 0 15px;font-size:15px;line-height:1.7;">${renderInlineLinks(block.content.replace(/\n/g, '<br>'))}</p>`;
     }
     if (block.button_text && block.button_url) {
       html += `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:15px auto;"><tr><td style="background-color:${ACTION};border-radius:50px;text-align:center;">
@@ -131,7 +142,7 @@ function buildHtmlFromSections(s, generalSettings) {
     <!-- Greeting -->
     <tr><td style="padding:25px 30px 10px;font-family:'Rubik',Arial,sans-serif;font-size:15px;line-height:1.7;color:${TEXT};">
       <p style="margin:0 0 10px;font-size:16px;">${s.greeting || ''}</p>
-      <p style="margin:0;font-size:15px;line-height:1.7;">${(s.intro_text || '').replace(/\n/g, '<br>')}</p>
+      <p style="margin:0;font-size:15px;line-height:1.7;">${renderInlineLinks((s.intro_text || '').replace(/\n/g, '<br>'))}</p>
     </td></tr>
 
     <!-- Content blocks -->
@@ -225,7 +236,7 @@ export default function EmailTemplateEditor() {
       if (style.includes('padding:25px 30px 10px') || style.includes('padding: 25px 30px 10px')) {
         const ps = td.querySelectorAll('p');
         if (ps.length >= 1) s.greeting = ps[0].textContent || '';
-        if (ps.length >= 2) s.intro_text = ps[1].innerHTML?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') || '';
+        if (ps.length >= 2) s.intro_text = htmlToEditableText(ps[1].innerHTML);
         greetingFound = true;
         break;
       }
@@ -289,7 +300,7 @@ export default function EmailTemplateEditor() {
         if (h2 || p) {
           const block = { ...DEFAULT_BLOCK(), type: 'text' };
           if (h2) block.title = h2.textContent || '';
-          if (p) block.content = p.innerHTML?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') || '';
+          if (p) block.content = htmlToEditableText(p.innerHTML);
           if (a) {
             block.button_text = a.textContent || '';
             block.button_url = a.getAttribute('href') || '';
@@ -567,7 +578,11 @@ export default function EmailTemplateEditor() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">טקסט פתיחה</label>
-            <textarea value={sections.intro_text} onChange={e => setSections({...sections, intro_text: e.target.value})} rows="3" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+            <textarea id="regular-intro-text" value={sections.intro_text} onChange={e => setSections({...sections, intro_text: e.target.value})} rows="3" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+            <div className="flex items-center gap-2 mt-2">
+              <InlineLinkButton textareaId="regular-intro-text" value={sections.intro_text} onChange={v => setSections({...sections, intro_text: v})} />
+              <span className="text-xs text-gray-400">סמני טקסט ולחצי כדי להפוך אותו לקישור</span>
+            </div>
           </div>
         </div>
       </div>
@@ -605,7 +620,11 @@ export default function EmailTemplateEditor() {
               {block.type === 'text' && (
                 <div className="space-y-2">
                   <input type="text" value={block.title} onChange={e => updateBlock(idx, 'title', e.target.value)} placeholder="כותרת הבלוק (אופציונלי)" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-                  <textarea value={block.content} onChange={e => updateBlock(idx, 'content', e.target.value)} placeholder="תוכן הבלוק..." rows="4" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  <textarea id={`regular-block-content-${idx}`} value={block.content} onChange={e => updateBlock(idx, 'content', e.target.value)} placeholder="תוכן הבלוק..." rows="4" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  <div className="flex items-center gap-2">
+                    <InlineLinkButton textareaId={`regular-block-content-${idx}`} value={block.content} onChange={v => updateBlock(idx, 'content', v)} />
+                    <span className="text-xs text-gray-400">סמני טקסט ולחצי כדי להפוך אותו לקישור</span>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <input type="text" value={block.button_text} onChange={e => updateBlock(idx, 'button_text', e.target.value)} placeholder="טקסט כפתור (אופציונלי)" className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                     <input type="text" value={block.button_url} onChange={e => updateBlock(idx, 'button_url', e.target.value)} placeholder="קישור כפתור" className="px-3 py-2 border border-gray-300 rounded-lg text-sm" dir="ltr" />

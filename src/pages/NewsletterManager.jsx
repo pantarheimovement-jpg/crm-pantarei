@@ -83,6 +83,8 @@ export default function NewsletterManager() {
   const [resendSubject, setResendSubject] = useState('');
   const [resendGroup, setResendGroup] = useState('קבוצה 1');
   const [resendContent, setResendContent] = useState('');
+  const [resendMode, setResendMode] = useState('group');
+  const [resendRecipient, setResendRecipient] = useState(null);
   const [showTestEmailModal, setShowTestEmailModal] = useState(false);
 
 
@@ -490,8 +492,11 @@ ${ctaButtonsHtml}
 
   const handleConfirmResend = async () => {
     if (!resendSubject.trim()) { alert(t('אנא הזיני נושא', 'Please enter a subject')); return; }
-    let allResendSubs = await base44.entities.Subscribers.filter({ subscribed: true });
-    if (resendGroup && resendGroup !== 'כל הרשימה') {
+    if (resendMode === 'single' && !resendRecipient?.email) { alert(t('אנא בחרי נמען', 'Please select a recipient')); return; }
+    let allResendSubs = resendMode === 'single'
+      ? [subscribers.find(s => s.email?.toLowerCase() === resendRecipient.email.toLowerCase()) || { email: resendRecipient.email, name: resendRecipient.name || '', unsubscribe_token: '' }]
+      : await base44.entities.Subscribers.filter({ subscribed: true });
+    if (resendMode !== 'single' && resendGroup && resendGroup !== 'כל הרשימה') {
       allResendSubs = allResendSubs.filter(s => 
         s.group === resendGroup || 
         (s.groups && Array.isArray(s.groups) && s.groups.includes(resendGroup))
@@ -499,7 +504,8 @@ ${ctaButtonsHtml}
     }
     const recipients = allResendSubs;
     if (!recipients || recipients.length === 0) { alert(t('לא נמצאו מנויים', 'No active subscribers')); return; }
-    if (!confirm(t(`לשלוח מחדש ל-${recipients.length} מנויים?`, `Resend to ${recipients.length} subscribers?`))) return;
+    const resendConfirmMsg = resendMode === 'single' ? `לשלוח מחדש ל-${recipients[0].email}?` : `לשלוח מחדש ל-${recipients.length} מנויים?`;
+    if (!confirm(resendConfirmMsg)) return;
 
     setSending(true);
     try {
@@ -529,9 +535,9 @@ ${ctaButtonsHtml}
         }
       }
 
-      await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent || whatsappMessage, group: resendGroup, recipients_count: resendSuccess, status: resendFailed === 0 ? 'נשלח בהצלחה' : `נשלח חלקית (${resendFailed} שגיאות)`, sent_date: new Date().toISOString(), sent_by: `${resendVia} (שליחה מחדש)` });
+      await base44.entities.NewsletterLogs.create({ subject: resendSubject + ' (שליחה מחדש)', content: resendContent || whatsappMessage, group: resendMode === 'single' ? `נמען בודד: ${recipients[0].email}` : resendGroup, recipients_count: resendSuccess, status: resendFailed === 0 ? 'נשלח בהצלחה' : `נשלח חלקית (${resendFailed} שגיאות)`, sent_date: new Date().toISOString(), sent_by: `${resendVia} (שליחה מחדש)` });
       alert(`הניוזלטר נשלח מחדש בהצלחה ל-${resendSuccess} מנויים!`);
-      setShowResendModal(false); setResendData(null); setResendSubject(''); setResendGroup(activeGroups[0] || 'כל הרשימה'); setResendContent('');
+      setShowResendModal(false); setResendData(null); setResendSubject(''); setResendGroup(activeGroups[0] || 'כל הרשימה'); setResendContent(''); setResendMode('group'); setResendRecipient(null);
       loadLogs();
     } catch (error) {
       alert(t('שגיאה בשליחה מחדש', 'Error resending'));
@@ -881,10 +887,18 @@ ${ctaButtonsHtml}
                   <input type="text" value={resendSubject} onChange={(e) => setResendSubject(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('קבוצת יעד', 'Target Group')}</label>
-                  <select value={resendGroup} onChange={(e) => setResendGroup(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                    {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('למי לשלוח', 'Send to')}</label>
+                  <div className="flex gap-2 mb-3">
+                    <button type="button" onClick={() => setResendMode('group')} className={`px-4 py-2 rounded-full text-sm font-semibold border ${resendMode === 'group' ? 'bg-[#6D436D] text-white border-[#6D436D]' : 'border-gray-300 text-gray-700'}`}>קבוצה</button>
+                    <button type="button" onClick={() => setResendMode('single')} className={`px-4 py-2 rounded-full text-sm font-semibold border ${resendMode === 'single' ? 'bg-[#6D436D] text-white border-[#6D436D]' : 'border-gray-300 text-gray-700'}`}>נמען בודד</button>
+                  </div>
+                  {resendMode === 'group' ? (
+                    <select value={resendGroup} onChange={(e) => setResendGroup(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                      {activeGroups.map(group => <option key={group} value={group}>{group}</option>)}
+                    </select>
+                  ) : (
+                    <SingleRecipientPicker subscribers={subscribers} selected={resendRecipient} onSelect={setResendRecipient} t={t} />
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">{t('תצוגה מקדימה', 'Preview')}</label>

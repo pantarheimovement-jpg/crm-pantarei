@@ -111,6 +111,13 @@ Deno.serve(async (req) => {
     if (course_name) {
       const courses = await base44.asServiceRole.entities.Course.filter({ name: course_name });
       course = courses && courses.length > 0 ? courses[0] : null;
+      if (!course) {
+        // התאמה סלחנית: מתעלמת מרווחים, מקפים ואותיות גדולות/קטנות
+        const norm = (v) => (v || '').toLowerCase().replace(/[\s\-_]+/g, '');
+        const target = norm(course_name);
+        const { items } = await base44.asServiceRole.entities.Course.filter({}, { fields: ['name'], limit: 1000 });
+        course = items.find(c => norm(c.name) === target) || null;
+      }
       
       if (!course) {
         try {

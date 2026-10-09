@@ -81,6 +81,13 @@ Deno.serve(async (req) => {
 
     let sent = 0, failed = 0;
     const errors = [];
+    // התאמת {{name}} בנושא: עם שם — החלפה; בלי שם — הסרה כולל מפריד שאחריו
+    const personalizeSubject = (subj, name) => {
+      if (!subj || !subj.includes('{{name}}')) return subj;
+      if (name && name.trim()) return subj.replace(/\{\{name\}\}/g, name.trim());
+      return subj.replace(/\{\{name\}\}\s*[,:\-–]?\s*/g, '').replace(/\s{2,}/g, ' ').trim();
+    };
+
     for (const item of pending) {
       try {
         const htmlTemplate = logHtmlTemplate || item.html_content;
@@ -89,7 +96,7 @@ Deno.serve(async (req) => {
         const personalizedHtml = htmlTemplate
           .replace(/\{\{unsubscribe_link\}\}/g, unsubscribeUrl)
           .replace(/\{\{name\}\}/g, item.name || '');
-        await sendViaSES(item.email, item.subject, personalizedHtml, item.unsubscribe_token);
+        await sendViaSES(item.email, personalizeSubject(item.subject, item.name), personalizedHtml, item.unsubscribe_token);
         await base44.asServiceRole.entities.NewsletterQueue.update(item.id, {
           status: 'sent', sent_at: new Date().toISOString()
         });

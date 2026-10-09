@@ -740,6 +740,7 @@ ${ctaButtonsHtml}
                       />
                     </div>
                     <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t('לדוגמה: עדכון חודשי', 'Example: Monthly Update')} className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+                    <p className="text-xs text-gray-500 mt-1">{t('אפשר לכתוב {{name}} בנושא — יוחלף בשם של כל מנויה (בשליחה קבוצתית)', 'You can use {{name}} in the subject — replaced with each subscriber’s name (group sends)')}</p>
                   </div>
                 )}
 

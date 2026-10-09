@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { subject, html_content, group, batch_id } = await req.json();
+    const { subject, html_content, group, batch_id, single_email } = await req.json();
     if (!subject || !html_content || !batch_id) {
       return Response.json({ error: 'Missing required fields: subject, html_content, batch_id' }, { status: 400 });
     }
@@ -23,8 +23,14 @@ Deno.serve(async (req) => {
       skip += batch.length;
     }
 
-    // Filter by group if specified
-    if (group && group !== 'כל הרשימה') {
+    // נמען יחיד (אופציונלי): רק מנוי פעיל עם התאמה מדויקת, בלי נפילה לקבוצה
+    if (single_email !== undefined && single_email !== null) {
+      const target = String(single_email).trim().toLowerCase();
+      allSubscribers = target ? allSubscribers.filter(s => (s.email || '').trim().toLowerCase() === target) : [];
+      if (allSubscribers.length === 0) {
+        return Response.json({ error: 'No active subscriber matches single_email' }, { status: 400 });
+      }
+    } else if (group && group !== 'כל הרשימה') {
       allSubscribers = allSubscribers.filter(s =>
         s.group === group ||
         (s.groups && Array.isArray(s.groups) && s.groups.includes(group))

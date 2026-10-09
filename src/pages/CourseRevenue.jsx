@@ -1,3 +1,4 @@
+import EditablePriceCell from '@/components/revenue/EditablePriceCell';
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { DollarSign, Search, Download, Users, TrendingUp, ChevronDown, ChevronUp, X, Loader2, Clock } from 'lucide-react';
@@ -138,9 +139,10 @@ export default function CourseRevenue() {
 
       // התחזית רצה על forecastEntries — כולל "נוצרה הוראת קבע" שטרם חויבה
       const expected = isAnnual ? forecastEntries.reduce((sum, e) => {
+        // מחיר אישי (כולל הנחה) גובר על מחיר המסלול
+        if (e.total_price) return sum + parseFloat(e.total_price);
         const fromOption = priceFromOption(e.option_id);
         if (fromOption !== null) return sum + fromOption;
-        if (e.total_price) return sum + parseFloat(e.total_price);
         const inst = parseFloat(e.installment_amount) || 0;
         const total = parseFloat(e.payments_total) || 0;
         return sum + inst * total;
@@ -520,12 +522,15 @@ export default function CourseRevenue() {
                                 <th className="px-3 py-2 text-center font-medium text-gray-600">מספר תשלום</th>
                                 <th className="px-3 py-2 text-center font-medium text-gray-600">שולם</th>
                                 <th className="px-3 py-2 text-center font-medium text-gray-600">מחיר מלא</th>
+                                <th className="px-3 py-2 text-center font-medium text-gray-600">נותר לתשלום</th>
                                 <th className="px-3 py-2 text-center font-medium text-gray-600">מחזור</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
                               {entries.map((e, i) => {
                                 const paid = parseFloat(e.paid_so_far) || 0;
+                                const opt = (course.options || []).find(o => o.option_id === e.option_id);
+                                const fullPrice = e.total_price ? parseFloat(e.total_price) : (opt?.price != null ? parseFloat(opt.price) : null);
                                 return (
                                   <tr key={i} className="hover:bg-gray-50">
                                     <td className="px-3 py-2 font-medium">{e.student.full_name}</td>
@@ -533,7 +538,18 @@ export default function CourseRevenue() {
                                     <td className="px-3 py-2 text-center">{e.installment_amount ? `₪${e.installment_amount}` : '—'}</td>
                                     <td className="px-3 py-2 text-center">{e.payment_number || '—'}</td>
                                     <td className="px-3 py-2 text-center text-green-700 font-semibold">{paid ? fmt(paid) : '—'}</td>
-                                    <td className="px-3 py-2 text-center">{e.total_price ? fmt(e.total_price) : '—'}</td>
+                                    <td className="px-3 py-2 text-center">
+                                      <EditablePriceCell
+                                        student={e.student}
+                                        courseId={course.id}
+                                        value={e.total_price ? parseFloat(e.total_price) : null}
+                                        onSaved={(updated) => setStudents(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s))}
+                                      />
+                                      {!e.total_price && fullPrice != null && <span className="block text-xs text-gray-400">מסלול: {fmt(fullPrice)}</span>}
+                                    </td>
+                                    <td className="px-3 py-2 text-center font-semibold text-[var(--crm-text)]">
+                                      {fullPrice != null ? fmt(Math.max(0, fullPrice - paid)) || '₪0' : '—'}
+                                    </td>
                                     <td className="px-3 py-2 text-center text-gray-600">{e.cohort || '—'}</td>
                                   </tr>
                                 );

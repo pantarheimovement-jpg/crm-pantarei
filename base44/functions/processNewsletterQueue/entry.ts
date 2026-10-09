@@ -81,11 +81,15 @@ Deno.serve(async (req) => {
 
     let sent = 0, failed = 0;
     const errors = [];
-    // התאמת {{name}} בנושא: עם שם — החלפה; בלי שם — הסרה כולל מפריד שאחריו
+    // התאמת {{name}} / {{first_name}} בנושא: עם שם — החלפה; בלי שם — הסרה כולל מפריד שאחריו
     const personalizeSubject = (subj, name) => {
-      if (!subj || !subj.includes('{{name}}')) return subj;
-      if (name && name.trim()) return subj.replace(/\{\{name\}\}/g, name.trim());
-      return subj.replace(/\{\{name\}\}\s*[,:\-–]?\s*/g, '').replace(/\s{2,}/g, ' ').trim();
+      if (!subj || (!subj.includes('{{name}}') && !subj.includes('{{first_name}}'))) return subj;
+      const full = String(name || '').trim();
+      if (full) {
+        const first = full.split(/\s+/)[0];
+        return subj.replace(/\{\{name\}\}/g, full).replace(/\{\{first_name\}\}/g, first);
+      }
+      return subj.replace(/\{\{(?:name|first_name)\}\}\s*[,:\-–]?\s*/g, '').replace(/\s{2,}/g, ' ').trim();
     };
 
     for (const item of pending) {

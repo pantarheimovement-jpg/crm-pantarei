@@ -140,7 +140,7 @@ export default function CourseRevenue() {
       // התחזית רצה על forecastEntries — כולל "נוצרה הוראת קבע" שטרם חויבה
       const expected = isAnnual ? forecastEntries.reduce((sum, e) => {
         // מחיר אישי (כולל הנחה) גובר על מחיר המסלול
-        if (e.total_price) return sum + parseFloat(e.total_price);
+        if (e.total_price != null && e.total_price !== '') return sum + parseFloat(e.total_price);
         const fromOption = priceFromOption(e.option_id);
         if (fromOption !== null) return sum + fromOption;
         const inst = parseFloat(e.installment_amount) || 0;
@@ -530,7 +530,8 @@ export default function CourseRevenue() {
                               {entries.map((e, i) => {
                                 const paid = parseFloat(e.paid_so_far) || 0;
                                 const opt = (course.options || []).find(o => o.option_id === e.option_id);
-                                const fullPrice = e.total_price ? parseFloat(e.total_price) : (opt?.price != null ? parseFloat(opt.price) : null);
+                                const hasPersonal = e.total_price != null && e.total_price !== '';
+                                const fullPrice = hasPersonal ? parseFloat(e.total_price) : (opt?.price != null ? parseFloat(opt.price) : null);
                                 return (
                                   <tr key={i} className="hover:bg-gray-50">
                                     <td className="px-3 py-2 font-medium">{e.student.full_name}</td>
@@ -542,13 +543,13 @@ export default function CourseRevenue() {
                                       <EditablePriceCell
                                         student={e.student}
                                         courseId={course.id}
-                                        value={e.total_price ? parseFloat(e.total_price) : null}
+                                        value={hasPersonal ? parseFloat(e.total_price) : null}
                                         onSaved={(updated) => setStudents(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s))}
                                       />
-                                      {!e.total_price && fullPrice != null && <span className="block text-xs text-gray-400">מסלול: {fmt(fullPrice)}</span>}
+                                      {!hasPersonal && fullPrice != null && <span className="block text-xs text-gray-400">מסלול: {fmt(fullPrice)}</span>}
                                     </td>
                                     <td className="px-3 py-2 text-center font-semibold text-[var(--crm-text)]">
-                                      {fullPrice != null ? fmt(Math.max(0, fullPrice - paid)) || '₪0' : '—'}
+                                      {fullPrice != null ? (fullPrice - paid > 0 ? fmt(fullPrice - paid) : '₪0') : '—'}
                                     </td>
                                     <td className="px-3 py-2 text-center text-gray-600">{e.cohort || '—'}</td>
                                   </tr>

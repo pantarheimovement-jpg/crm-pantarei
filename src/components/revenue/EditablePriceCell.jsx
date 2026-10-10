@@ -40,7 +40,7 @@ export default function EditablePriceCell({ student, courseId, value, onSaved })
       className="text-[var(--crm-primary)] hover:underline"
       title="לחצי לעריכת המחיר שסוכם"
     >
-      {value ? `₪${Math.round(value).toLocaleString('he-IL')}` : 'הזנת מחיר'}
+      {value != null ? `₪${Math.round(value).toLocaleString('he-IL')}` : 'הזנת מחיר'}
     </button>
   );
 }

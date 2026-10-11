@@ -6,7 +6,8 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { subject, html_content, group, batch_id, single_email } = await req.json();
+    const { subject, html_content, group, batch_id, single_email, scheduled_at } = await req.json();
+    const isScheduled = !!scheduled_at && new Date(scheduled_at).getTime() > Date.now();
     if (!subject || !html_content || !batch_id) {
       return Response.json({ error: 'Missing required fields: subject, html_content, batch_id' }, { status: 400 });
     }
@@ -65,8 +66,9 @@ Deno.serve(async (req) => {
       content: html_content,
       group: group || 'כל הרשימה',
       recipients_count: emailSubscribers.length,
-      status: 'בתהליך',
-      sent_date: new Date().toISOString(),
+      status: isScheduled ? 'מתוזמן' : 'בתהליך',
+      sent_date: isScheduled ? scheduled_at : new Date().toISOString(),
+      ...(isScheduled ? { scheduled_at } : {}),
       sent_by: 'SES (Queue)',
       error_message: batch_id // store batch_id here temporarily for lookup
     });
@@ -78,7 +80,8 @@ Deno.serve(async (req) => {
       name: s.name || '',
       subject,
       unsubscribe_token: s.unsubscribe_token,
-      status: 'pending'
+      status: 'pending',
+      ...(isScheduled ? { scheduled_at } : {})
     }));
 
     // BulkCreate in chunks of 500

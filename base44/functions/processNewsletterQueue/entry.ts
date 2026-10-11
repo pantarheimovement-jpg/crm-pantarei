@@ -62,8 +62,10 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, report: true, sent: sentR, failed: failedR, cancelled: cancelledR, opens: opensR, clicks: clicksR });
     }
 
+    // מיילים מתוזמנים ממתינים עד שהמועד שלהם מגיע
+    const due = { $or: [{ scheduled_at: { $exists: false } }, { scheduled_at: null }, { scheduled_at: { $lte: new Date().toISOString() } }] };
     const firstPending = await base44.asServiceRole.entities.NewsletterQueue.filter(
-      { status: 'pending' }, 'created_date', 1
+      { status: 'pending', ...due }, 'created_date', 1
     );
     if (!firstPending || firstPending.length === 0) {
       return Response.json({ success: true, processed: 0, message: 'No pending items' });
@@ -78,6 +80,9 @@ Deno.serve(async (req) => {
 
     const logs = await base44.asServiceRole.entities.NewsletterLogs.filter({ error_message: batchId });
     const logHtmlTemplate = logs && logs.length > 0 ? logs[0].content : null;
+    if (logs && logs[0] && logs[0].status === 'מתוזמן') {
+      await base44.asServiceRole.entities.NewsletterLogs.update(logs[0].id, { status: 'בתהליך' });
+    }
 
     let sent = 0, failed = 0;
     const errors = [];

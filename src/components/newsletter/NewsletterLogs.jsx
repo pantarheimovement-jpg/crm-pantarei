@@ -3,8 +3,23 @@ import { Mail, Send, Loader2, Eye, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useLanguage } from '../LanguageContext';
 
-export default function NewsletterLogs({ logs, sending, onResend }) {
+export default function NewsletterLogs({ logs, sending, onResend, onReload }) {
   const { t } = useLanguage();
+  const [cancellingId, setCancellingId] = useState(null);
+
+  // ביטול תזמון: batch_id שמור ב-error_message של הלוג (כך נבנה queueNewsletter)
+  const cancelScheduled = async (log) => {
+    if (!confirm(`לבטל את שליחת "${log.subject}"?`)) return;
+    setCancellingId(log.id);
+    let more = true;
+    while (more) {
+      const res = await base44.entities.NewsletterQueue.updateMany({ batch_id: log.error_message, status: 'pending' }, { $set: { status: 'cancelled' } });
+      more = !!res?.has_more;
+    }
+    await base44.entities.NewsletterLogs.update(log.id, { status: 'בוטל' });
+    setCancellingId(null);
+    onReload && onReload();
+  };
   const [previewHtml, setPreviewHtml] = useState(null);
   const [previewIsWhatsapp, setPreviewIsWhatsapp] = useState(false);
 
@@ -37,9 +52,15 @@ export default function NewsletterLogs({ logs, sending, onResend }) {
                   <div className="text-sm text-gray-600 space-y-1">
                     <p>{t('קבוצה:', 'Group:')} {log.group}</p>
                     <p>{t('נשלח ל:', 'Sent to:')} {log.recipients_count} {t('מנויים', 'subscribers')}</p>
-                    <p>{t('תאריך:', 'Date:')} {new Date(log.sent_date).toLocaleString('he-IL')}</p>
+                    <p>{log.status === 'מתוזמן' ? 'מתוזמן ל:' : t('תאריך:', 'Date:')} {new Date(log.scheduled_at || log.sent_date).toLocaleString('he-IL')}</p>
                     <p>{t('נשלח על ידי:', 'Sent by:')} {log.sent_by}</p>
-                    {log.error_message && (
+                    {log.status === 'מתוזמן' && (
+                      <button onClick={() => cancelScheduled(log)} disabled={cancellingId === log.id}
+                        className="mt-2 border border-red-500 text-red-600 px-3 py-1 rounded-lg text-sm font-semibold hover:bg-red-50 disabled:opacity-50 flex items-center gap-1">
+                        {cancellingId === log.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />} בטל תזמון
+                      </button>
+                    )}
+                    {log.error_message && !log.error_message.startsWith('newsletter_') && (
                       <p className="text-red-600">{t('שגיאה:', 'Error:')} {log.error_message}</p>
                     )}
                   </div>

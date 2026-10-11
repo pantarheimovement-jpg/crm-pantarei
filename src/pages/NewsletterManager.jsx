@@ -17,6 +17,7 @@ import WaTemplateComposer from '../components/newsletter/WaTemplateComposer';
 import WaRecipientsExcluder from '../components/newsletter/WaRecipientsExcluder';
 import WaMessagePreview from '../components/newsletter/WaMessagePreview';
 import WaQuotaIndicator from '../components/newsletter/WaQuotaIndicator';
+import ScheduleSendPicker from '@/components/newsletter/ScheduleSendPicker';
 
 import { appParams } from '@/lib/app-params';
 
@@ -55,6 +56,7 @@ export default function NewsletterManager() {
   const [content, setContent] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
   const [sending, setSending] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState(null); // null = מיידי
   const [sendStatus, setSendStatus] = useState(null);
   const [sendChannel, setSendChannel] = useState('email');
   const [sendMode, setSendMode] = useState('group');
@@ -450,15 +452,31 @@ ${ctaButtonsHtml}
 
     // Email or both — use backend queue (can close browser!)
     const batchId = `newsletter_${Date.now()}`;
-    if (!confirm(t(`השליחה תתבצע ברקע — ניתן לסגור את הדפדפן!\nלשלוח לקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send will run in background — you can close the browser!\nSend to group "${selectedGroup || 'All'}"?`))) {
+    const scheduledIso = sendChannel === 'email' && scheduleAt ? new Date(scheduleAt).toISOString() : null;
+    if (sendChannel === 'email' && scheduleAt === '') { alert('אנא בחרי תאריך ושעה לתזמון'); setSending(false); return; }
+    if (scheduledIso && new Date(scheduledIso) <= new Date()) { alert('המועד שנבחר כבר עבר'); setSending(false); return; }
+    const scheduleLabel = scheduledIso ? new Date(scheduledIso).toLocaleString('he-IL') : '';
+    const confirmMsg = scheduledIso
+      ? `לתזמן את הניוזלטר לקבוצה "${selectedGroup || 'כל הרשימה'}" ל-${scheduleLabel}?`
+      : t(`השליחה תתבצע ברקע — ניתן לסגור את הדפדפן!\nלשלוח לקבוצה "${selectedGroup || 'כל הרשימה'}"?`, `Send will run in background — you can close the browser!\nSend to group "${selectedGroup || 'All'}"?`);
+    if (!confirm(confirmMsg)) {
       setSending(false); return;
     }
 
     try {
       const res = await base44.functions.invoke('queueNewsletter', {
-        subject, html_content: finalEmailContent, group: selectedGroup, batch_id: batchId
+        subject, html_content: finalEmailContent, group: selectedGroup, batch_id: batchId,
+        ...(scheduledIso ? { scheduled_at: scheduledIso } : {})
       });
       const queued = res.data?.queued || 0;
+      if (scheduledIso) {
+        setSending(false);
+        setSendStatus(null);
+        alert(`✅ ${queued} מיילים תוזמנו ל-${scheduleLabel}.\nאפשר לבטל את התזמון בלשונית "היסטוריה".`);
+        setSubject(''); setContent(''); setHtmlContent(''); setCtaButtons([]); setScheduleAt(null);
+        loadLogs();
+        return;
+      }
       setQueueProgress({ total: queued, sent: 0, failed: 0, batch_id: batchId, done: false });
       startQueuePolling(batchId);
 
@@ -858,18 +876,20 @@ ${ctaButtonsHtml}
                   </div>
                 )}
 
+                {sendChannel === 'email' && <ScheduleSendPicker value={scheduleAt} onChange={setScheduleAt} />}
+
                 <button onClick={handleSendClick}
                   disabled={sending || ((sendChannel === 'email' || sendChannel === 'both') && !subject) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'html' && !htmlContent) || ((sendChannel === 'email' || sendChannel === 'both') && designMode === 'free' && !content) || ((sendChannel === 'whatsapp' || sendChannel === 'both') && (waMode === 'free' ? !whatsappMessage.trim() : (!waTplCourse.trim() || !waTplDate.trim() || !waTplLink.trim()))) || (sendMode === 'single' && !singleRecipient?.email)}
                   className="w-full bg-[var(--crm-primary)] text-white py-3 font-semibold hover:bg-[var(--crm-primary)]/90 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   style={{ borderRadius: 'var(--crm-button-radius)' }}
                 >
-                  {sending ? <><Loader2 className="w-5 h-5 animate-spin" />{t('שולח...', 'Sending...')}</> : <><Send className="w-5 h-5" />{t('שלח ניוזלטר', 'Send Newsletter')}</>}
+                  {sending ? <><Loader2 className="w-5 h-5 animate-spin" />{t('שולח...', 'Sending...')}</> : <><Send className="w-5 h-5" />{sendChannel === 'email' && scheduleAt !== null ? 'תזמן ניוזלטר' : t('שלח ניוזלטר', 'Send Newsletter')}</>}
                 </button>
               </div>
             )}
 
             {activeTab === 'import' && <ImportSubscribers onImportDone={loadSubscribers} />}
-            {activeTab === 'logs' && <NewsletterLogs logs={logs} sending={sending} onResend={handleResendNewsletter} />}
+            {activeTab === 'logs' && <NewsletterLogs logs={logs} sending={sending} onResend={handleResendNewsletter} onReload={loadLogs} />}
           </div>
         </div>
 

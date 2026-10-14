@@ -121,7 +121,9 @@ export default function Courses() {
   const handleSave = async () => {
     try {
       if (editingCourse) {
-        await base44.entities.Course.update(editingCourse.id, formData);
+        // קישור המורה נשמר בנפרד — לא לדרוס אותו בערך הישן מהטופס
+        const { teacher_token, ...rest } = formData;
+        await base44.entities.Course.update(editingCourse.id, rest);
       } else {
         await base44.entities.Course.create(formData);
       }
